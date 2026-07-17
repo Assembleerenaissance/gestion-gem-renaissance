@@ -3,7 +3,7 @@
 Assemblée RENAISSANCE — Vases d'Honneur
 
 ## Où en est cette Phase 2
-
+h
 Ce projet contient :
 - ✅ Le **schéma complet de base de données** (`supabase/schema.sql`) — toutes les tables nécessaires à l'application complète (membres, GEM, comptes, santé spirituelle, messages, calendrier, etc.)
 - ✅ La **structure du projet React** (Vite + Tailwind), prête à être déployée sur Vercel
