@@ -160,12 +160,16 @@ function TableauDeBord({ compte }) {
               <button onClick={() => { setPage("departements"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "departements" ? TEAL_700 : "transparent", color: page === "departements" ? GOLD_LIGHT : "#cdeae4" }}>Départements</button>
               <button onClick={() => { setPage("demandes"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "demandes" ? TEAL_700 : "transparent", color: page === "demandes" ? GOLD_LIGHT : "#cdeae4" }}>Demandes</button>
               <button onClick={() => { setPage("rapports"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "rapports" ? TEAL_700 : "transparent", color: page === "rapports" ? GOLD_LIGHT : "#cdeae4" }}>Rapports</button>
+              <button onClick={() => { setPage("messagerie"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "messagerie" ? TEAL_700 : "transparent", color: page === "messagerie" ? GOLD_LIGHT : "#cdeae4" }}>Messagerie</button>
               {compte.role === "pasteur" && (
                 <button onClick={() => { setPage("assistants"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "assistants" ? TEAL_700 : "transparent", color: page === "assistants" ? GOLD_LIGHT : "#cdeae4" }}>Assistants</button>
               )}
             </>
           ) : (
-            <span style={{ fontSize: 12, color: "#a9d6cf", alignSelf: "center" }}>Mon espace</span>
+            <>
+              <button onClick={() => setPage("dashboard")} style={{ ...btnStyle, backgroundColor: page !== "messagerie" ? TEAL_700 : "transparent", color: page !== "messagerie" ? GOLD_LIGHT : "#cdeae4" }}>Mon espace</button>
+              <button onClick={() => setPage("messagerie")} style={{ ...btnStyle, backgroundColor: page === "messagerie" ? TEAL_700 : "transparent", color: page === "messagerie" ? GOLD_LIGHT : "#cdeae4" }}>Messagerie</button>
+            </>
           )}
           <button onClick={seDeconnecter} style={{ ...btnStyle, backgroundColor: "transparent", color: "#cdeae4" }}>Déconnexion</button>
         </div>
@@ -183,6 +187,8 @@ function TableauDeBord({ compte }) {
             onDemandeEnvoyee={chargerDonnees}
             cardStyle={cardStyle}
           />
+        ) : page === "messagerie" ? (
+          <PageMessagerie compte={compte} estPasteur={estPasteur} cardStyle={cardStyle} />
         ) : !estPasteur ? (
           <MonEspace
             assignation={mesAssignations.find(a => a.statut === "actif")}
@@ -971,6 +977,129 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
             </div>
           )}
         </>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------- Messagerie ------------------------------- */
+
+function PageMessagerie({ compte, estPasteur, cardStyle }) {
+  const [onglet, setOnglet] = useState("diffusion"); // diffusion | direct
+  const [messages, setMessages] = useState([]);
+  const [messagesDirects, setMessagesDirects] = useState([]);
+  const [comptesParId, setComptesParId] = useState({});
+  const [texte, setTexte] = useState("");
+  const [chargement, setChargement] = useState(true);
+
+  useEffect(() => { chargerTout(); }, []);
+
+  async function chargerTout() {
+    setChargement(true);
+    const [{ data: m }, { data: md }] = await Promise.all([
+      supabase.from("messages").select("*").order("date", { ascending: false }).limit(30),
+      supabase.from("messages_directs").select("*").order("date", { ascending: false }).limit(50),
+    ]);
+    setMessages(m || []);
+    setMessagesDirects(md || []);
+    if (estPasteur && md && md.length > 0) {
+      const ids = [...new Set(md.map(x => x.de_compte_id))];
+      const { data: c } = await supabase.from("comptes").select("*").in("id", ids);
+      const map = {};
+      (c || []).forEach(cc => { map[cc.id] = cc; });
+      setComptesParId(map);
+    }
+    setChargement(false);
+  }
+
+  async function envoyerDiffusion() {
+    if (!texte.trim()) return;
+    const { error } = await supabase.from("messages").insert({ texte: texte.trim(), de_compte_id: compte.id });
+    if (!error) { setTexte(""); chargerTout(); }
+  }
+
+  async function envoyerDirect() {
+    if (!texte.trim()) return;
+    const { error } = await supabase.from("messages_directs").insert({ texte: texte.trim(), de_compte_id: compte.id });
+    if (!error) { setTexte(""); chargerTout(); }
+  }
+
+  async function marquerLu(id) {
+    await supabase.from("messages_directs").update({ lu: true }).eq("id", id);
+    chargerTout();
+  }
+
+  function formaterDate(d) {
+    return new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  }
+
+  const nonLus = messagesDirects.filter(m => !m.lu).length;
+
+  return (
+    <div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Messagerie</h2>
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+        <button onClick={() => setOnglet("diffusion")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "diffusion" ? GOLD : TEAL_900, color: onglet === "diffusion" ? TEAL_950 : "#cdeae4" }}>
+          Messages du pasteur
+        </button>
+        <button onClick={() => setOnglet("direct")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "direct" ? GOLD : TEAL_900, color: onglet === "direct" ? TEAL_950 : "#cdeae4" }}>
+          {estPasteur ? "Boîte de réception" : "Écrire au pasteur"}{estPasteur && nonLus > 0 ? ` (${nonLus})` : ""}
+        </button>
+      </div>
+
+      {chargement ? (
+        <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+      ) : onglet === "diffusion" ? (
+        <div>
+          {estPasteur && (
+            <div style={{ ...cardStyle, marginBottom: 16 }}>
+              <p style={{ fontWeight: 600, marginBottom: 8, fontSize: 14 }}>Envoyer un message à tous</p>
+              <textarea value={texte} onChange={e => setTexte(e.target.value)} rows={3} placeholder="Écris ton message ici..." style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, resize: "vertical" }} />
+              <button onClick={envoyerDiffusion} style={{ marginTop: 8, padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>Envoyer</button>
+            </div>
+          )}
+          {messages.length === 0 ? (
+            <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun message pour l'instant.</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {messages.map(m => (
+                <div key={m.id} style={cardStyle}>
+                  <p style={{ whiteSpace: "pre-wrap" }}>{m.texte}</p>
+                  <p style={{ fontSize: 11, color: "#a9d6cf", marginTop: 8 }}>{formaterDate(m.date)}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div>
+          {!estPasteur && (
+            <div style={{ ...cardStyle, marginBottom: 16 }}>
+              <p style={{ fontWeight: 600, marginBottom: 8, fontSize: 14 }}>Écrire au pasteur</p>
+              <textarea value={texte} onChange={e => setTexte(e.target.value)} rows={3} placeholder="Ton message..." style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, resize: "vertical" }} />
+              <button onClick={envoyerDirect} style={{ marginTop: 8, padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>Envoyer</button>
+            </div>
+          )}
+          {messagesDirects.length === 0 ? (
+            <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun message pour l'instant.</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {messagesDirects.map(m => (
+                <div key={m.id} style={{ ...cardStyle, borderColor: !m.lu && estPasteur ? GOLD : TEAL_700 }}>
+                  {estPasteur && <p style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, marginBottom: 4 }}>{comptesParId[m.de_compte_id]?.nom || "…"}</p>}
+                  <p style={{ whiteSpace: "pre-wrap" }}>{m.texte}</p>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+                    <p style={{ fontSize: 11, color: "#a9d6cf" }}>{formaterDate(m.date)}</p>
+                    {estPasteur && !m.lu && (
+                      <button onClick={() => marquerLu(m.id)} style={{ fontSize: 11, color: GOLD_LIGHT, background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>Marquer comme lu</button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
