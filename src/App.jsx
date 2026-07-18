@@ -112,6 +112,7 @@ function TableauDeBord({ compte }) {
   const [tribus, setTribus] = useState([]);
   const [departements, setDepartements] = useState([]);
   const [gems, setGems] = useState([]);
+  const [mesAssignations, setMesAssignations] = useState([]);
   const [membres, setMembres] = useState([]);
   const [chargement, setChargement] = useState(true);
 
@@ -121,13 +122,14 @@ function TableauDeBord({ compte }) {
 
   async function chargerDonnees() {
     setChargement(true);
-    const [{ data: t }, { data: d }, { data: g }, { data: m }] = await Promise.all([
+    const [{ data: t }, { data: d }, { data: g }, { data: m }, { data: a }] = await Promise.all([
       supabase.from("tribus").select("*").order("nom"),
       supabase.from("departements").select("*").order("nom"),
       supabase.from("gems").select("*").order("nom"),
       supabase.from("membres").select("*").order("nom"),
+      supabase.from("assignations").select("*").eq("compte_id", compte.id),
     ]);
-    setTribus(t || []); setDepartements(d || []); setGems(g || []); setMembres(m || []);
+    setTribus(t || []); setDepartements(d || []); setGems(g || []); setMembres(m || []); setMesAssignations(a || []);
     setChargement(false);
   }
 
@@ -147,6 +149,9 @@ function TableauDeBord({ compte }) {
           <button onClick={() => { setPage("dashboard"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "dashboard" ? TEAL_700 : "transparent", color: page === "dashboard" ? GOLD_LIGHT : "#cdeae4" }}>Tableau de bord</button>
           <button onClick={() => { setPage("tribus"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "tribus" ? TEAL_700 : "transparent", color: page === "tribus" ? GOLD_LIGHT : "#cdeae4" }}>Tribus</button>
           <button onClick={() => { setPage("departements"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "departements" ? TEAL_700 : "transparent", color: page === "departements" ? GOLD_LIGHT : "#cdeae4" }}>Départements</button>
+          {estPasteur && (
+            <button onClick={() => { setPage("demandes"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "demandes" ? TEAL_700 : "transparent", color: page === "demandes" ? GOLD_LIGHT : "#cdeae4" }}>Demandes</button>
+          )}
           <button onClick={seDeconnecter} style={{ ...btnStyle, backgroundColor: "transparent", color: "#cdeae4" }}>Déconnexion</button>
         </div>
       </div>
@@ -154,6 +159,15 @@ function TableauDeBord({ compte }) {
       <div style={{ padding: 24 }}>
         {chargement ? (
           <p style={{ color: "#cdeae4" }}>Chargement des données…</p>
+        ) : !estPasteur && !mesAssignations.some(a => a.statut === "actif") ? (
+          <DemanderResponsabilite
+            compte={compte}
+            tribus={tribus}
+            departements={departements}
+            mesAssignations={mesAssignations}
+            onDemandeEnvoyee={chargerDonnees}
+            cardStyle={cardStyle}
+          />
         ) : gemOuvert ? (
           <DetailGem
             gem={gemOuvert}
@@ -183,7 +197,7 @@ function TableauDeBord({ compte }) {
             onCreerGem={chargerDonnees}
             cardStyle={cardStyle}
           />
-        ) : (
+        ) : page === "departements" ? (
           <ListeParents
             titre="Les 28 départements"
             items={departements}
@@ -194,6 +208,8 @@ function TableauDeBord({ compte }) {
             onCreerGem={chargerDonnees}
             cardStyle={cardStyle}
           />
+        ) : (
+          <PageDemandes tribus={tribus} departements={departements} compte={compte} onTraite={chargerDonnees} cardStyle={cardStyle} />
         )}
       </div>
     </div>
@@ -388,6 +404,191 @@ function DetailGem({ gem, membres, onBack, onMembreAjoute, cardStyle }) {
           ))
         )}
       </div>
+    </div>
+  );
+}
+
+/* --------------------------- Demander une responsabilité --------------------------- */
+
+function DemanderResponsabilite({ compte, tribus, departements, mesAssignations, onDemandeEnvoyee, cardStyle }) {
+  const [roleDemande, setRoleDemande] = useState("gem");
+  const [parentType, setParentType] = useState("tribu");
+  const [tribuId, setTribuId] = useState(tribus[0]?.id || "");
+  const [departementId, setDepartementId] = useState(departements[0]?.id || "");
+  const [nomGem, setNomGem] = useState("");
+  const [erreur, setErreur] = useState("");
+  const [envoye, setEnvoye] = useState(false);
+
+  const demandeEnAttente = mesAssignations.find(a => a.statut === "attente");
+  const demandeRefusee = mesAssignations.find(a => a.statut === "refusee" && !mesAssignations.some(x => x.statut !== "refusee"));
+
+  async function envoyer() {
+    setErreur("");
+    if (roleDemande === "gem" && !nomGem.trim()) { setErreur("Merci de donner un nom au GEM souhaité."); return; }
+    const payload = {
+      compte_id: compte.id,
+      role_demande: roleDemande,
+      statut: "attente",
+      tribu_id: roleDemande === "tribu_resp" ? tribuId : (roleDemande === "gem" && parentType === "tribu" ? tribuId : null),
+      departement_id: roleDemande === "departement_resp" ? departementId : (roleDemande === "gem" && parentType === "departement" ? departementId : null),
+      gem_nom_demande: roleDemande === "gem" ? nomGem.trim() : null,
+    };
+    const { error } = await supabase.from("assignations").insert(payload);
+    if (error) { setErreur(error.message); return; }
+    setEnvoye(true);
+    onDemandeEnvoyee();
+  }
+
+  if (demandeEnAttente || envoye) {
+    return (
+      <div style={{ ...cardStyle, maxWidth: 480 }}>
+        <p style={{ fontWeight: 700, marginBottom: 8 }}>Demande envoyée ✅</p>
+        <p style={{ fontSize: 13, color: "#a9d6cf" }}>
+          Ta demande de responsabilité est en attente de validation par le pasteur. Reviens un peu plus tard — cet écran se mettra à jour automatiquement une fois validée.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ maxWidth: 480 }}>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Demander une responsabilité</h2>
+      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>
+        Ton compte n'a pas encore de responsabilité active. Choisis ce que tu souhaites gérer — le pasteur validera ta demande.
+      </p>
+      {demandeRefusee && (
+        <p style={{ fontSize: 12, color: RED_LIGHT, marginBottom: 12 }}>Ta précédente demande a été refusée. Tu peux en soumettre une nouvelle.</p>
+      )}
+
+      <div style={{ ...cardStyle, display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "flex", gap: 6 }}>
+          {[["gem", "Responsable GEM"], ["departement_resp", "Responsable de département"], ["tribu_resp", "Patriarche / Matriarche"]].map(([val, label]) => (
+            <button key={val} onClick={() => setRoleDemande(val)} style={{ flex: 1, padding: "8px 6px", borderRadius: 8, fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: roleDemande === val ? GOLD : TEAL_900, color: roleDemande === val ? TEAL_950 : "#cdeae4" }}>
+              {label}
+            </button>
+          ))}
+        </div>
+
+        {roleDemande === "gem" && (
+          <>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button onClick={() => setParentType("tribu")} style={{ flex: 1, padding: 8, borderRadius: 8, fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", backgroundColor: parentType === "tribu" ? TEAL_700 : TEAL_900, color: CREAM }}>GEM d'une tribu</button>
+              <button onClick={() => setParentType("departement")} style={{ flex: 1, padding: 8, borderRadius: 8, fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", backgroundColor: parentType === "departement" ? TEAL_700 : TEAL_900, color: CREAM }}>GEM d'un département</button>
+            </div>
+            {parentType === "tribu" ? (
+              <select value={tribuId} onChange={e => setTribuId(e.target.value)} style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}>
+                {tribus.map(t => <option key={t.id} value={t.id}>Tribu de {t.nom}</option>)}
+              </select>
+            ) : (
+              <select value={departementId} onChange={e => setDepartementId(e.target.value)} style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}>
+                {departements.map(d => <option key={d.id} value={d.id}>Département {d.nom}</option>)}
+              </select>
+            )}
+            <input value={nomGem} onChange={e => setNomGem(e.target.value)} placeholder="Nom du GEM" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+          </>
+        )}
+
+        {roleDemande === "departement_resp" && (
+          <select value={departementId} onChange={e => setDepartementId(e.target.value)} style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}>
+            {departements.map(d => <option key={d.id} value={d.id}>Département {d.nom}</option>)}
+          </select>
+        )}
+
+        {roleDemande === "tribu_resp" && (
+          <select value={tribuId} onChange={e => setTribuId(e.target.value)} style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}>
+            {tribus.map(t => <option key={t.id} value={t.id}>Tribu de {t.nom}</option>)}
+          </select>
+        )}
+
+        {erreur && <p style={{ color: RED_LIGHT, fontSize: 12 }}>{erreur}</p>}
+
+        <button onClick={envoyer} style={{ padding: "10px 0", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>
+          Envoyer la demande
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* --------------------------- Page Demandes (pasteur) --------------------------- */
+
+function PageDemandes({ tribus, departements, compte, onTraite, cardStyle }) {
+  const [demandes, setDemandes] = useState([]);
+  const [comptesParId, setComptesParId] = useState({});
+  const [chargement, setChargement] = useState(true);
+
+  useEffect(() => { chargerDemandes(); }, []);
+
+  async function chargerDemandes() {
+    setChargement(true);
+    const { data: d } = await supabase.from("assignations").select("*").eq("statut", "attente").order("date_demande");
+    const idsComptes = [...new Set((d || []).map(x => x.compte_id))];
+    let map = {};
+    if (idsComptes.length > 0) {
+      const { data: c } = await supabase.from("comptes").select("*").in("id", idsComptes);
+      (c || []).forEach(compte => { map[compte.id] = compte; });
+    }
+    setDemandes(d || []);
+    setComptesParId(map);
+    setChargement(false);
+  }
+
+  function libelleDemande(d) {
+    if (d.role_demande === "gem") {
+      const parent = d.tribu_id ? tribus.find(t => t.id === d.tribu_id)?.nom : departements.find(dep => dep.id === d.departement_id)?.nom;
+      return `Responsable GEM "${d.gem_nom_demande}" — ${parent || ""}`;
+    }
+    if (d.role_demande === "departement_resp") return `Responsable de département — ${departements.find(dep => dep.id === d.departement_id)?.nom || ""}`;
+    return `Patriarche/Matriarche — Tribu de ${tribus.find(t => t.id === d.tribu_id)?.nom || ""}`;
+  }
+
+  async function valider(d) {
+    let gemId = null;
+    if (d.role_demande === "gem") {
+      const { data: nouveauGem, error } = await supabase.from("gems").insert({
+        nom: d.gem_nom_demande,
+        type: d.tribu_id ? "tribu" : "departement",
+        tribu_id: d.tribu_id,
+        departement_id: d.departement_id,
+      }).select().single();
+      if (error) { alert(error.message); return; }
+      gemId = nouveauGem.id;
+    }
+    const { error: err2 } = await supabase.from("assignations").update({ statut: "actif", gem_id: gemId, valide_par: compte.id }).eq("id", d.id);
+    if (err2) { alert(err2.message); return; }
+    chargerDemandes();
+    onTraite();
+  }
+
+  async function refuser(d) {
+    await supabase.from("assignations").update({ statut: "refusee", valide_par: compte.id }).eq("id", d.id);
+    chargerDemandes();
+  }
+
+  return (
+    <div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>Demandes en attente ({demandes.length})</h2>
+      {chargement ? (
+        <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+      ) : demandes.length === 0 ? (
+        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucune demande en attente pour le moment.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {demandes.map(d => (
+            <div key={d.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+              <div>
+                <p style={{ fontWeight: 700, marginBottom: 2 }}>{comptesParId[d.compte_id]?.nom || "…"}</p>
+                <p style={{ fontSize: 12, color: "#a9d6cf" }}>{libelleDemande(d)}</p>
+                <p style={{ fontSize: 11, color: "#a9d6cf" }}>{comptesParId[d.compte_id]?.telephone}</p>
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button onClick={() => valider(d)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 12 }}>Valider</button>
+                <button onClick={() => refuser(d)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: "transparent", color: RED_LIGHT, border: `1px solid ${RED_LIGHT}`, cursor: "pointer", fontSize: 12 }}>Refuser</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
