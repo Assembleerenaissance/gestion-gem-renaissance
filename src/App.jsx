@@ -120,6 +120,8 @@ function TableauDeBord({ compte }) {
   const [departements, setDepartements] = useState([]);
   const [gems, setGems] = useState([]);
   const [mesAssignations, setMesAssignations] = useState([]);
+  const [nbDemandesAttente, setNbDemandesAttente] = useState(0);
+  const [nbMessagesNonLus, setNbMessagesNonLus] = useState(0);
   const [membres, setMembres] = useState([]);
   const [chargement, setChargement] = useState(true);
 
@@ -137,6 +139,14 @@ function TableauDeBord({ compte }) {
       supabase.from("assignations").select("*").eq("compte_id", compte.id),
     ]);
     setTribus(t || []); setDepartements(d || []); setGems(g || []); setMembres(m || []); setMesAssignations(a || []);
+    if (estPasteur) {
+      const [{ count: cDemandes }, { count: cMessages }] = await Promise.all([
+        supabase.from("assignations").select("*", { count: "exact", head: true }).eq("statut", "attente"),
+        supabase.from("messages_directs").select("*", { count: "exact", head: true }).eq("lu", false),
+      ]);
+      setNbDemandesAttente(cDemandes || 0);
+      setNbMessagesNonLus(cMessages || 0);
+    }
     setChargement(false);
   }
 
@@ -158,9 +168,23 @@ function TableauDeBord({ compte }) {
               <button onClick={() => { setPage("dashboard"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "dashboard" ? TEAL_700 : "transparent", color: page === "dashboard" ? GOLD_LIGHT : "#cdeae4" }}>Tableau de bord</button>
               <button onClick={() => { setPage("tribus"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "tribus" ? TEAL_700 : "transparent", color: page === "tribus" ? GOLD_LIGHT : "#cdeae4" }}>Tribus</button>
               <button onClick={() => { setPage("departements"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "departements" ? TEAL_700 : "transparent", color: page === "departements" ? GOLD_LIGHT : "#cdeae4" }}>Départements</button>
-              <button onClick={() => { setPage("demandes"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "demandes" ? TEAL_700 : "transparent", color: page === "demandes" ? GOLD_LIGHT : "#cdeae4" }}>Demandes</button>
+              <button onClick={() => { setPage("demandes"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "demandes" ? TEAL_700 : "transparent", color: page === "demandes" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
+                Demandes
+                {nbDemandesAttente > 0 && (
+                  <span style={{ position: "absolute", top: -6, right: -6, backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
+                    {nbDemandesAttente}
+                  </span>
+                )}
+              </button>
               <button onClick={() => { setPage("rapports"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "rapports" ? TEAL_700 : "transparent", color: page === "rapports" ? GOLD_LIGHT : "#cdeae4" }}>Rapports</button>
-              <button onClick={() => { setPage("messagerie"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "messagerie" ? TEAL_700 : "transparent", color: page === "messagerie" ? GOLD_LIGHT : "#cdeae4" }}>Messagerie</button>
+              <button onClick={() => { setPage("messagerie"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "messagerie" ? TEAL_700 : "transparent", color: page === "messagerie" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
+                Messagerie
+                {nbMessagesNonLus > 0 && (
+                  <span style={{ position: "absolute", top: -6, right: -6, backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
+                    {nbMessagesNonLus}
+                  </span>
+                )}
+              </button>
               {compte.role === "pasteur" && (
                 <button onClick={() => { setPage("assistants"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "assistants" ? TEAL_700 : "transparent", color: page === "assistants" ? GOLD_LIGHT : "#cdeae4" }}>Assistants</button>
               )}
@@ -168,7 +192,14 @@ function TableauDeBord({ compte }) {
           ) : (
             <>
               <button onClick={() => setPage("dashboard")} style={{ ...btnStyle, backgroundColor: page !== "messagerie" ? TEAL_700 : "transparent", color: page !== "messagerie" ? GOLD_LIGHT : "#cdeae4" }}>Mon espace</button>
-              <button onClick={() => setPage("messagerie")} style={{ ...btnStyle, backgroundColor: page === "messagerie" ? TEAL_700 : "transparent", color: page === "messagerie" ? GOLD_LIGHT : "#cdeae4" }}>Messagerie</button>
+              <button onClick={() => setPage("messagerie")} style={{ ...btnStyle, backgroundColor: page === "messagerie" ? TEAL_700 : "transparent", color: page === "messagerie" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
+                Messagerie
+                {nbMessagesNonLus > 0 && (
+                  <span style={{ position: "absolute", top: -6, right: -6, backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
+                    {nbMessagesNonLus}
+                  </span>
+                )}
+              </button>
             </>
           )}
           <button onClick={seDeconnecter} style={{ ...btnStyle, backgroundColor: "transparent", color: "#cdeae4" }}>Déconnexion</button>
@@ -188,7 +219,7 @@ function TableauDeBord({ compte }) {
             cardStyle={cardStyle}
           />
         ) : page === "messagerie" ? (
-          <PageMessagerie compte={compte} estPasteur={estPasteur} cardStyle={cardStyle} />
+          <PageMessagerie compte={compte} estPasteur={estPasteur} onActionnee={chargerDonnees} cardStyle={cardStyle} />
         ) : !estPasteur ? (
           <MonEspace
             assignation={mesAssignations.find(a => a.statut === "actif")}
@@ -984,7 +1015,7 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
 
 /* ------------------------------- Messagerie ------------------------------- */
 
-function PageMessagerie({ compte, estPasteur, cardStyle }) {
+function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
   const [onglet, setOnglet] = useState("diffusion"); // diffusion | direct
   const [messages, setMessages] = useState([]);
   const [messagesDirects, setMessagesDirects] = useState([]);
@@ -992,7 +1023,12 @@ function PageMessagerie({ compte, estPasteur, cardStyle }) {
   const [texte, setTexte] = useState("");
   const [chargement, setChargement] = useState(true);
 
-  useEffect(() => { chargerTout(); }, []);
+  useEffect(() => {
+    chargerTout();
+    if (!estPasteur) {
+      supabase.from("comptes").update({ dernier_message_lu: new Date().toISOString() }).eq("id", compte.id).then(() => { if (onActionnee) onActionnee(); });
+    }
+  }, []);
 
   async function chargerTout() {
     setChargement(true);
@@ -1027,6 +1063,7 @@ function PageMessagerie({ compte, estPasteur, cardStyle }) {
   async function marquerLu(id) {
     await supabase.from("messages_directs").update({ lu: true }).eq("id", id);
     chargerTout();
+    if (onActionnee) onActionnee();
   }
 
   function formaterDate(d) {
