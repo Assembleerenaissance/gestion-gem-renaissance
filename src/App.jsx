@@ -136,7 +136,7 @@ function EcranConnexion() {
 
           {mode === "inscription" && (
             <>
-              <p style={{ color: CREAM, fontWeight: 700, fontSize: 14, marginTop: 8 }}>Quelle responsabilité souhaites-tu ?</p>
+              <p style={{ color: CREAM, fontWeight: 700, fontSize: 14, marginTop: 8 }}>Quelle responsabilité occupes-tu ?</p>
               <SelecteurRole
                 roleDemande={roleDemande} setRoleDemande={setRoleDemande}
                 parentType={parentType} setParentType={setParentType}
