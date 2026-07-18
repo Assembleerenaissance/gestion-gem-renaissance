@@ -127,13 +127,15 @@ function TableauDeBord({ compte }) {
 
   const estPasteur = compte.role === "pasteur" || compte.assistant === true;
   const [dernierMessageLu, setDernierMessageLu] = useState(compte.dernier_message_lu || null);
+  const [dernierEvenementVu, setDernierEvenementVu] = useState(compte.dernier_evenement_vu || null);
+  const [nbNouveauxEvenements, setNbNouveauxEvenements] = useState(0);
 
   useEffect(() => { chargerDonnees(); }, []);
 
   useEffect(() => {
     const intervalle = setInterval(() => { rafraichirCompteurs(); }, 20000);
     return () => clearInterval(intervalle);
-  }, [dernierMessageLu, estPasteur]);
+  }, [dernierMessageLu, dernierEvenementVu, estPasteur]);
 
   async function rafraichirCompteurs() {
     if (estPasteur) {
@@ -144,10 +146,13 @@ function TableauDeBord({ compte }) {
       setNbDemandesAttente(cDemandes || 0);
       setNbMessagesNonLus(cMessages || 0);
     } else {
-      const seuil = dernierMessageLu || "1970-01-01T00:00:00Z";
-      const { count: cDiffusion } = await supabase.from("messages").select("*", { count: "exact", head: true }).gt("date", seuil);
+      const seuilMessages = dernierMessageLu || "1970-01-01T00:00:00Z";
+      const { count: cDiffusion } = await supabase.from("messages").select("*", { count: "exact", head: true }).gt("date", seuilMessages);
       setNbMessagesNonLus(cDiffusion || 0);
     }
+    const seuilEvenements = dernierEvenementVu || "1970-01-01T00:00:00Z";
+    const { count: cEvenements } = await supabase.from("evenements").select("*", { count: "exact", head: true }).gt("debut", seuilEvenements).gt("debut", new Date().toISOString());
+    setNbNouveauxEvenements(cEvenements || 0);
   }
 
   async function chargerDonnees() {
@@ -192,7 +197,14 @@ function TableauDeBord({ compte }) {
                 )}
               </button>
               <button onClick={() => { setPage("rapports"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "rapports" ? TEAL_700 : "transparent", color: page === "rapports" ? GOLD_LIGHT : "#cdeae4" }}>Rapports</button>
-              <button onClick={() => { setPage("calendrier"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "calendrier" ? TEAL_700 : "transparent", color: page === "calendrier" ? GOLD_LIGHT : "#cdeae4" }}>Calendrier</button>
+              <button onClick={() => { setPage("calendrier"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "calendrier" ? TEAL_700 : "transparent", color: page === "calendrier" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
+                Calendrier
+                {nbNouveauxEvenements > 0 && (
+                  <span style={{ position: "absolute", top: -6, right: -6, backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
+                    {nbNouveauxEvenements}
+                  </span>
+                )}
+              </button>
               <button onClick={() => { setPage("messagerie"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "messagerie" ? TEAL_700 : "transparent", color: page === "messagerie" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
                 Messagerie
                 {nbMessagesNonLus > 0 && (
@@ -208,7 +220,14 @@ function TableauDeBord({ compte }) {
           ) : (
             <>
               <button onClick={() => setPage("dashboard")} style={{ ...btnStyle, backgroundColor: (page !== "messagerie" && page !== "calendrier") ? TEAL_700 : "transparent", color: (page !== "messagerie" && page !== "calendrier") ? GOLD_LIGHT : "#cdeae4" }}>Mon espace</button>
-              <button onClick={() => setPage("calendrier")} style={{ ...btnStyle, backgroundColor: page === "calendrier" ? TEAL_700 : "transparent", color: page === "calendrier" ? GOLD_LIGHT : "#cdeae4" }}>Calendrier</button>
+              <button onClick={() => setPage("calendrier")} style={{ ...btnStyle, backgroundColor: page === "calendrier" ? TEAL_700 : "transparent", color: page === "calendrier" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
+                Calendrier
+                {nbNouveauxEvenements > 0 && (
+                  <span style={{ position: "absolute", top: -6, right: -6, backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
+                    {nbNouveauxEvenements}
+                  </span>
+                )}
+              </button>
               <button onClick={() => setPage("messagerie")} style={{ ...btnStyle, backgroundColor: page === "messagerie" ? TEAL_700 : "transparent", color: page === "messagerie" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
                 Messagerie
                 {nbMessagesNonLus > 0 && (
@@ -246,7 +265,12 @@ function TableauDeBord({ compte }) {
             cardStyle={cardStyle}
           />
         ) : page === "calendrier" ? (
-          <PageCalendrier estPasteur={estPasteur} compte={compte} cardStyle={cardStyle} />
+          <PageCalendrier
+            estPasteur={estPasteur}
+            compte={compte}
+            onOuverture={() => { setDernierEvenementVu(new Date().toISOString()); setNbNouveauxEvenements(0); }}
+            cardStyle={cardStyle}
+          />
         ) : !estPasteur ? (
           <MonEspace
             assignation={mesAssignations.find(a => a.statut === "actif")}
@@ -1171,7 +1195,7 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
 
 /* ------------------------------- Calendrier ------------------------------- */
 
-function PageCalendrier({ estPasteur, compte, cardStyle }) {
+function PageCalendrier({ estPasteur, compte, onOuverture, cardStyle }) {
   const [evenements, setEvenements] = useState([]);
   const [chargement, setChargement] = useState(true);
   const [formOuvert, setFormOuvert] = useState(false);
@@ -1181,7 +1205,10 @@ function PageCalendrier({ estPasteur, compte, cardStyle }) {
   const [description, setDescription] = useState("");
   const [erreur, setErreur] = useState("");
 
-  useEffect(() => { chargerEvenements(); }, []);
+  useEffect(() => {
+    chargerEvenements();
+    supabase.from("comptes").update({ dernier_evenement_vu: new Date().toISOString() }).eq("id", compte.id).then(() => { if (onOuverture) onOuverture(); });
+  }, []);
 
   async function chargerEvenements() {
     setChargement(true);
