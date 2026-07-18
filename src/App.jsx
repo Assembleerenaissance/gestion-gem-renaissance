@@ -59,6 +59,25 @@ function EcranConnexion() {
   const [erreur, setErreur] = useState("");
   const [chargement, setChargement] = useState(false);
 
+  const [tribus, setTribus] = useState([]);
+  const [departements, setDepartements] = useState([]);
+  const [roleDemande, setRoleDemande] = useState("gem");
+  const [parentType, setParentType] = useState("tribu");
+  const [tribuId, setTribuId] = useState("");
+  const [departementId, setDepartementId] = useState("");
+  const [nomGem, setNomGem] = useState("");
+
+  useEffect(() => {
+    supabase.from("tribus").select("*").order("nom").then(({ data }) => {
+      setTribus(data || []);
+      if (data && data.length > 0) setTribuId(data[0].id);
+    });
+    supabase.from("departements").select("*").order("nom").then(({ data }) => {
+      setDepartements(data || []);
+      if (data && data.length > 0) setDepartementId(data[0].id);
+    });
+  }, []);
+
   function emailTechnique(tel) {
     return `${tel.replace(/[^\d]/g, "")}@gestiongem.com`;
   }
@@ -73,10 +92,23 @@ function EcranConnexion() {
   async function sInscrire() {
     setErreur(""); setChargement(true);
     if (motDePasse.length < 8) { setErreur("Le mot de passe doit contenir au moins 8 caractères."); setChargement(false); return; }
+    if (roleDemande === "gem" && !nomGem.trim()) { setErreur("Merci de donner un nom au GEM souhaité."); setChargement(false); return; }
+
     const { data, error } = await supabase.auth.signUp({ email: emailTechnique(telephone), password: motDePasse });
     if (error) { setErreur(error.message); setChargement(false); return; }
-    const { error: erreurCompte } = await supabase.from("comptes").insert({ user_id: data.user.id, nom, telephone, role: null, assistant: false });
-    if (erreurCompte) setErreur(erreurCompte.message);
+
+    const { data: nouveauCompte, error: erreurCompte } = await supabase.from("comptes").insert({ user_id: data.user.id, nom, telephone, role: null, assistant: false }).select().single();
+    if (erreurCompte) { setErreur(erreurCompte.message); setChargement(false); return; }
+
+    const payload = {
+      compte_id: nouveauCompte.id,
+      role_demande: roleDemande,
+      statut: "attente",
+      tribu_id: roleDemande === "tribu_resp" ? tribuId : (roleDemande === "gem" && parentType === "tribu" ? tribuId : null),
+      departement_id: roleDemande === "departement_resp" ? departementId : (roleDemande === "gem" && parentType === "departement" ? departementId : null),
+      gem_nom_demande: roleDemande === "gem" ? nomGem.trim() : null,
+    };
+    await supabase.from("assignations").insert(payload);
     setChargement(false);
   }
 
@@ -88,7 +120,7 @@ function EcranConnexion() {
         backgroundSize: "cover", backgroundPosition: "center",
       }}
     >
-      <div style={{ width: "100%", maxWidth: 380, backgroundColor: "rgba(17,106,95,0.92)", backdropFilter: "blur(6px)", border: `1px solid ${TEAL_700}`, borderRadius: 16, padding: 24 }}>
+      <div style={{ width: "100%", maxWidth: mode === "inscription" ? 420 : 380, maxHeight: "92vh", overflowY: "auto", backgroundColor: "rgba(17,106,95,0.92)", backdropFilter: "blur(6px)", border: `1px solid ${TEAL_700}`, borderRadius: 16, padding: 24 }}>
         <h1 style={{ color: CREAM, fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Gestion des GEM</h1>
         <p style={{ color: "#cdeae4", fontSize: 13, marginBottom: 20 }}>Assemblée RENAISSANCE — Vases d'Honneur</p>
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
@@ -101,6 +133,21 @@ function EcranConnexion() {
           )}
           <input value={telephone} onChange={e => setTelephone(e.target.value)} placeholder="Téléphone" type="tel" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_850, color: CREAM, border: `1px solid ${TEAL_700}` }} />
           <input value={motDePasse} onChange={e => setMotDePasse(e.target.value)} placeholder="Mot de passe (8 car. min.)" type="password" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_850, color: CREAM, border: `1px solid ${TEAL_700}` }} />
+
+          {mode === "inscription" && (
+            <>
+              <p style={{ color: CREAM, fontWeight: 700, fontSize: 14, marginTop: 8 }}>Quelle responsabilité souhaites-tu ?</p>
+              <SelecteurRole
+                roleDemande={roleDemande} setRoleDemande={setRoleDemande}
+                parentType={parentType} setParentType={setParentType}
+                tribuId={tribuId} setTribuId={setTribuId}
+                departementId={departementId} setDepartementId={setDepartementId}
+                nomGem={nomGem} setNomGem={setNomGem}
+                tribus={tribus} departements={departements}
+              />
+            </>
+          )}
+
           {erreur && <p style={{ color: RED_LIGHT, fontSize: 12 }}>{erreur}</p>}
           <button disabled={chargement} onClick={mode === "connexion" ? seConnecter : sInscrire} style={{ padding: "12px 0", borderRadius: 8, fontWeight: 700, fontSize: 14, backgroundColor: GOLD, color: TEAL_950, border: "none", cursor: "pointer" }}>
             {chargement ? "…" : mode === "connexion" ? "Accéder à mon espace" : "Créer mon compte"}
@@ -764,57 +811,14 @@ function DemanderResponsabilite({ compte, tribus, departements, mesAssignations,
       )}
 
       <div style={{ ...cardStyle, display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {[
-            ["gem", "Responsable GEM", "Tu gères un groupe précis (GEM) : ses membres, leur présence chaque dimanche, et leur santé spirituelle."],
-            ["departement_resp", "Responsable de département", "Tu supervises tous les GEM d'un département entier, et tu peux en créer de nouveaux selon les besoins."],
-            ["tribu_resp", "Patriarche / Matriarche", "Tu supervises tous les GEM d'une tribu entière, et tu peux en créer de nouveaux selon les besoins."],
-          ].map(([val, label, description]) => (
-            <button
-              key={val}
-              onClick={() => setRoleDemande(val)}
-              style={{
-                textAlign: "left", padding: 14, borderRadius: 10, cursor: "pointer",
-                backgroundColor: roleDemande === val ? "rgba(208,175,28,0.15)" : TEAL_900,
-                border: `1px solid ${roleDemande === val ? GOLD : TEAL_600}`,
-              }}
-            >
-              <p style={{ fontWeight: 700, fontSize: 14, color: roleDemande === val ? GOLD_LIGHT : CREAM, marginBottom: 4 }}>{label}</p>
-              <p style={{ fontSize: 12, color: "#a9d6cf", lineHeight: 1.4 }}>{description}</p>
-            </button>
-          ))}
-        </div>
-
-        {roleDemande === "gem" && (
-          <>
-            <div style={{ display: "flex", gap: 6 }}>
-              <button onClick={() => setParentType("tribu")} style={{ flex: 1, padding: 8, borderRadius: 8, fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", backgroundColor: parentType === "tribu" ? TEAL_700 : TEAL_900, color: CREAM }}>GEM d'une tribu</button>
-              <button onClick={() => setParentType("departement")} style={{ flex: 1, padding: 8, borderRadius: 8, fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", backgroundColor: parentType === "departement" ? TEAL_700 : TEAL_900, color: CREAM }}>GEM d'un département</button>
-            </div>
-            {parentType === "tribu" ? (
-              <select value={tribuId} onChange={e => setTribuId(e.target.value)} style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}>
-                {tribus.map(t => <option key={t.id} value={t.id}>Tribu de {t.nom}</option>)}
-              </select>
-            ) : (
-              <select value={departementId} onChange={e => setDepartementId(e.target.value)} style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}>
-                {departements.map(d => <option key={d.id} value={d.id}>Département {d.nom}</option>)}
-              </select>
-            )}
-            <input value={nomGem} onChange={e => setNomGem(e.target.value)} placeholder="Nom du GEM" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
-          </>
-        )}
-
-        {roleDemande === "departement_resp" && (
-          <select value={departementId} onChange={e => setDepartementId(e.target.value)} style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}>
-            {departements.map(d => <option key={d.id} value={d.id}>Département {d.nom}</option>)}
-          </select>
-        )}
-
-        {roleDemande === "tribu_resp" && (
-          <select value={tribuId} onChange={e => setTribuId(e.target.value)} style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}>
-            {tribus.map(t => <option key={t.id} value={t.id}>Tribu de {t.nom}</option>)}
-          </select>
-        )}
+        <SelecteurRole
+          roleDemande={roleDemande} setRoleDemande={setRoleDemande}
+          parentType={parentType} setParentType={setParentType}
+          tribuId={tribuId} setTribuId={setTribuId}
+          departementId={departementId} setDepartementId={setDepartementId}
+          nomGem={nomGem} setNomGem={setNomGem}
+          tribus={tribus} departements={departements}
+        />
 
         {erreur && <p style={{ color: RED_LIGHT, fontSize: 12 }}>{erreur}</p>}
 
@@ -823,6 +827,64 @@ function DemanderResponsabilite({ compte, tribus, departements, mesAssignations,
         </button>
       </div>
     </div>
+  );
+}
+
+function SelecteurRole({ roleDemande, setRoleDemande, parentType, setParentType, tribuId, setTribuId, departementId, setDepartementId, nomGem, setNomGem, tribus, departements }) {
+  return (
+    <>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {[
+          ["gem", "Responsable GEM", "Tu gères un groupe précis (GEM) : ses membres, leur présence chaque dimanche, et leur santé spirituelle."],
+          ["departement_resp", "Responsable de département", "Tu supervises tous les GEM d'un département entier, et tu peux en créer de nouveaux selon les besoins."],
+          ["tribu_resp", "Patriarche / Matriarche", "Tu supervises tous les GEM d'une tribu entière, et tu peux en créer de nouveaux selon les besoins."],
+        ].map(([val, label, description]) => (
+          <button
+            key={val}
+            onClick={() => setRoleDemande(val)}
+            style={{
+              textAlign: "left", padding: 14, borderRadius: 10, cursor: "pointer",
+              backgroundColor: roleDemande === val ? "rgba(208,175,28,0.15)" : TEAL_900,
+              border: `1px solid ${roleDemande === val ? GOLD : TEAL_600}`,
+            }}
+          >
+            <p style={{ fontWeight: 700, fontSize: 14, color: roleDemande === val ? GOLD_LIGHT : CREAM, marginBottom: 4 }}>{label}</p>
+            <p style={{ fontSize: 12, color: "#a9d6cf", lineHeight: 1.4 }}>{description}</p>
+          </button>
+        ))}
+      </div>
+
+      {roleDemande === "gem" && (
+        <>
+          <div style={{ display: "flex", gap: 6 }}>
+            <button onClick={() => setParentType("tribu")} style={{ flex: 1, padding: 8, borderRadius: 8, fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", backgroundColor: parentType === "tribu" ? TEAL_700 : TEAL_900, color: CREAM }}>GEM d'une tribu</button>
+            <button onClick={() => setParentType("departement")} style={{ flex: 1, padding: 8, borderRadius: 8, fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", backgroundColor: parentType === "departement" ? TEAL_700 : TEAL_900, color: CREAM }}>GEM d'un département</button>
+          </div>
+          {parentType === "tribu" ? (
+            <select value={tribuId} onChange={e => setTribuId(e.target.value)} style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}>
+              {tribus.map(t => <option key={t.id} value={t.id}>Tribu de {t.nom}</option>)}
+            </select>
+          ) : (
+            <select value={departementId} onChange={e => setDepartementId(e.target.value)} style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}>
+              {departements.map(d => <option key={d.id} value={d.id}>Département {d.nom}</option>)}
+            </select>
+          )}
+          <input value={nomGem} onChange={e => setNomGem(e.target.value)} placeholder="Nom du GEM" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+        </>
+      )}
+
+      {roleDemande === "departement_resp" && (
+        <select value={departementId} onChange={e => setDepartementId(e.target.value)} style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}>
+          {departements.map(d => <option key={d.id} value={d.id}>Département {d.nom}</option>)}
+        </select>
+      )}
+
+      {roleDemande === "tribu_resp" && (
+        <select value={tribuId} onChange={e => setTribuId(e.target.value)} style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}>
+          {tribus.map(t => <option key={t.id} value={t.id}>Tribu de {t.nom}</option>)}
+        </select>
+      )}
+    </>
   );
 }
 
