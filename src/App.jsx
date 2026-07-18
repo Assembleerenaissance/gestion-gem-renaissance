@@ -55,7 +55,7 @@ function EcranConnexion() {
   const [chargement, setChargement] = useState(false);
 
   function emailTechnique(tel) {
-    return `${tel.replace(/[^\d]/g, "")}@gestiongem.local`;
+    return `${tel.replace(/[^\d]/g, "")}@gestiongem.com`;
   }
 
   async function seConnecter() {
