@@ -274,6 +274,7 @@ function TableauDeBord({ compte }) {
           />
         ) : !estPasteur ? (
           <MonEspace
+            compte={compte}
             assignation={mesAssignations.find(a => a.statut === "actif")}
             gems={gems}
             membres={membres}
@@ -287,6 +288,7 @@ function TableauDeBord({ compte }) {
           />
         ) : gemOuvert ? (
           <DetailGem
+            compte={compte}
             gem={gemOuvert}
             membres={membres.filter(m => m.gem_id === gemOuvert.id)}
             onBack={() => setGemOuvert(null)}
@@ -408,7 +410,7 @@ function dimancheActuel() {
   return d.toISOString().slice(0, 10); // format YYYY-MM-DD
 }
 
-function DetailGem({ gem, membres, onBack, onMembreAjoute, cardStyle }) {
+function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, cardStyle }) {
   const [nom, setNom] = useState("");
   const [telephone, setTelephone] = useState("");
   const [erreur, setErreur] = useState("");
@@ -532,6 +534,7 @@ function DetailGem({ gem, membres, onBack, onMembreAjoute, cardStyle }) {
           membres.map(m => (
             <FicheMembre
               key={m.id}
+              compte={compte}
               membre={m}
               derniereSante={santeParMembre[m.id]}
               ouvert={membreOuvert === m.id}
@@ -565,21 +568,56 @@ function couleurScore(score) {
   return RED_LIGHT;
 }
 
-function FicheMembre({ membre, derniereSante, ouvert, onToggle, onSauvegarde, cardStyle }) {
+function FicheMembre({ compte, membre, derniereSante, ouvert, onToggle, onSauvegarde, cardStyle }) {
   const [valeurs, setValeurs] = useState(() => {
     const init = {};
     DIMENSIONS_SANTE.forEach(([cle]) => { init[cle] = derniereSante?.[cle] ?? 5; });
     return init;
   });
   const [sauvegarde, setSauvegarde] = useState(false);
+  const [sousOnglet, setSousOnglet] = useState("sante"); // sante | visites
+  const [visites, setVisites] = useState([]);
+  const [chargementVisites, setChargementVisites] = useState(false);
+  const [resultatVisite, setResultatVisite] = useState("positive");
+  const [noteVisite, setNoteVisite] = useState("");
 
   const moyenne = moyenneSante(derniereSante);
+
+  useEffect(() => {
+    if (ouvert && sousOnglet === "visites") chargerVisites();
+  }, [ouvert, sousOnglet]);
+
+  async function chargerVisites() {
+    setChargementVisites(true);
+    const { data } = await supabase.from("visites").select("*").eq("membre_id", membre.id).order("date", { ascending: false });
+    setVisites(data || []);
+    setChargementVisites(false);
+  }
 
   async function enregistrer() {
     await supabase.from("sante_spirituelle").insert({ membre_id: membre.id, ...valeurs });
     setSauvegarde(true);
     onSauvegarde();
     setTimeout(() => setSauvegarde(false), 2000);
+  }
+
+  async function enregistrerVisite() {
+    if (!noteVisite.trim()) return;
+    await supabase.from("visites").insert({ membre_id: membre.id, resultat: resultatVisite, note: noteVisite.trim(), auteur_id: compte?.id });
+    setNoteVisite("");
+    chargerVisites();
+  }
+
+  function libelleResultat(r) {
+    if (r === "positive") return "✓ Positive";
+    if (r === "mitigee") return "◐ Mitigée";
+    return "✗ Sans suite";
+  }
+
+  function couleurResultat(r) {
+    if (r === "positive") return GOLD_LIGHT;
+    if (r === "mitigee") return "#e8c25a";
+    return RED_LIGHT;
   }
 
   return (
@@ -599,25 +637,74 @@ function FicheMembre({ membre, derniereSante, ouvert, onToggle, onSauvegarde, ca
 
       {ouvert && (
         <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${TEAL_700}` }}>
-          <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 10 }}>Évalue chaque dimension de 0 (faible) à 10 (excellent).</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {DIMENSIONS_SANTE.map(([cle, label]) => (
-              <div key={cle}>
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
-                  <span>{label}</span>
-                  <span style={{ fontWeight: 700, color: GOLD_LIGHT }}>{valeurs[cle]}</span>
-                </div>
-                <input
-                  type="range" min="0" max="10" value={valeurs[cle]}
-                  onChange={e => setValeurs(prev => ({ ...prev, [cle]: Number(e.target.value) }))}
-                  style={{ width: "100%" }}
-                />
-              </div>
-            ))}
+          <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
+            <button onClick={() => setSousOnglet("sante")} style={{ flex: 1, padding: "6px 0", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "sante" ? TEAL_700 : TEAL_900, color: sousOnglet === "sante" ? GOLD_LIGHT : "#cdeae4" }}>
+              Santé spirituelle
+            </button>
+            <button onClick={() => setSousOnglet("visites")} style={{ flex: 1, padding: "6px 0", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "visites" ? TEAL_700 : TEAL_900, color: sousOnglet === "visites" ? GOLD_LIGHT : "#cdeae4" }}>
+              Journal des visites
+            </button>
           </div>
-          <button onClick={enregistrer} style={{ marginTop: 14, padding: "8px 16px", borderRadius: 8, backgroundColor: sauvegarde ? TEAL_700 : GOLD, color: sauvegarde ? GOLD_LIGHT : TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>
-            {sauvegarde ? "✓ Enregistré" : "Enregistrer"}
-          </button>
+
+          {sousOnglet === "sante" ? (
+            <>
+              <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 10 }}>Évalue chaque dimension de 0 (faible) à 10 (excellent).</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                {DIMENSIONS_SANTE.map(([cle, label]) => (
+                  <div key={cle}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+                      <span>{label}</span>
+                      <span style={{ fontWeight: 700, color: GOLD_LIGHT }}>{valeurs[cle]}</span>
+                    </div>
+                    <input
+                      type="range" min="0" max="10" value={valeurs[cle]}
+                      onChange={e => setValeurs(prev => ({ ...prev, [cle]: Number(e.target.value) }))}
+                      style={{ width: "100%" }}
+                    />
+                  </div>
+                ))}
+              </div>
+              <button onClick={enregistrer} style={{ marginTop: 14, padding: "8px 16px", borderRadius: 8, backgroundColor: sauvegarde ? TEAL_700 : GOLD, color: sauvegarde ? GOLD_LIGHT : TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>
+                {sauvegarde ? "✓ Enregistré" : "Enregistrer"}
+              </button>
+            </>
+          ) : (
+            <>
+              <div style={{ marginBottom: 16 }}>
+                <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 8 }}>Enregistrer une nouvelle visite</p>
+                <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+                  {["positive", "mitigee", "sans_suite"].map(r => (
+                    <button key={r} onClick={() => setResultatVisite(r)} style={{ flex: 1, padding: "6px 4px", borderRadius: 6, fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: resultatVisite === r ? GOLD : TEAL_900, color: resultatVisite === r ? TEAL_950 : "#cdeae4" }}>
+                      {libelleResultat(r)}
+                    </button>
+                  ))}
+                </div>
+                <textarea value={noteVisite} onChange={e => setNoteVisite(e.target.value)} rows={2} placeholder="Note sur la visite..." style={{ width: "100%", padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, resize: "vertical" }} />
+                <button onClick={enregistrerVisite} style={{ marginTop: 8, padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>
+                  Enregistrer la visite
+                </button>
+              </div>
+
+              <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 8 }}>Historique</p>
+              {chargementVisites ? (
+                <p style={{ fontSize: 12, color: "#a9d6cf" }}>Chargement…</p>
+              ) : visites.length === 0 ? (
+                <p style={{ fontSize: 12, color: "#a9d6cf" }}>Aucune visite enregistrée pour l'instant.</p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {visites.map(v => (
+                    <div key={v.id} style={{ backgroundColor: TEAL_900, borderRadius: 8, padding: 10, border: `1px solid ${TEAL_700}` }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: couleurResultat(v.resultat) }}>{libelleResultat(v.resultat)}</span>
+                        <span style={{ fontSize: 10, color: "#a9d6cf" }}>{new Date(v.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}</span>
+                      </div>
+                      {v.note && <p style={{ fontSize: 12 }}>{v.note}</p>}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
     </div>
@@ -677,10 +764,23 @@ function DemanderResponsabilite({ compte, tribus, departements, mesAssignations,
       )}
 
       <div style={{ ...cardStyle, display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ display: "flex", gap: 6 }}>
-          {[["gem", "Responsable GEM"], ["departement_resp", "Responsable de département"], ["tribu_resp", "Patriarche / Matriarche"]].map(([val, label]) => (
-            <button key={val} onClick={() => setRoleDemande(val)} style={{ flex: 1, padding: "8px 6px", borderRadius: 8, fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: roleDemande === val ? GOLD : TEAL_900, color: roleDemande === val ? TEAL_950 : "#cdeae4" }}>
-              {label}
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {[
+            ["gem", "Responsable GEM", "Tu gères un groupe précis (GEM) : ses membres, leur présence chaque dimanche, et leur santé spirituelle."],
+            ["departement_resp", "Responsable de département", "Tu supervises tous les GEM d'un département entier, et tu peux en créer de nouveaux selon les besoins."],
+            ["tribu_resp", "Patriarche / Matriarche", "Tu supervises tous les GEM d'une tribu entière, et tu peux en créer de nouveaux selon les besoins."],
+          ].map(([val, label, description]) => (
+            <button
+              key={val}
+              onClick={() => setRoleDemande(val)}
+              style={{
+                textAlign: "left", padding: 14, borderRadius: 10, cursor: "pointer",
+                backgroundColor: roleDemande === val ? "rgba(208,175,28,0.15)" : TEAL_900,
+                border: `1px solid ${roleDemande === val ? GOLD : TEAL_600}`,
+              }}
+            >
+              <p style={{ fontWeight: 700, fontSize: 14, color: roleDemande === val ? GOLD_LIGHT : CREAM, marginBottom: 4 }}>{label}</p>
+              <p style={{ fontSize: 12, color: "#a9d6cf", lineHeight: 1.4 }}>{description}</p>
             </button>
           ))}
         </div>
@@ -811,7 +911,7 @@ function PageDemandes({ tribus, departements, compte, onTraite, cardStyle }) {
 
 /* ------------------------------- Mon espace (responsable) ------------------------------- */
 
-function MonEspace({ assignation, gems, membres, tribus, departements, gemOuvert, setGemOuvert, onMembreAjoute, onCreerGem, cardStyle }) {
+function MonEspace({ compte, assignation, gems, membres, tribus, departements, gemOuvert, setGemOuvert, onMembreAjoute, onCreerGem, cardStyle }) {
   const [nomNouveauGem, setNomNouveauGem] = useState("");
   const [creationOuverte, setCreationOuverte] = useState(false);
 
@@ -820,6 +920,7 @@ function MonEspace({ assignation, gems, membres, tribus, departements, gemOuvert
   if (gemOuvert) {
     return (
       <DetailGem
+        compte={compte}
         gem={gemOuvert}
         membres={membres.filter(m => m.gem_id === gemOuvert.id)}
         onBack={() => setGemOuvert(null)}
@@ -835,6 +936,7 @@ function MonEspace({ assignation, gems, membres, tribus, departements, gemOuvert
     if (!monGem) return <p style={{ color: "#a9d6cf" }}>Ton GEM est en cours de préparation...</p>;
     return (
       <DetailGem
+        compte={compte}
         gem={monGem}
         membres={membres.filter(m => m.gem_id === monGem.id)}
         onBack={null}
