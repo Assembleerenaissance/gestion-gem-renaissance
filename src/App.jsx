@@ -129,6 +129,22 @@ function TableauDeBord({ compte }) {
 
   useEffect(() => { chargerDonnees(); }, []);
 
+  useEffect(() => {
+    if (!estPasteur) return;
+    const intervalle = setInterval(() => { rafraichirCompteurs(); }, 20000);
+    return () => clearInterval(intervalle);
+  }, [estPasteur]);
+
+  async function rafraichirCompteurs() {
+    if (!estPasteur) return;
+    const [{ count: cDemandes }, { count: cMessages }] = await Promise.all([
+      supabase.from("assignations").select("*", { count: "exact", head: true }).eq("statut", "attente"),
+      supabase.from("messages_directs").select("*", { count: "exact", head: true }).eq("lu", false),
+    ]);
+    setNbDemandesAttente(cDemandes || 0);
+    setNbMessagesNonLus(cMessages || 0);
+  }
+
   async function chargerDonnees() {
     setChargement(true);
     const [{ data: t }, { data: d }, { data: g }, { data: m }, { data: a }] = await Promise.all([
@@ -139,14 +155,7 @@ function TableauDeBord({ compte }) {
       supabase.from("assignations").select("*").eq("compte_id", compte.id),
     ]);
     setTribus(t || []); setDepartements(d || []); setGems(g || []); setMembres(m || []); setMesAssignations(a || []);
-    if (estPasteur) {
-      const [{ count: cDemandes }, { count: cMessages }] = await Promise.all([
-        supabase.from("assignations").select("*", { count: "exact", head: true }).eq("statut", "attente"),
-        supabase.from("messages_directs").select("*", { count: "exact", head: true }).eq("lu", false),
-      ]);
-      setNbDemandesAttente(cDemandes || 0);
-      setNbMessagesNonLus(cMessages || 0);
-    }
+    if (estPasteur) await rafraichirCompteurs();
     setChargement(false);
   }
 
