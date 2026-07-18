@@ -159,6 +159,7 @@ function TableauDeBord({ compte }) {
               <button onClick={() => { setPage("tribus"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "tribus" ? TEAL_700 : "transparent", color: page === "tribus" ? GOLD_LIGHT : "#cdeae4" }}>Tribus</button>
               <button onClick={() => { setPage("departements"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "departements" ? TEAL_700 : "transparent", color: page === "departements" ? GOLD_LIGHT : "#cdeae4" }}>Départements</button>
               <button onClick={() => { setPage("demandes"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "demandes" ? TEAL_700 : "transparent", color: page === "demandes" ? GOLD_LIGHT : "#cdeae4" }}>Demandes</button>
+              <button onClick={() => { setPage("rapports"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "rapports" ? TEAL_700 : "transparent", color: page === "rapports" ? GOLD_LIGHT : "#cdeae4" }}>Rapports</button>
               {compte.role === "pasteur" && (
                 <button onClick={() => { setPage("assistants"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "assistants" ? TEAL_700 : "transparent", color: page === "assistants" ? GOLD_LIGHT : "#cdeae4" }}>Assistants</button>
               )}
@@ -237,6 +238,8 @@ function TableauDeBord({ compte }) {
           />
         ) : page === "demandes" ? (
           <PageDemandes tribus={tribus} departements={departements} compte={compte} onTraite={chargerDonnees} cardStyle={cardStyle} />
+        ) : page === "rapports" ? (
+          <PageRapports gems={gems} membres={membres} tribus={tribus} departements={departements} cardStyle={cardStyle} />
         ) : (
           <PageAssistants compte={compte} cardStyle={cardStyle} />
         )}
@@ -855,6 +858,119 @@ function PageAssistants({ compte, cardStyle }) {
             </div>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------- Rapports ------------------------------- */
+
+function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
+  const [dimanches, setDimanches] = useState([]);
+  const [dimancheChoisi, setDimancheChoisi] = useState(null);
+  const [presences, setPresences] = useState({}); // { membre_id: true/false }
+  const [santeParMembre, setSanteParMembre] = useState({}); // { membre_id: dernierEnregistrement }
+  const [chargement, setChargement] = useState(true);
+
+  useEffect(() => { chargerDimanches(); }, []);
+  useEffect(() => { if (dimancheChoisi) chargerDonneesRapport(); }, [dimancheChoisi]);
+
+  async function chargerDimanches() {
+    const { data } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(26);
+    setDimanches(data || []);
+    if (data && data.length > 0) setDimancheChoisi(data[0].id);
+    else setChargement(false);
+  }
+
+  async function chargerDonneesRapport() {
+    setChargement(true);
+    const [{ data: pres }, { data: sante }] = await Promise.all([
+      supabase.from("presences").select("*").eq("dimanche_id", dimancheChoisi),
+      supabase.from("sante_spirituelle").select("*").order("date_maj", { ascending: false }),
+    ]);
+    const mapPres = {};
+    (pres || []).forEach(p => { mapPres[p.membre_id] = p.present; });
+    setPresences(mapPres);
+    const mapSante = {};
+    (sante || []).forEach(s => { if (s.membre_id && !mapSante[s.membre_id]) mapSante[s.membre_id] = s; });
+    setSanteParMembre(mapSante);
+    setChargement(false);
+  }
+
+  function nomParent(g) {
+    if (g.tribu_id) return tribus.find(t => t.id === g.tribu_id)?.nom || "";
+    return departements.find(d => d.id === g.departement_id)?.nom || "";
+  }
+
+  const totalMembres = membres.length;
+  const totalPresents = membres.filter(m => presences[m.id]).length;
+  const tauxGlobal = totalMembres > 0 ? Math.round((totalPresents / totalMembres) * 100) : 0;
+
+  const scoresValides = membres.map(m => moyenneSante(santeParMembre[m.id])).filter(s => s !== null);
+  const scoreMoyenGlobal = scoresValides.length > 0 ? Math.round((scoresValides.reduce((a, b) => a + b, 0) / scoresValides.length) * 10) / 10 : null;
+
+  const dateAffichee = dimanches.find(d => d.id === dimancheChoisi);
+  const dateFormatee = dateAffichee ? new Date(dateAffichee.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : "";
+
+  return (
+    <div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Rapports</h2>
+
+      <div style={{ marginBottom: 20 }}>
+        <label style={{ fontSize: 12, color: "#a9d6cf", display: "block", marginBottom: 6 }}>Dimanche</label>
+        <select
+          value={dimancheChoisi || ""}
+          onChange={e => setDimancheChoisi(e.target.value)}
+          style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, minWidth: 220 }}
+        >
+          {dimanches.map(d => (
+            <option key={d.id} value={d.id}>
+              {new Date(d.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      {chargement ? (
+        <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+      ) : dimanches.length === 0 ? (
+        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun dimanche enregistré pour l'instant — le pointage de présence en créera automatiquement.</p>
+      ) : (
+        <>
+          <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>Rapport du dimanche {dateFormatee}</p>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 24 }}>
+            <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}>{totalMembres}</p></div>
+            <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Présents ce dimanche</p><p style={{ fontSize: 28, fontWeight: 700, color: GOLD_LIGHT }}>{totalPresents}</p></div>
+            <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Taux de présence</p><p style={{ fontSize: 28, fontWeight: 700 }}>{tauxGlobal}%</p></div>
+            <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Santé spirituelle moy.</p><p style={{ fontSize: 28, fontWeight: 700, color: couleurScore(scoreMoyenGlobal) }}>{scoreMoyenGlobal !== null ? `${scoreMoyenGlobal}/10` : "—"}</p></div>
+          </div>
+
+          <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>Détail par GEM</p>
+          {gems.length === 0 ? (
+            <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun GEM créé pour l'instant.</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {gems.map(g => {
+                const membresGem = membres.filter(m => m.gem_id === g.id);
+                const presentsGem = membresGem.filter(m => presences[m.id]).length;
+                const tauxGem = membresGem.length > 0 ? Math.round((presentsGem / membresGem.length) * 100) : 0;
+                return (
+                  <div key={g.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                    <div>
+                      <p style={{ fontWeight: 700 }}>{g.nom}</p>
+                      <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomParent(g)}</p>
+                    </div>
+                    <div style={{ textAlign: "right" }}>
+                      <p style={{ fontSize: 13, fontWeight: 700, color: GOLD_LIGHT }}>{presentsGem} / {membresGem.length} présents</p>
+                      <p style={{ fontSize: 12, color: "#a9d6cf" }}>{tauxGem}% de présence</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
