@@ -126,23 +126,28 @@ function TableauDeBord({ compte }) {
   const [chargement, setChargement] = useState(true);
 
   const estPasteur = compte.role === "pasteur" || compte.assistant === true;
+  const [dernierMessageLu, setDernierMessageLu] = useState(compte.dernier_message_lu || null);
 
   useEffect(() => { chargerDonnees(); }, []);
 
   useEffect(() => {
-    if (!estPasteur) return;
     const intervalle = setInterval(() => { rafraichirCompteurs(); }, 20000);
     return () => clearInterval(intervalle);
-  }, [estPasteur]);
+  }, [dernierMessageLu, estPasteur]);
 
   async function rafraichirCompteurs() {
-    if (!estPasteur) return;
-    const [{ count: cDemandes }, { count: cMessages }] = await Promise.all([
-      supabase.from("assignations").select("*", { count: "exact", head: true }).eq("statut", "attente"),
-      supabase.from("messages_directs").select("*", { count: "exact", head: true }).eq("lu", false),
-    ]);
-    setNbDemandesAttente(cDemandes || 0);
-    setNbMessagesNonLus(cMessages || 0);
+    if (estPasteur) {
+      const [{ count: cDemandes }, { count: cMessages }] = await Promise.all([
+        supabase.from("assignations").select("*", { count: "exact", head: true }).eq("statut", "attente"),
+        supabase.from("messages_directs").select("*", { count: "exact", head: true }).eq("lu", false),
+      ]);
+      setNbDemandesAttente(cDemandes || 0);
+      setNbMessagesNonLus(cMessages || 0);
+    } else {
+      const seuil = dernierMessageLu || "1970-01-01T00:00:00Z";
+      const { count: cDiffusion } = await supabase.from("messages").select("*", { count: "exact", head: true }).gt("date", seuil);
+      setNbMessagesNonLus(cDiffusion || 0);
+    }
   }
 
   async function chargerDonnees() {
@@ -155,9 +160,10 @@ function TableauDeBord({ compte }) {
       supabase.from("assignations").select("*").eq("compte_id", compte.id),
     ]);
     setTribus(t || []); setDepartements(d || []); setGems(g || []); setMembres(m || []); setMesAssignations(a || []);
-    if (estPasteur) await rafraichirCompteurs();
+    await rafraichirCompteurs();
     setChargement(false);
   }
+
 
   async function seDeconnecter() { await supabase.auth.signOut(); }
 
@@ -228,7 +234,15 @@ function TableauDeBord({ compte }) {
             cardStyle={cardStyle}
           />
         ) : page === "messagerie" ? (
-          <PageMessagerie compte={compte} estPasteur={estPasteur} onActionnee={chargerDonnees} cardStyle={cardStyle} />
+          <PageMessagerie
+            compte={compte}
+            estPasteur={estPasteur}
+            onActionnee={() => {
+              if (estPasteur) chargerDonnees();
+              else { setDernierMessageLu(new Date().toISOString()); setNbMessagesNonLus(0); }
+            }}
+            cardStyle={cardStyle}
+          />
         ) : !estPasteur ? (
           <MonEspace
             assignation={mesAssignations.find(a => a.statut === "actif")}
