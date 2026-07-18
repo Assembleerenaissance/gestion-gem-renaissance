@@ -197,6 +197,7 @@ function TableauDeBord({ compte }) {
                 )}
               </button>
               <button onClick={() => { setPage("rapports"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "rapports" ? TEAL_700 : "transparent", color: page === "rapports" ? GOLD_LIGHT : "#cdeae4" }}>Rapports</button>
+              <button onClick={() => { setPage("historique"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "historique" ? TEAL_700 : "transparent", color: page === "historique" ? GOLD_LIGHT : "#cdeae4" }}>Historique</button>
               <button onClick={() => { setPage("calendrier"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "calendrier" ? TEAL_700 : "transparent", color: page === "calendrier" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
                 Calendrier
                 {nbNouveauxEvenements > 0 && (
@@ -328,6 +329,8 @@ function TableauDeBord({ compte }) {
           <PageDemandes tribus={tribus} departements={departements} compte={compte} onTraite={chargerDonnees} cardStyle={cardStyle} />
         ) : page === "rapports" ? (
           <PageRapports gems={gems} membres={membres} tribus={tribus} departements={departements} cardStyle={cardStyle} />
+        ) : page === "historique" ? (
+          <PageHistorique cardStyle={cardStyle} />
         ) : (
           <PageAssistants compte={compte} cardStyle={cardStyle} />
         )}
@@ -1325,6 +1328,107 @@ function PageCalendrier({ estPasteur, compte, onOuverture, cardStyle }) {
               </div>
             </>
           )}
+        </>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------- Historique ------------------------------- */
+
+function PageHistorique({ cardStyle }) {
+  const [chargement, setChargement] = useState(true);
+  const [presenceParDimanche, setPresenceParDimanche] = useState([]); // [{ date, presents, total }]
+  const [santeParMois, setSanteParMois] = useState([]); // [{ mois, moyenne }]
+  const [totalMembres, setTotalMembres] = useState(0);
+
+  useEffect(() => { chargerHistorique(); }, []);
+
+  async function chargerHistorique() {
+    setChargement(true);
+    const [{ data: dimanches }, { data: presences }, { data: sante }, { count: nbMembres }] = await Promise.all([
+      supabase.from("dimanches").select("*").order("date", { ascending: true }).limit(16),
+      supabase.from("presences").select("*"),
+      supabase.from("sante_spirituelle").select("*"),
+      supabase.from("membres").select("*", { count: "exact", head: true }),
+    ]);
+    setTotalMembres(nbMembres || 0);
+
+    const evolutionPresence = (dimanches || []).map(d => {
+      const presentsCeDimanche = (presences || []).filter(p => p.dimanche_id === d.id && p.present).length;
+      const totalPointe = (presences || []).filter(p => p.dimanche_id === d.id).length;
+      return { date: d.date, presents: presentsCeDimanche, total: totalPointe };
+    });
+    setPresenceParDimanche(evolutionPresence);
+
+    const parMois = {};
+    (sante || []).forEach(s => {
+      const cle = s.date_maj.slice(0, 7); // YYYY-MM
+      const moy = moyenneSante(s);
+      if (moy === null) return;
+      if (!parMois[cle]) parMois[cle] = [];
+      parMois[cle].push(moy);
+    });
+    const evolutionSante = Object.entries(parMois)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-12)
+      .map(([mois, valeurs]) => ({ mois, moyenne: Math.round((valeurs.reduce((a, b) => a + b, 0) / valeurs.length) * 10) / 10 }));
+    setSanteParMois(evolutionSante);
+
+    setChargement(false);
+  }
+
+  function libelleMois(cle) {
+    const [annee, mois] = cle.split("-");
+    return new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "short", year: "2-digit" });
+  }
+
+  const maxPresents = Math.max(1, ...presenceParDimanche.map(p => p.presents));
+
+  return (
+    <div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Historique</h2>
+      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>Évolution de l'assemblée dans le temps — {totalMembres} membres suivis au total.</p>
+
+      {chargement ? (
+        <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+      ) : (
+        <>
+          <div style={{ ...cardStyle, marginBottom: 24 }}>
+            <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>Présence par dimanche</p>
+            {presenceParDimanche.length === 0 ? (
+              <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun pointage de présence pour l'instant.</p>
+            ) : (
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 140, overflowX: "auto", paddingBottom: 4 }}>
+                {presenceParDimanche.map((p, i) => (
+                  <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 34 }}>
+                    <span style={{ fontSize: 10, color: GOLD_LIGHT, fontWeight: 700, marginBottom: 3 }}>{p.presents}</span>
+                    <div style={{ width: 20, height: Math.max(4, (p.presents / maxPresents) * 90), backgroundColor: GOLD, borderRadius: 4 }} />
+                    <span style={{ fontSize: 9, color: "#a9d6cf", marginTop: 4, whiteSpace: "nowrap" }}>
+                      {new Date(p.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div style={cardStyle}>
+            <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>Santé spirituelle moyenne par mois</p>
+            {santeParMois.length === 0 ? (
+              <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucune évaluation enregistrée pour l'instant.</p>
+            ) : (
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 140, overflowX: "auto", paddingBottom: 4 }}>
+                {santeParMois.map((s, i) => (
+                  <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 34 }}>
+                    <span style={{ fontSize: 10, color: couleurScore(s.moyenne), fontWeight: 700, marginBottom: 3 }}>{s.moyenne}</span>
+                    <div style={{ width: 20, height: Math.max(4, (s.moyenne / 10) * 90), backgroundColor: couleurScore(s.moyenne), borderRadius: 4 }} />
+                    <span style={{ fontSize: 9, color: "#a9d6cf", marginTop: 4, whiteSpace: "nowrap" }}>{libelleMois(s.mois)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>
