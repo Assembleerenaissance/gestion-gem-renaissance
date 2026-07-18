@@ -262,10 +262,49 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onCreer
 
 /* ------------------------------- Détail GEM ------------------------------- */
 
+function dimancheActuel() {
+  const d = new Date();
+  d.setDate(d.getDate() - d.getDay()); // recule jusqu'au dimanche de cette semaine
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString().slice(0, 10); // format YYYY-MM-DD
+}
+
 function DetailGem({ gem, membres, onBack, onMembreAjoute, cardStyle }) {
   const [nom, setNom] = useState("");
   const [telephone, setTelephone] = useState("");
   const [erreur, setErreur] = useState("");
+  const [dimancheId, setDimancheId] = useState(null);
+  const [presences, setPresences] = useState({}); // { membre_id: true/false }
+  const [chargementPresences, setChargementPresences] = useState(true);
+
+  useEffect(() => { chargerPresences(); }, [membres.length]);
+
+  async function chargerPresences() {
+    setChargementPresences(true);
+    const date = dimancheActuel();
+
+    // S'assure que le dimanche du jour existe déjà, sinon le crée
+    let { data: dim } = await supabase.from("dimanches").select("*").eq("date", date).maybeSingle();
+    if (!dim) {
+      const { data: nouveauDim } = await supabase.from("dimanches").insert({ date }).select().single();
+      dim = nouveauDim;
+    }
+    setDimancheId(dim.id);
+
+    if (membres.length > 0) {
+      const { data: pres } = await supabase.from("presences").select("*").eq("dimanche_id", dim.id).in("membre_id", membres.map(m => m.id));
+      const map = {};
+      (pres || []).forEach(p => { map[p.membre_id] = p.present; });
+      setPresences(map);
+    }
+    setChargementPresences(false);
+  }
+
+  async function basculerPresence(membreId) {
+    const nouvelEtat = !presences[membreId];
+    setPresences(prev => ({ ...prev, [membreId]: nouvelEtat }));
+    await supabase.from("presences").upsert({ membre_id: membreId, dimanche_id: dimancheId, present: nouvelEtat }, { onConflict: "membre_id,dimanche_id" });
+  }
 
   async function ajouterMembre() {
     setErreur("");
@@ -275,6 +314,9 @@ function DetailGem({ gem, membres, onBack, onMembreAjoute, cardStyle }) {
     setNom(""); setTelephone("");
     onMembreAjoute();
   }
+
+  const presentsCount = membres.filter(m => presences[m.id]).length;
+  const dateAffichee = new Date(dimancheActuel() + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
   return (
     <div>
@@ -292,7 +334,49 @@ function DetailGem({ gem, membres, onBack, onMembreAjoute, cardStyle }) {
         {erreur && <p style={{ color: RED_LIGHT, fontSize: 12, marginTop: 8 }}>{erreur}</p>}
       </div>
 
+      <div style={{ ...cardStyle, marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, flexWrap: "wrap", gap: 8 }}>
+          <p style={{ fontWeight: 600, fontSize: 14 }}>Présence — dimanche {dateAffichee}</p>
+          {!chargementPresences && (
+            <span style={{ fontSize: 12, color: GOLD_LIGHT, fontWeight: 700 }}>
+              {presentsCount} / {membres.length} présent{presentsCount > 1 ? "s" : ""}
+            </span>
+          )}
+        </div>
+        <p style={{ fontSize: 11, color: "#a9d6cf", marginBottom: 12 }}>Coche chaque membre présent au culte de ce dimanche.</p>
+
+        {chargementPresences ? (
+          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Chargement…</p>
+        ) : membres.length === 0 ? (
+          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Ajoute d'abord un membre ci-dessus.</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {membres.map(m => {
+              const present = !!presences[m.id];
+              return (
+                <button
+                  key={m.id}
+                  onClick={() => basculerPresence(m.id)}
+                  style={{
+                    display: "flex", justifyContent: "space-between", alignItems: "center",
+                    padding: "10px 14px", borderRadius: 8, cursor: "pointer", textAlign: "left",
+                    backgroundColor: present ? "rgba(208,175,28,0.15)" : TEAL_900,
+                    border: `1px solid ${present ? GOLD : TEAL_700}`, color: CREAM,
+                  }}
+                >
+                  <span>{m.nom}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: present ? GOLD_LIGHT : "#a9d6cf" }}>
+                    {present ? "✓ Présent" : "Absent"}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>Tous les membres</p>
         {membres.length === 0 ? (
           <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun membre pour l'instant.</p>
         ) : (
