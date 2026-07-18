@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
+import { BERGER_IMG } from "./bergerImage";
 
 /* ============================================================================
    GESTION DES GEM — Étape 2 : Tribus, Départements, GEM, Membres
@@ -80,8 +81,14 @@ function EcranConnexion() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: TEAL_950, padding: 16 }}>
-      <div style={{ width: "100%", maxWidth: 380, backgroundColor: TEAL_900, border: `1px solid ${TEAL_700}`, borderRadius: 16, padding: 24 }}>
+    <div
+      style={{
+        minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+        backgroundImage: `linear-gradient(180deg, rgba(13,92,82,0.55) 0%, rgba(13,92,82,0.92) 100%), url(${BERGER_IMG})`,
+        backgroundSize: "cover", backgroundPosition: "center",
+      }}
+    >
+      <div style={{ width: "100%", maxWidth: 380, backgroundColor: "rgba(17,106,95,0.92)", backdropFilter: "blur(6px)", border: `1px solid ${TEAL_700}`, borderRadius: 16, padding: 24 }}>
         <h1 style={{ color: CREAM, fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Gestion des GEM</h1>
         <p style={{ color: "#cdeae4", fontSize: 13, marginBottom: 20 }}>Assemblée RENAISSANCE — Vases d'Honneur</p>
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
@@ -152,6 +159,9 @@ function TableauDeBord({ compte }) {
               <button onClick={() => { setPage("tribus"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "tribus" ? TEAL_700 : "transparent", color: page === "tribus" ? GOLD_LIGHT : "#cdeae4" }}>Tribus</button>
               <button onClick={() => { setPage("departements"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "departements" ? TEAL_700 : "transparent", color: page === "departements" ? GOLD_LIGHT : "#cdeae4" }}>Départements</button>
               <button onClick={() => { setPage("demandes"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "demandes" ? TEAL_700 : "transparent", color: page === "demandes" ? GOLD_LIGHT : "#cdeae4" }}>Demandes</button>
+              {compte.role === "pasteur" && (
+                <button onClick={() => { setPage("assistants"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "assistants" ? TEAL_700 : "transparent", color: page === "assistants" ? GOLD_LIGHT : "#cdeae4" }}>Assistants</button>
+              )}
             </>
           ) : (
             <span style={{ fontSize: 12, color: "#a9d6cf", alignSelf: "center" }}>Mon espace</span>
@@ -225,8 +235,10 @@ function TableauDeBord({ compte }) {
             onCreerGem={chargerDonnees}
             cardStyle={cardStyle}
           />
-        ) : (
+        ) : page === "demandes" ? (
           <PageDemandes tribus={tribus} departements={departements} compte={compte} onTraite={chargerDonnees} cardStyle={cardStyle} />
+        ) : (
+          <PageAssistants compte={compte} cardStyle={cardStyle} />
         )}
       </div>
     </div>
@@ -691,6 +703,63 @@ function MonEspace({ assignation, gems, membres, tribus, departements, gemOuvert
               <span style={{ fontWeight: 700 }}>{g.nom}</span>
               <span style={{ fontSize: 12, color: "#a9d6cf" }}>{membres.filter(m => m.gem_id === g.id).length} membre(s)</span>
             </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------- Assistants désignés ------------------------------- */
+
+function PageAssistants({ compte, cardStyle }) {
+  const [comptes, setComptes] = useState([]);
+  const [chargement, setChargement] = useState(true);
+
+  useEffect(() => { chargerComptes(); }, []);
+
+  async function chargerComptes() {
+    setChargement(true);
+    const { data } = await supabase.from("comptes").select("*").neq("id", compte.id).order("nom");
+    setComptes(data || []);
+    setChargement(false);
+  }
+
+  async function basculerAssistant(c) {
+    await supabase.from("comptes").update({ assistant: !c.assistant }).eq("id", c.id);
+    chargerComptes();
+  }
+
+  return (
+    <div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Assistants désignés</h2>
+      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>
+        Un assistant a les mêmes droits que toi (voir toutes les données, valider les demandes) — utile pour te seconder.
+      </p>
+
+      {chargement ? (
+        <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+      ) : comptes.length === 0 ? (
+        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun autre compte pour le moment.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {comptes.map(c => (
+            <div key={c.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+              <div>
+                <p style={{ fontWeight: 700, marginBottom: 2 }}>{c.nom}</p>
+                <p style={{ fontSize: 12, color: "#a9d6cf" }}>{c.telephone}</p>
+              </div>
+              <button
+                onClick={() => basculerAssistant(c)}
+                style={{
+                  padding: "8px 16px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12,
+                  backgroundColor: c.assistant ? "rgba(208,175,28,0.15)" : GOLD,
+                  color: c.assistant ? GOLD_LIGHT : TEAL_950,
+                }}
+              >
+                {c.assistant ? "✓ Assistant désigné — Retirer" : "Désigner comme assistant"}
+              </button>
+            </div>
           ))}
         </div>
       )}
