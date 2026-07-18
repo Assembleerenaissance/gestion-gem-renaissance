@@ -460,6 +460,7 @@ function dimancheActuel() {
 function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, cardStyle }) {
   const [nom, setNom] = useState("");
   const [telephone, setTelephone] = useState("");
+  const [nouveauConverti, setNouveauConverti] = useState(false);
   const [erreur, setErreur] = useState("");
   const [dimancheId, setDimancheId] = useState(null);
   const [presences, setPresences] = useState({}); // { membre_id: true/false }
@@ -507,9 +508,9 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, cardStyle }) 
   async function ajouterMembre() {
     setErreur("");
     if (!nom.trim() || !telephone.trim()) { setErreur("Nom et téléphone requis."); return; }
-    const { error } = await supabase.from("membres").insert({ gem_id: gem.id, nom: nom.trim(), telephone: telephone.trim() });
+    const { error } = await supabase.from("membres").insert({ gem_id: gem.id, nom: nom.trim(), telephone: telephone.trim(), nouveau_converti: nouveauConverti, etape_conversion: "accueil" });
     if (error) { setErreur(error.message); return; }
-    setNom(""); setTelephone("");
+    setNom(""); setTelephone(""); setNouveauConverti(false);
     onMembreAjoute();
   }
 
@@ -529,6 +530,10 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, cardStyle }) 
           <input value={telephone} onChange={e => setTelephone(e.target.value)} placeholder="Téléphone" style={{ flex: 1, minWidth: 160, padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
           <button onClick={ajouterMembre} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>Ajouter</button>
         </div>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 12, color: "#a9d6cf", cursor: "pointer" }}>
+          <input type="checkbox" checked={nouveauConverti} onChange={e => setNouveauConverti(e.target.checked)} />
+          Nouveau converti — suivre son parcours d'intégration
+        </label>
         {erreur && <p style={{ color: RED_LIGHT, fontSize: 12, marginTop: 8 }}>{erreur}</p>}
       </div>
 
@@ -587,6 +592,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, cardStyle }) 
               ouvert={membreOuvert === m.id}
               onToggle={() => setMembreOuvert(membreOuvert === m.id ? null : m.id)}
               onSauvegarde={chargerSante}
+              onMisAJour={onMembreAjoute}
               cardStyle={cardStyle}
             />
           ))
@@ -615,14 +621,25 @@ function couleurScore(score) {
   return RED_LIGHT;
 }
 
-function FicheMembre({ compte, membre, derniereSante, ouvert, onToggle, onSauvegarde, cardStyle }) {
+function FicheMembre({ compte, membre, derniereSante, ouvert, onToggle, onSauvegarde, onMisAJour, cardStyle }) {
   const [valeurs, setValeurs] = useState(() => {
     const init = {};
     DIMENSIONS_SANTE.forEach(([cle]) => { init[cle] = derniereSante?.[cle] ?? 5; });
     return init;
   });
   const [sauvegarde, setSauvegarde] = useState(false);
-  const [sousOnglet, setSousOnglet] = useState("sante"); // sante | visites
+  const [sousOnglet, setSousOnglet] = useState("sante"); // sante | visites | parcours
+
+  const ETAPES_CONVERSION = ["accueil", "classe", "baptise", "integre"];
+  const LIBELLES_ETAPES = { accueil: "Accueil", classe: "Classe de baptême", baptise: "Baptisé(e)", integre: "Intégré(e)" };
+
+  async function avancerEtape() {
+    const indexActuel = ETAPES_CONVERSION.indexOf(membre.etape_conversion || "accueil");
+    if (indexActuel >= ETAPES_CONVERSION.length - 1) return;
+    const nouvelleEtape = ETAPES_CONVERSION[indexActuel + 1];
+    await supabase.from("membres").update({ etape_conversion: nouvelleEtape }).eq("id", membre.id);
+    if (onMisAJour) onMisAJour();
+  }
   const [visites, setVisites] = useState([]);
   const [chargementVisites, setChargementVisites] = useState(false);
   const [resultatVisite, setResultatVisite] = useState("positive");
@@ -673,6 +690,11 @@ function FicheMembre({ compte, membre, derniereSante, ouvert, onToggle, onSauveg
         <div>
           <p style={{ fontWeight: 600 }}>{membre.nom}</p>
           <p style={{ fontSize: 12, color: "#a9d6cf" }}>{membre.telephone}</p>
+          {membre.nouveau_converti && (
+            <span style={{ fontSize: 10, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, borderRadius: 999, padding: "2px 8px", display: "inline-block", marginTop: 4 }}>
+              🌱 {LIBELLES_ETAPES[membre.etape_conversion || "accueil"]}
+            </span>
+          )}
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: couleurScore(moyenne) }}>
@@ -691,6 +713,11 @@ function FicheMembre({ compte, membre, derniereSante, ouvert, onToggle, onSauveg
             <button onClick={() => setSousOnglet("visites")} style={{ flex: 1, padding: "6px 0", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "visites" ? TEAL_700 : TEAL_900, color: sousOnglet === "visites" ? GOLD_LIGHT : "#cdeae4" }}>
               Journal des visites
             </button>
+            {membre.nouveau_converti && (
+              <button onClick={() => setSousOnglet("parcours")} style={{ flex: 1, padding: "6px 0", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "parcours" ? TEAL_700 : TEAL_900, color: sousOnglet === "parcours" ? GOLD_LIGHT : "#cdeae4" }}>
+                Parcours
+              </button>
+            )}
           </div>
 
           {sousOnglet === "sante" ? (
@@ -715,7 +742,7 @@ function FicheMembre({ compte, membre, derniereSante, ouvert, onToggle, onSauveg
                 {sauvegarde ? "✓ Enregistré" : "Enregistrer"}
               </button>
             </>
-          ) : (
+          ) : sousOnglet === "visites" ? (
             <>
               <div style={{ marginBottom: 16 }}>
                 <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 8 }}>Enregistrer une nouvelle visite</p>
@@ -749,6 +776,42 @@ function FicheMembre({ compte, membre, derniereSante, ouvert, onToggle, onSauveg
                     </div>
                   ))}
                 </div>
+              )}
+            </>
+          ) : (
+            <>
+              <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 14 }}>Étapes du parcours d'intégration de ce nouveau converti.</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+                {ETAPES_CONVERSION.map((etape, i) => {
+                  const indexActuel = ETAPES_CONVERSION.indexOf(membre.etape_conversion || "accueil");
+                  const atteinte = i <= indexActuel;
+                  const estActuelle = i === indexActuel;
+                  return (
+                    <div key={etape} style={{
+                      display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", borderRadius: 8,
+                      backgroundColor: estActuelle ? "rgba(208,175,28,0.15)" : "transparent",
+                      border: `1px solid ${estActuelle ? GOLD : atteinte ? TEAL_600 : TEAL_700}`,
+                    }}>
+                      <span style={{
+                        width: 22, height: 22, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center",
+                        fontSize: 11, fontWeight: 700, flexShrink: 0,
+                        backgroundColor: atteinte ? GOLD : TEAL_900, color: atteinte ? TEAL_950 : "#a9d6cf",
+                      }}>
+                        {atteinte ? "✓" : i + 1}
+                      </span>
+                      <span style={{ fontSize: 13, fontWeight: estActuelle ? 700 : 400, color: atteinte ? CREAM : "#a9d6cf" }}>
+                        {LIBELLES_ETAPES[etape]}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              {(membre.etape_conversion || "accueil") !== "integre" ? (
+                <button onClick={avancerEtape} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>
+                  Faire avancer à l'étape suivante
+                </button>
+              ) : (
+                <p style={{ fontSize: 13, color: GOLD_LIGHT, fontWeight: 700 }}>🎉 Parcours d'intégration complet</p>
               )}
             </>
           )}
