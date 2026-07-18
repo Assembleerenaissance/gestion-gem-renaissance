@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 
-const TEAL_950 = "#03211f", TEAL_900 = "#052e2b", TEAL_850 = "#073732";
-const TEAL_800 = "#0a3f3b", TEAL_700 = "#12554d", TEAL_600 = "#1b6c60";
+const TEAL_950 = "#0D5C52", TEAL_900 = "#116A5F", TEAL_850 = "#14776B";
+   const TEAL_800 = "#188478", TEAL_700 = "#1F9C8D", TEAL_600 = "#27B3A1";
 const GOLD = "#D0AF1C", GOLD_LIGHT = "#E8CA4A", CREAM = "#FFFFFF";
 const RED_LIGHT = "#e2626d";
 
