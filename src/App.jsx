@@ -321,8 +321,18 @@ function DetailGem({ gem, membres, onBack, onMembreAjoute, cardStyle }) {
   const [dimancheId, setDimancheId] = useState(null);
   const [presences, setPresences] = useState({}); // { membre_id: true/false }
   const [chargementPresences, setChargementPresences] = useState(true);
+  const [santeParMembre, setSanteParMembre] = useState({}); // { membre_id: dernierEnregistrement }
+  const [membreOuvert, setMembreOuvert] = useState(null);
 
-  useEffect(() => { chargerPresences(); }, [membres.length]);
+  useEffect(() => { chargerPresences(); chargerSante(); }, [membres.length]);
+
+  async function chargerSante() {
+    if (membres.length === 0) return;
+    const { data } = await supabase.from("sante_spirituelle").select("*").in("membre_id", membres.map(m => m.id)).order("date_maj", { ascending: false });
+    const map = {};
+    (data || []).forEach(s => { if (!map[s.membre_id]) map[s.membre_id] = s; }); // garde la plus récente
+    setSanteParMembre(map);
+  }
 
   async function chargerPresences() {
     setChargementPresences(true);
@@ -426,13 +436,96 @@ function DetailGem({ gem, membres, onBack, onMembreAjoute, cardStyle }) {
           <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun membre pour l'instant.</p>
         ) : (
           membres.map(m => (
-            <div key={m.id} style={{ ...cardStyle, padding: "10px 16px", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span>{m.nom}</span>
-              <span style={{ fontSize: 12, color: "#a9d6cf" }}>{m.telephone}</span>
-            </div>
+            <FicheMembre
+              key={m.id}
+              membre={m}
+              derniereSante={santeParMembre[m.id]}
+              ouvert={membreOuvert === m.id}
+              onToggle={() => setMembreOuvert(membreOuvert === m.id ? null : m.id)}
+              onSauvegarde={chargerSante}
+              cardStyle={cardStyle}
+            />
           ))
         )}
       </div>
+    </div>
+  );
+}
+
+const DIMENSIONS_SANTE = [
+  ["meditation", "Méditation"], ["jeune", "Jeûne"], ["priere", "Prière"],
+  ["sanctification", "Sanctification"], ["dons", "Dons"], ["caractere", "Caractère"],
+];
+
+function moyenneSante(s) {
+  if (!s) return null;
+  const valeurs = DIMENSIONS_SANTE.map(([cle]) => s[cle]).filter(v => v !== null && v !== undefined);
+  if (valeurs.length === 0) return null;
+  return Math.round((valeurs.reduce((a, b) => a + b, 0) / valeurs.length) * 10) / 10;
+}
+
+function couleurScore(score) {
+  if (score === null) return "#a9d6cf";
+  if (score >= 7) return GOLD_LIGHT;
+  if (score >= 4) return "#e8c25a";
+  return RED_LIGHT;
+}
+
+function FicheMembre({ membre, derniereSante, ouvert, onToggle, onSauvegarde, cardStyle }) {
+  const [valeurs, setValeurs] = useState(() => {
+    const init = {};
+    DIMENSIONS_SANTE.forEach(([cle]) => { init[cle] = derniereSante?.[cle] ?? 5; });
+    return init;
+  });
+  const [sauvegarde, setSauvegarde] = useState(false);
+
+  const moyenne = moyenneSante(derniereSante);
+
+  async function enregistrer() {
+    await supabase.from("sante_spirituelle").insert({ membre_id: membre.id, ...valeurs });
+    setSauvegarde(true);
+    onSauvegarde();
+    setTimeout(() => setSauvegarde(false), 2000);
+  }
+
+  return (
+    <div style={cardStyle}>
+      <button onClick={onToggle} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", color: CREAM, textAlign: "left" }}>
+        <div>
+          <p style={{ fontWeight: 600 }}>{membre.nom}</p>
+          <p style={{ fontSize: 12, color: "#a9d6cf" }}>{membre.telephone}</p>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: couleurScore(moyenne) }}>
+            {moyenne !== null ? `Santé ${moyenne}/10` : "Non évaluée"}
+          </span>
+          <span style={{ color: "#a9d6cf" }}>{ouvert ? "▲" : "▼"}</span>
+        </div>
+      </button>
+
+      {ouvert && (
+        <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${TEAL_700}` }}>
+          <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 10 }}>Évalue chaque dimension de 0 (faible) à 10 (excellent).</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {DIMENSIONS_SANTE.map(([cle, label]) => (
+              <div key={cle}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 4 }}>
+                  <span>{label}</span>
+                  <span style={{ fontWeight: 700, color: GOLD_LIGHT }}>{valeurs[cle]}</span>
+                </div>
+                <input
+                  type="range" min="0" max="10" value={valeurs[cle]}
+                  onChange={e => setValeurs(prev => ({ ...prev, [cle]: Number(e.target.value) }))}
+                  style={{ width: "100%" }}
+                />
+              </div>
+            ))}
+          </div>
+          <button onClick={enregistrer} style={{ marginTop: 14, padding: "8px 16px", borderRadius: 8, backgroundColor: sauvegarde ? TEAL_700 : GOLD, color: sauvegarde ? GOLD_LIGHT : TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>
+            {sauvegarde ? "✓ Enregistré" : "Enregistrer"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
