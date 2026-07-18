@@ -792,9 +792,9 @@ function DemanderResponsabilite({ compte, tribus, departements, mesAssignations,
   if (demandeEnAttente || envoye) {
     return (
       <div style={{ ...cardStyle, maxWidth: 480 }}>
-        <p style={{ fontWeight: 700, marginBottom: 8 }}>Demande envoyée ✅</p>
+        <p style={{ fontWeight: 700, marginBottom: 8 }}>Inscription envoyée ✅</p>
         <p style={{ fontSize: 13, color: "#a9d6cf" }}>
-          Ta demande de responsabilité est en attente de validation par le pasteur. Reviens un peu plus tard — cet écran se mettra à jour automatiquement une fois validée.
+          Ta demande de responsabilité a bien été enregistrée. Le Pasteur Dimitri Koffi, ou un assistant désigné, doit encore la valider avant que tu puisses accéder à ton espace. Reviens un peu plus tard — cet écran se mettra à jour automatiquement une fois validée.
         </p>
       </div>
     );
