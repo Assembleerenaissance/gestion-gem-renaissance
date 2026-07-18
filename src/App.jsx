@@ -146,11 +146,15 @@ function TableauDeBord({ compte }) {
           <p style={{ fontSize: 11, color: "#a9d6cf", margin: 0 }}>{compte.role === "pasteur" ? "Pasteur" : compte.assistant ? "Assistant désigné" : "Responsable"}</p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          <button onClick={() => { setPage("dashboard"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "dashboard" ? TEAL_700 : "transparent", color: page === "dashboard" ? GOLD_LIGHT : "#cdeae4" }}>Tableau de bord</button>
-          <button onClick={() => { setPage("tribus"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "tribus" ? TEAL_700 : "transparent", color: page === "tribus" ? GOLD_LIGHT : "#cdeae4" }}>Tribus</button>
-          <button onClick={() => { setPage("departements"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "departements" ? TEAL_700 : "transparent", color: page === "departements" ? GOLD_LIGHT : "#cdeae4" }}>Départements</button>
-          {estPasteur && (
-            <button onClick={() => { setPage("demandes"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "demandes" ? TEAL_700 : "transparent", color: page === "demandes" ? GOLD_LIGHT : "#cdeae4" }}>Demandes</button>
+          {estPasteur ? (
+            <>
+              <button onClick={() => { setPage("dashboard"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "dashboard" ? TEAL_700 : "transparent", color: page === "dashboard" ? GOLD_LIGHT : "#cdeae4" }}>Tableau de bord</button>
+              <button onClick={() => { setPage("tribus"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "tribus" ? TEAL_700 : "transparent", color: page === "tribus" ? GOLD_LIGHT : "#cdeae4" }}>Tribus</button>
+              <button onClick={() => { setPage("departements"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "departements" ? TEAL_700 : "transparent", color: page === "departements" ? GOLD_LIGHT : "#cdeae4" }}>Départements</button>
+              <button onClick={() => { setPage("demandes"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "demandes" ? TEAL_700 : "transparent", color: page === "demandes" ? GOLD_LIGHT : "#cdeae4" }}>Demandes</button>
+            </>
+          ) : (
+            <span style={{ fontSize: 12, color: "#a9d6cf", alignSelf: "center" }}>Mon espace</span>
           )}
           <button onClick={seDeconnecter} style={{ ...btnStyle, backgroundColor: "transparent", color: "#cdeae4" }}>Déconnexion</button>
         </div>
@@ -166,6 +170,19 @@ function TableauDeBord({ compte }) {
             departements={departements}
             mesAssignations={mesAssignations}
             onDemandeEnvoyee={chargerDonnees}
+            cardStyle={cardStyle}
+          />
+        ) : !estPasteur ? (
+          <MonEspace
+            assignation={mesAssignations.find(a => a.statut === "actif")}
+            gems={gems}
+            membres={membres}
+            tribus={tribus}
+            departements={departements}
+            gemOuvert={gemOuvert}
+            setGemOuvert={setGemOuvert}
+            onMembreAjoute={chargerDonnees}
+            onCreerGem={chargerDonnees}
             cardStyle={cardStyle}
           />
         ) : gemOuvert ? (
@@ -336,7 +353,7 @@ function DetailGem({ gem, membres, onBack, onMembreAjoute, cardStyle }) {
 
   return (
     <div>
-      <button onClick={onBack} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 12, fontSize: 13 }}>← Retour</button>
+      {onBack && <button onClick={onBack} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 12, fontSize: 13 }}>← Retour</button>}
       <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{gem.nom}</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>{membres.length} membre{membres.length > 1 ? "s" : ""}</p>
 
@@ -586,6 +603,94 @@ function PageDemandes({ tribus, departements, compte, onTraite, cardStyle }) {
                 <button onClick={() => refuser(d)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: "transparent", color: RED_LIGHT, border: `1px solid ${RED_LIGHT}`, cursor: "pointer", fontSize: 12 }}>Refuser</button>
               </div>
             </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------- Mon espace (responsable) ------------------------------- */
+
+function MonEspace({ assignation, gems, membres, tribus, departements, gemOuvert, setGemOuvert, onMembreAjoute, onCreerGem, cardStyle }) {
+  const [nomNouveauGem, setNomNouveauGem] = useState("");
+  const [creationOuverte, setCreationOuverte] = useState(false);
+
+  if (!assignation) return <p style={{ color: "#a9d6cf" }}>Aucune responsabilité active trouvée.</p>;
+
+  if (gemOuvert) {
+    return (
+      <DetailGem
+        gem={gemOuvert}
+        membres={membres.filter(m => m.gem_id === gemOuvert.id)}
+        onBack={() => setGemOuvert(null)}
+        onMembreAjoute={onMembreAjoute}
+        cardStyle={cardStyle}
+      />
+    );
+  }
+
+  // Un responsable GEM gère directement et uniquement son propre GEM
+  if (assignation.role_demande === "gem") {
+    const monGem = gems.find(g => g.id === assignation.gem_id);
+    if (!monGem) return <p style={{ color: "#a9d6cf" }}>Ton GEM est en cours de préparation...</p>;
+    return (
+      <DetailGem
+        gem={monGem}
+        membres={membres.filter(m => m.gem_id === monGem.id)}
+        onBack={null}
+        onMembreAjoute={onMembreAjoute}
+        cardStyle={cardStyle}
+      />
+    );
+  }
+
+  // Un responsable de département ou une tribu voit tous les GEM de son périmètre
+  const estDept = assignation.role_demande === "departement_resp";
+  const parent = estDept
+    ? departements.find(d => d.id === assignation.departement_id)
+    : tribus.find(t => t.id === assignation.tribu_id);
+  const gemsDuPerimetre = gems.filter(g => estDept ? g.departement_id === assignation.departement_id : g.tribu_id === assignation.tribu_id);
+
+  async function creerGem() {
+    if (!nomNouveauGem.trim()) return;
+    const payload = {
+      nom: nomNouveauGem.trim(),
+      type: estDept ? "departement" : "tribu",
+      departement_id: estDept ? assignation.departement_id : null,
+      tribu_id: estDept ? null : assignation.tribu_id,
+    };
+    const { error } = await supabase.from("gems").insert(payload);
+    if (!error) { setNomNouveauGem(""); setCreationOuverte(false); onCreerGem(); }
+  }
+
+  return (
+    <div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>
+        {estDept ? "Mon département" : "Ma tribu"} — {parent?.nom || "…"}
+      </h2>
+      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>{gemsDuPerimetre.length} GEM sous ta responsabilité</p>
+
+      <div style={{ ...cardStyle, marginBottom: 20 }}>
+        {creationOuverte ? (
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <input value={nomNouveauGem} onChange={e => setNomNouveauGem(e.target.value)} placeholder="Nom du nouveau GEM" style={{ flex: 1, minWidth: 160, padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+            <button onClick={creerGem} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>Créer</button>
+          </div>
+        ) : (
+          <button onClick={() => setCreationOuverte(true)} style={{ fontSize: 13, color: GOLD_LIGHT, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>+ Créer un nouveau GEM</button>
+        )}
+      </div>
+
+      {gemsDuPerimetre.length === 0 ? (
+        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun GEM pour l'instant dans ton périmètre.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {gemsDuPerimetre.map(g => (
+            <button key={g.id} onClick={() => setGemOuvert(g)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontWeight: 700 }}>{g.nom}</span>
+              <span style={{ fontSize: 12, color: "#a9d6cf" }}>{membres.filter(m => m.gem_id === g.id).length} membre(s)</span>
+            </button>
           ))}
         </div>
       )}
