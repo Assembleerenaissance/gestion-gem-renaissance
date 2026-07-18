@@ -192,6 +192,7 @@ function TableauDeBord({ compte }) {
                 )}
               </button>
               <button onClick={() => { setPage("rapports"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "rapports" ? TEAL_700 : "transparent", color: page === "rapports" ? GOLD_LIGHT : "#cdeae4" }}>Rapports</button>
+              <button onClick={() => { setPage("calendrier"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "calendrier" ? TEAL_700 : "transparent", color: page === "calendrier" ? GOLD_LIGHT : "#cdeae4" }}>Calendrier</button>
               <button onClick={() => { setPage("messagerie"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "messagerie" ? TEAL_700 : "transparent", color: page === "messagerie" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
                 Messagerie
                 {nbMessagesNonLus > 0 && (
@@ -206,7 +207,8 @@ function TableauDeBord({ compte }) {
             </>
           ) : (
             <>
-              <button onClick={() => setPage("dashboard")} style={{ ...btnStyle, backgroundColor: page !== "messagerie" ? TEAL_700 : "transparent", color: page !== "messagerie" ? GOLD_LIGHT : "#cdeae4" }}>Mon espace</button>
+              <button onClick={() => setPage("dashboard")} style={{ ...btnStyle, backgroundColor: (page !== "messagerie" && page !== "calendrier") ? TEAL_700 : "transparent", color: (page !== "messagerie" && page !== "calendrier") ? GOLD_LIGHT : "#cdeae4" }}>Mon espace</button>
+              <button onClick={() => setPage("calendrier")} style={{ ...btnStyle, backgroundColor: page === "calendrier" ? TEAL_700 : "transparent", color: page === "calendrier" ? GOLD_LIGHT : "#cdeae4" }}>Calendrier</button>
               <button onClick={() => setPage("messagerie")} style={{ ...btnStyle, backgroundColor: page === "messagerie" ? TEAL_700 : "transparent", color: page === "messagerie" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
                 Messagerie
                 {nbMessagesNonLus > 0 && (
@@ -243,6 +245,8 @@ function TableauDeBord({ compte }) {
             }}
             cardStyle={cardStyle}
           />
+        ) : page === "calendrier" ? (
+          <PageCalendrier estPasteur={estPasteur} compte={compte} cardStyle={cardStyle} />
         ) : !estPasteur ? (
           <MonEspace
             assignation={mesAssignations.find(a => a.statut === "actif")}
@@ -1160,6 +1164,141 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
             </div>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+/* ------------------------------- Calendrier ------------------------------- */
+
+function PageCalendrier({ estPasteur, compte, cardStyle }) {
+  const [evenements, setEvenements] = useState([]);
+  const [chargement, setChargement] = useState(true);
+  const [formOuvert, setFormOuvert] = useState(false);
+  const [titre, setTitre] = useState("");
+  const [debut, setDebut] = useState("");
+  const [lieu, setLieu] = useState("");
+  const [description, setDescription] = useState("");
+  const [erreur, setErreur] = useState("");
+
+  useEffect(() => { chargerEvenements(); }, []);
+
+  async function chargerEvenements() {
+    setChargement(true);
+    const { data } = await supabase.from("evenements").select("*").order("debut", { ascending: true });
+    setEvenements(data || []);
+    setChargement(false);
+  }
+
+  async function creerEvenement() {
+    setErreur("");
+    if (!titre.trim() || !debut) { setErreur("Le titre et la date sont obligatoires."); return; }
+    const { error } = await supabase.from("evenements").insert({
+      titre: titre.trim(), debut: new Date(debut).toISOString(),
+      lieu: lieu.trim() || null, description: description.trim() || null, cree_par: compte.id,
+    });
+    if (error) { setErreur(error.message); return; }
+    setTitre(""); setDebut(""); setLieu(""); setDescription(""); setFormOuvert(false);
+    chargerEvenements();
+  }
+
+  async function supprimerEvenement(id) {
+    await supabase.from("evenements").delete().eq("id", id);
+    chargerEvenements();
+  }
+
+  function telechargerICS(e) {
+    const debutICS = new Date(e.debut).toISOString().replace(/[-:]/g, "").split(".")[0] + "Z";
+    const contenu = [
+      "BEGIN:VCALENDAR", "VERSION:2.0", "BEGIN:VEVENT",
+      `UID:${e.id}@gestiongem`, `DTSTAMP:${debutICS}`, `DTSTART:${debutICS}`,
+      `SUMMARY:${e.titre}`, e.lieu ? `LOCATION:${e.lieu}` : "", e.description ? `DESCRIPTION:${e.description.replace(/\n/g, "\\n")}` : "",
+      "END:VEVENT", "END:VCALENDAR",
+    ].filter(Boolean).join("\r\n");
+    const blob = new Blob([contenu], { type: "text/calendar" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `${e.titre.replace(/[^a-z0-9]/gi, "_")}.ics`; a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  const maintenant = new Date();
+  const aVenir = evenements.filter(e => new Date(e.debut) >= maintenant);
+  const passes = evenements.filter(e => new Date(e.debut) < maintenant).reverse();
+
+  function CarteEvenement({ e }) {
+    const date = new Date(e.debut);
+    return (
+      <div style={cardStyle}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
+          <div>
+            <p style={{ fontWeight: 700 }}>{e.titre}</p>
+            <p style={{ fontSize: 12, color: GOLD_LIGHT, marginTop: 2 }}>
+              {date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })} à {date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
+            </p>
+            {e.lieu && <p style={{ fontSize: 12, color: "#a9d6cf", marginTop: 2 }}>📍 {e.lieu}</p>}
+            {e.description && <p style={{ fontSize: 13, marginTop: 6 }}>{e.description}</p>}
+          </div>
+          <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
+            <button onClick={() => telechargerICS(e)} style={{ fontSize: 11, color: GOLD_LIGHT, background: "none", border: `1px solid ${TEAL_600}`, borderRadius: 6, padding: "4px 8px", cursor: "pointer" }}>Ajouter au calendrier</button>
+            {estPasteur && (
+              <button onClick={() => supprimerEvenement(e.id)} style={{ fontSize: 11, color: RED_LIGHT, background: "none", border: `1px solid ${RED_LIGHT}`, borderRadius: 6, padding: "4px 8px", cursor: "pointer" }}>Supprimer</button>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Calendrier</h2>
+
+      {estPasteur && (
+        <div style={{ marginBottom: 20 }}>
+          {formOuvert ? (
+            <div style={cardStyle}>
+              <p style={{ fontWeight: 600, marginBottom: 10, fontSize: 14 }}>Nouvel événement</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <input value={titre} onChange={e => setTitre(e.target.value)} placeholder="Titre de l'événement" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+                <input value={debut} onChange={e => setDebut(e.target.value)} type="datetime-local" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+                <input value={lieu} onChange={e => setLieu(e.target.value)} placeholder="Lieu (optionnel)" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+                <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Description (optionnelle)" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, resize: "vertical" }} />
+                {erreur && <p style={{ color: RED_LIGHT, fontSize: 12 }}>{erreur}</p>}
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={creerEvenement} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>Créer</button>
+                  <button onClick={() => setFormOuvert(false)} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: "transparent", color: "#a9d6cf", border: `1px solid ${TEAL_600}`, cursor: "pointer" }}>Annuler</button>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <button onClick={() => setFormOuvert(true)} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>+ Nouvel événement</button>
+          )}
+        </div>
+      )}
+
+      {chargement ? (
+        <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+      ) : (
+        <>
+          <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>À venir</p>
+          {aVenir.length === 0 ? (
+            <p style={{ color: "#a9d6cf", fontSize: 13, marginBottom: 20 }}>Aucun événement prévu pour l'instant.</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
+              {aVenir.map(e => <CarteEvenement key={e.id} e={e} />)}
+            </div>
+          )}
+
+          {passes.length > 0 && (
+            <>
+              <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10, color: "#a9d6cf" }}>Passés</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, opacity: 0.6 }}>
+                {passes.map(e => <CarteEvenement key={e.id} e={e} />)}
+              </div>
+            </>
+          )}
+        </>
       )}
     </div>
   );
