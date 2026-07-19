@@ -2337,6 +2337,13 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
   });
 
   // --- Classements génériques (présence, santé, membres) ---
+  const evolutionHebdoDuMois = dimanchesDuMois.map(d => {
+    const presentsCeDimanche = presencesMois.filter(p => p.dimanche_id === d.id && p.present).length;
+    const totalMembresGlobal = membres.length;
+    const taux = totalMembresGlobal > 0 ? Math.round((presentsCeDimanche / totalMembresGlobal) * 100) : 0;
+    return { date: d.date, presents: presentsCeDimanche, taux };
+  }).sort((a, b) => a.date.localeCompare(b.date));
+
   function calculerClassementPresence(type, items, dimanchesPeriode, presencesPeriode) {
     return items
       .map(it => {
@@ -2642,6 +2649,23 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
                 <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Taux de présence moyen</p><p style={{ fontSize: 28, fontWeight: 700 }}>{tauxMoyenMois}%</p></div>
                 <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Santé spirituelle moy.</p><p style={{ fontSize: 28, fontWeight: 700, color: couleurScore(scoreMoyenMois) }}>{scoreMoyenMois !== null ? `${scoreMoyenMois}/10` : "—"}</p></div>
               </div>
+
+              <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>📈 Évolution du taux de présence — dimanche par dimanche</p>
+              {evolutionHebdoDuMois.length === 0 ? (
+                <p style={{ color: "#a9d6cf", fontSize: 13, marginBottom: 24 }}>Aucun dimanche pointé pour ce mois.</p>
+              ) : (
+                <div style={{ ...cardStyle, marginBottom: 28 }}>
+                  <div style={{ display: "flex", alignItems: "flex-end", gap: 14, height: 130, overflowX: "auto", paddingBottom: 4 }}>
+                    {evolutionHebdoDuMois.map((d, i) => (
+                      <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 40 }}>
+                        <span style={{ fontSize: 10, color: GOLD_LIGHT, fontWeight: 700, marginBottom: 3 }}>{d.taux}%</span>
+                        <div style={{ width: 22, height: Math.max(4, (d.taux / 100) * 80), backgroundColor: GOLD, borderRadius: 4 }} />
+                        <span style={{ fontSize: 9, color: "#a9d6cf", marginTop: 4 }}>{new Date(d.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>🏆 Classement par régularité (présence)</p>
               <Classement titre="Tribus" liste={classementTribusPresenceMois} suffixe="%" maxValeur={100} />
