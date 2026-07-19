@@ -2224,6 +2224,10 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
   const [presencesAnnee, setPresencesAnnee] = useState([]);
   const [santeAnnee, setSanteAnnee] = useState([]);
 
+  const [tauxPrecedentHebdo, setTauxPrecedentHebdo] = useState(null);
+  const [tauxPrecedentMois, setTauxPrecedentMois] = useState(null);
+  const [tauxPrecedentAnnee, setTauxPrecedentAnnee] = useState(null);
+
   const [chargement, setChargement] = useState(true);
 
   useEffect(() => { chargerDimanches(); }, []);
@@ -2259,6 +2263,18 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
     const mapSante = {};
     (sante || []).forEach(s => { if (s.membre_id && !mapSante[s.membre_id]) mapSante[s.membre_id] = s; });
     setSanteParMembre(mapSante);
+
+    // Dimanche précédent (chronologiquement) pour la comparaison
+    const indexActuel = dimanches.findIndex(d => d.id === dimancheChoisi);
+    const dimanchePrecedent = indexActuel >= 0 ? dimanches[indexActuel + 1] : null;
+    if (dimanchePrecedent) {
+      const { data: presPrecedent } = await supabase.from("presences").select("*").eq("dimanche_id", dimanchePrecedent.id);
+      const presentsPrecedent = (presPrecedent || []).filter(p => p.present).length;
+      setTauxPrecedentHebdo(membres.length > 0 ? Math.round((presentsPrecedent / membres.length) * 100) : null);
+    } else {
+      setTauxPrecedentHebdo(null);
+    }
+
     setChargement(false);
   }
 
@@ -2277,6 +2293,22 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
     ]);
     setPresencesMois(pres || []);
     setSanteMois(sante || []);
+
+    // Mois précédent, pour la comparaison
+    const [anneeStr, moisStr] = moisChoisi.split("-").map(Number);
+    const dateMoisPrecedent = new Date(anneeStr, moisStr - 2, 1); // -2 car mois JS est 0-indexé et on veut le mois d'avant
+    const cleMoisPrecedent = `${dateMoisPrecedent.getFullYear()}-${String(dateMoisPrecedent.getMonth() + 1).padStart(2, "0")}`;
+    const dimanchesMoisPrecedent = dimanches.filter(d => d.date.slice(0, 7) === cleMoisPrecedent);
+    if (dimanchesMoisPrecedent.length > 0) {
+      const idsDimPrecedent = dimanchesMoisPrecedent.map(d => d.id);
+      const { data: presPrecedent } = await supabase.from("presences").select("*").in("dimanche_id", idsDimPrecedent);
+      const slotsPrecedent = dimanchesMoisPrecedent.length * membres.length;
+      const presentsPrecedent = (presPrecedent || []).filter(p => p.present).length;
+      setTauxPrecedentMois(slotsPrecedent > 0 ? Math.round((presentsPrecedent / slotsPrecedent) * 100) : null);
+    } else {
+      setTauxPrecedentMois(null);
+    }
+
     setChargement(false);
   }
 
@@ -2295,6 +2327,20 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
     ]);
     setPresencesAnnee(pres || []);
     setSanteAnnee(sante || []);
+
+    // Année précédente, pour la comparaison
+    const anneePrecedente = String(Number(anneeChoisie) - 1);
+    const dimanchesAnneePrecedente = dimanches.filter(d => d.date.slice(0, 4) === anneePrecedente);
+    if (dimanchesAnneePrecedente.length > 0) {
+      const idsDimPrecedent = dimanchesAnneePrecedente.map(d => d.id);
+      const { data: presPrecedent } = await supabase.from("presences").select("*").in("dimanche_id", idsDimPrecedent);
+      const slotsPrecedent = dimanchesAnneePrecedente.length * membres.length;
+      const presentsPrecedent = (presPrecedent || []).filter(p => p.present).length;
+      setTauxPrecedentAnnee(slotsPrecedent > 0 ? Math.round((presentsPrecedent / slotsPrecedent) * 100) : null);
+    } else {
+      setTauxPrecedentAnnee(null);
+    }
+
     setChargement(false);
   }
 
@@ -2405,11 +2451,28 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
       .slice(0, limite);
   }
 
+  // Suivi des âmes : proportion des nouveaux convertis d'un parent qui ont atteint l'étape "Intégré(e)"
+  function calculerClassementAmes(type, items) {
+    return items
+      .map(it => {
+        const gemsDuParent = gems.filter(g => g.type === type && (type === "tribu" ? g.tribu_id : g.departement_id) === it.id);
+        const idsGems = gemsDuParent.map(g => g.id);
+        const nouveauxConvertis = membres.filter(m => idsGems.includes(m.gem_id) && m.nouveau_converti);
+        const integres = nouveauxConvertis.filter(m => m.etape_conversion === "integre").length;
+        const valeur = nouveauxConvertis.length > 0 ? Math.round((integres / nouveauxConvertis.length) * 100) : null;
+        return { nom: it.nom, valeur, nbMembres: nouveauxConvertis.length, integres };
+      })
+      .filter(x => x.valeur !== null)
+      .sort((a, b) => b.valeur - a.valeur);
+  }
+
   const classementTribusPresenceMois = vue === "mensuelle" ? calculerClassementPresence("tribu", tribus, dimanchesDuMois, presencesMois) : [];
   const classementDepartementsPresenceMois = vue === "mensuelle" ? calculerClassementPresence("departement", departements, dimanchesDuMois, presencesMois) : [];
   const classementTribusSanteMois = vue === "mensuelle" ? calculerClassementSante("tribu", tribus, santeMois) : [];
   const classementDepartementsSanteMois = vue === "mensuelle" ? calculerClassementSante("departement", departements, santeMois) : [];
   const classementMembresMois = vue === "mensuelle" ? calculerClassementMembres(dimanchesDuMois, presencesMois, 10) : [];
+  const classementTribusAmes = (vue === "mensuelle" || vue === "annuelle") ? calculerClassementAmes("tribu", tribus) : [];
+  const classementDepartementsAmes = (vue === "mensuelle" || vue === "annuelle") ? calculerClassementAmes("departement", departements) : [];
 
   const classementTribusPresenceAnnee = vue === "annuelle" ? calculerClassementPresence("tribu", tribus, dimanchesAnnee, presencesAnnee) : [];
   const classementDepartementsPresenceAnnee = vue === "annuelle" ? calculerClassementPresence("departement", departements, dimanchesAnnee, presencesAnnee) : [];
@@ -2482,6 +2545,20 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
       ...classementMembresAnnee.map(x => ({ Type: "Membre", Critere: "Régularité", Nom: `${x.nom} (${x.gemNom})`, Membres: "", Valeur: `${x.valeur}%` })),
     ];
     telechargerCSV(lignes, ["Type", "Critere", "Nom", "Membres", "Valeur"], `rapport-annuel-${anneeChoisie}.csv`);
+  }
+
+  function ComparaisonPeriode({ actuel, precedent, libellePeriode }) {
+    if (precedent === null || precedent === undefined) return null;
+    const difference = actuel - precedent;
+    if (difference === 0) {
+      return <span style={{ fontSize: 11, color: "#a9d6cf", marginLeft: 6 }}>= vs {libellePeriode}</span>;
+    }
+    const positif = difference > 0;
+    return (
+      <span style={{ fontSize: 11, fontWeight: 700, color: positif ? "#6fcf97" : RED_LIGHT, marginLeft: 6 }}>
+        {positif ? "↑" : "↓"} {positif ? "+" : ""}{difference}% vs {libellePeriode}
+      </span>
+    );
   }
 
   function medaille(position) {
@@ -2593,7 +2670,7 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 24 }}>
                 <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}>{totalMembres}</p></div>
                 <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Présents ce dimanche</p><p style={{ fontSize: 28, fontWeight: 700, color: GOLD_LIGHT }}>{totalPresents}</p></div>
-                <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Taux de présence</p><p style={{ fontSize: 28, fontWeight: 700 }}>{tauxGlobal}%</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Taux de présence</p><p style={{ fontSize: 28, fontWeight: 700 }}>{tauxGlobal}%</p><ComparaisonPeriode actuel={tauxGlobal} precedent={tauxPrecedentHebdo} libellePeriode="dimanche dernier" /></div>
                 <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Santé spirituelle moy.</p><p style={{ fontSize: 28, fontWeight: 700, color: couleurScore(scoreMoyenGlobal) }}>{scoreMoyenGlobal !== null ? `${scoreMoyenGlobal}/10` : "—"}</p></div>
               </div>
 
@@ -2685,7 +2762,7 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 28 }}>
                 <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}>{totalMembres}</p></div>
-                <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Taux de présence moyen</p><p style={{ fontSize: 28, fontWeight: 700 }}>{tauxMoyenMois}%</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Taux de présence moyen</p><p style={{ fontSize: 28, fontWeight: 700 }}>{tauxMoyenMois}%</p><ComparaisonPeriode actuel={tauxMoyenMois} precedent={tauxPrecedentMois} libellePeriode="mois dernier" /></div>
                 <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Santé spirituelle moy.</p><p style={{ fontSize: 28, fontWeight: 700, color: couleurScore(scoreMoyenMois) }}>{scoreMoyenMois !== null ? `${scoreMoyenMois}/10` : "—"}</p></div>
               </div>
 
@@ -2713,6 +2790,10 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
               <p style={{ fontWeight: 700, fontSize: 16, marginTop: 24, marginBottom: 14 }}>🌱 Classement par santé spirituelle</p>
               <Classement titre="Tribus" liste={classementTribusSanteMois} suffixe="/10" maxValeur={10} />
               <Classement titre="Départements" liste={classementDepartementsSanteMois} suffixe="/10" maxValeur={10} />
+
+              <p style={{ fontWeight: 700, fontSize: 16, marginTop: 24, marginBottom: 14 }}>🌱 Suivi des âmes — taux d'intégration des nouveaux convertis</p>
+              <Classement titre="Tribus" liste={classementTribusAmes} suffixe="%" maxValeur={100} />
+              <Classement titre="Départements" liste={classementDepartementsAmes} suffixe="%" maxValeur={100} />
 
               <ClassementMembres liste={classementMembresMois} />
             </>
@@ -2745,7 +2826,7 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 28 }}>
                 <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}>{totalMembres}</p></div>
-                <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Taux de présence annuel</p><p style={{ fontSize: 28, fontWeight: 700 }}>{tauxMoyenAnnee}%</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Taux de présence annuel</p><p style={{ fontSize: 28, fontWeight: 700 }}>{tauxMoyenAnnee}%</p><ComparaisonPeriode actuel={tauxMoyenAnnee} precedent={tauxPrecedentAnnee} libellePeriode="année dernière" /></div>
                 <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Santé spirituelle moy.</p><p style={{ fontSize: 28, fontWeight: 700, color: couleurScore(scoreMoyenAnnee) }}>{scoreMoyenAnnee !== null ? `${scoreMoyenAnnee}/10` : "—"}</p></div>
               </div>
 
@@ -2773,6 +2854,10 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
               <p style={{ fontWeight: 700, fontSize: 16, marginTop: 24, marginBottom: 14 }}>🌱 Classement annuel par santé spirituelle</p>
               <Classement titre="Tribus" liste={classementTribusSanteAnnee} suffixe="/10" maxValeur={10} />
               <Classement titre="Départements" liste={classementDepartementsSanteAnnee} suffixe="/10" maxValeur={10} />
+
+              <p style={{ fontWeight: 700, fontSize: 16, marginTop: 24, marginBottom: 14 }}>🌱 Suivi des âmes — taux d'intégration des nouveaux convertis</p>
+              <Classement titre="Tribus" liste={classementTribusAmes} suffixe="%" maxValeur={100} />
+              <Classement titre="Départements" liste={classementDepartementsAmes} suffixe="%" maxValeur={100} />
 
               <ClassementMembres liste={classementMembresAnnee} />
             </>
