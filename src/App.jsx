@@ -238,6 +238,8 @@ function TableauDeBord({ compte }) {
   const [nbMessagesNonLus, setNbMessagesNonLus] = useState(0);
   const [membres, setMembres] = useState([]);
   const [regulariteParMembre, setRegulariteParMembre] = useState({});
+  const [rechercheGlobale, setRechercheGlobale] = useState("");
+  const [membreCible, setMembreCible] = useState(null);
   const [chargement, setChargement] = useState(true);
 
   const estPasteur = compte.role === "pasteur" || compte.assistant === true;
@@ -320,6 +322,25 @@ function TableauDeBord({ compte }) {
 
   async function seDeconnecter() { await supabase.auth.signOut(); }
 
+  function allerAuMembre(membre) {
+    const gemDuMembre = gems.find(g => g.id === membre.gem_id);
+    if (!gemDuMembre) return;
+    setGemOuvert(gemDuMembre);
+    setMembreCible(membre.id);
+    setRechercheGlobale("");
+  }
+
+  const resultatsRecherche = rechercheGlobale.trim().length >= 2
+    ? membres.filter(m =>
+        m.nom.toLowerCase().includes(rechercheGlobale.toLowerCase()) ||
+        (m.telephone || "").includes(rechercheGlobale)
+      ).slice(0, 8)
+    : [];
+
+  function nomGemMembre(membre) {
+    return gems.find(g => g.id === membre.gem_id)?.nom || "GEM inconnu";
+  }
+
   const cardStyle = { backgroundColor: TEAL_850, border: `1px solid ${TEAL_700}`, borderRadius: 16, padding: 20 };
   const btnStyle = { padding: "8px 14px", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer", border: "none" };
 
@@ -329,6 +350,28 @@ function TableauDeBord({ compte }) {
         <div>
           <p style={{ fontSize: 13, color: "#cdeae4", margin: 0 }}>Bienvenue, <b style={{ color: CREAM }}>{compte.nom}</b></p>
           <p style={{ fontSize: 11, color: "#a9d6cf", margin: 0 }}>{compte.role === "pasteur" ? "Pasteur" : compte.assistant ? "Assistant désigné" : "Responsable"}</p>
+        </div>
+        <div style={{ position: "relative", flex: "1 1 220px", maxWidth: 320 }}>
+          <input
+            value={rechercheGlobale}
+            onChange={e => setRechercheGlobale(e.target.value)}
+            placeholder="🔍 Rechercher un membre (nom, téléphone)..."
+            style={{ width: "100%", padding: "10px 12px", borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 13 }}
+          />
+          {resultatsRecherche.length > 0 && (
+            <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, backgroundColor: TEAL_850, border: `1px solid ${TEAL_600}`, borderRadius: 8, zIndex: 20, overflow: "hidden", boxShadow: "0 8px 24px rgba(0,0,0,0.35)" }}>
+              {resultatsRecherche.map(m => (
+                <button
+                  key={m.id}
+                  onClick={() => allerAuMembre(m)}
+                  style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", background: "none", border: "none", borderBottom: `1px solid ${TEAL_700}`, cursor: "pointer", color: CREAM }}
+                >
+                  <p style={{ fontWeight: 700, fontSize: 13, margin: 0 }}>{m.nom}</p>
+                  <p style={{ fontSize: 11, color: "#a9d6cf", margin: 0 }}>{nomGemMembre(m)} · {m.telephone}</p>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {estPasteur ? (
@@ -441,6 +484,8 @@ function TableauDeBord({ compte }) {
             onMembreAjoute={chargerDonnees}
             onCreerGem={chargerDonnees}
             regulariteParMembre={regulariteParMembre}
+            membreCible={membreCible}
+            onMembreCibleConsomme={() => setMembreCible(null)}
             cardStyle={cardStyle}
           />
         ) : gemOuvert ? (
@@ -451,6 +496,8 @@ function TableauDeBord({ compte }) {
             onBack={() => setGemOuvert(null)}
             onMembreAjoute={chargerDonnees}
             regulariteParMembre={regulariteParMembre}
+            membreCible={membreCible}
+            onMembreCibleConsomme={() => setMembreCible(null)}
             cardStyle={cardStyle}
           />
         ) : page === "dashboard" ? (
@@ -659,7 +706,7 @@ function dimancheActuel() {
   return d.toISOString().slice(0, 10); // format YYYY-MM-DD
 }
 
-function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regulariteParMembre, cardStyle }) {
+function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regulariteParMembre, membreCible, onMembreCibleConsomme, cardStyle }) {
   const [nom, setNom] = useState("");
   const [telephone, setTelephone] = useState("");
   const [nouveauConverti, setNouveauConverti] = useState(false);
@@ -671,6 +718,13 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
   const [membreOuvert, setMembreOuvert] = useState(null);
 
   useEffect(() => { chargerPresences(); chargerSante(); }, [membres.length]);
+
+  useEffect(() => {
+    if (membreCible && membres.some(m => m.id === membreCible)) {
+      setMembreOuvert(membreCible);
+      if (onMembreCibleConsomme) onMembreCibleConsomme();
+    }
+  }, [membreCible, membres]);
 
   async function chargerSante() {
     if (membres.length === 0) return;
@@ -1400,7 +1454,7 @@ function PageMotsDePasse({ cardStyle, onTraite }) {
 
 /* ------------------------------- Mon espace (responsable) ------------------------------- */
 
-function MonEspace({ compte, assignation, gems, membres, tribus, departements, gemOuvert, setGemOuvert, onMembreAjoute, onCreerGem, regulariteParMembre, cardStyle }) {
+function MonEspace({ compte, assignation, gems, membres, tribus, departements, gemOuvert, setGemOuvert, onMembreAjoute, onCreerGem, regulariteParMembre, membreCible, onMembreCibleConsomme, cardStyle }) {
   const [nomNouveauGem, setNomNouveauGem] = useState("");
   const [creationOuverte, setCreationOuverte] = useState(false);
 
@@ -1415,6 +1469,8 @@ function MonEspace({ compte, assignation, gems, membres, tribus, departements, g
         onBack={() => setGemOuvert(null)}
         onMembreAjoute={onMembreAjoute}
         regulariteParMembre={regulariteParMembre}
+        membreCible={membreCible}
+        onMembreCibleConsomme={onMembreCibleConsomme}
         cardStyle={cardStyle}
       />
     );
@@ -1432,6 +1488,8 @@ function MonEspace({ compte, assignation, gems, membres, tribus, departements, g
         onBack={null}
         onMembreAjoute={onMembreAjoute}
         regulariteParMembre={regulariteParMembre}
+        membreCible={membreCible}
+        onMembreCibleConsomme={onMembreCibleConsomme}
         cardStyle={cardStyle}
       />
     );
