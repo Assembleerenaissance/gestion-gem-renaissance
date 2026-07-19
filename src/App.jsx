@@ -1629,7 +1629,10 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
           </select>
           {chargement ? <p style={{ color: "#a9d6cf" }}>Chargement…</p> : (
             <>
-              <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>Rapport du dimanche {dateFormatee}</p>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
+                <p style={{ fontSize: 13, color: "#a9d6cf", margin: 0 }}>Rapport du dimanche {dateFormatee}</p>
+                <button onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
+              </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
                 <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Membres</p><p style={{ fontSize: 24, fontWeight: 700 }}>{totalMembres}</p></div>
                 <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Présents</p><p style={{ fontSize: 24, fontWeight: 700, color: GOLD_LIGHT }}>{totalPresents}</p></div>
@@ -1653,9 +1656,14 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
                           {motifsParMembre[m.id] && <p style={{ fontSize: 12, color: "#e8c25a", marginTop: 4 }}>Motif : {motifsParMembre[m.id]}</p>}
                         </div>
                         {m.telephone && (
-                          <a href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "#25D366", textDecoration: "none", border: "1px solid #25D366", borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
-                            💬 WhatsApp
-                          </a>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <a href={`tel:${m.telephone}`} style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, textDecoration: "none", border: `1px solid ${GOLD_LIGHT}`, borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
+                              📞 Appeler
+                            </a>
+                            <a href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "#25D366", textDecoration: "none", border: "1px solid #25D366", borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
+                              💬 WhatsApp
+                            </a>
+                          </div>
                         )}
                       </div>
                     );
@@ -1672,12 +1680,47 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
           </select>
           {chargement ? <p style={{ color: "#a9d6cf" }}>Chargement…</p> : (
             <>
-              <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16, textTransform: "capitalize" }}>Rapport de {libelleMois(moisChoisi)} — {dimanchesDuMois.length} dimanche(s)</p>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
+                <p style={{ fontSize: 13, color: "#a9d6cf", margin: 0, textTransform: "capitalize" }}>Rapport de {libelleMois(moisChoisi)} — {dimanchesDuMois.length} dimanche(s)</p>
+                <button onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
                 <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Membres</p><p style={{ fontSize: 24, fontWeight: 700 }}>{totalMembres}</p></div>
                 <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Taux moyen</p><p style={{ fontSize: 24, fontWeight: 700 }}>{tauxMoyenMois}%</p></div>
                 <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Santé moy.</p><p style={{ fontSize: 24, fontWeight: 700, color: couleurScore(scoreMoyenMois) }}>{scoreMoyenMois !== null ? `${scoreMoyenMois}/10` : "—"}</p></div>
               </div>
+
+              <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>📵 Membres absents tout le mois ({membres.filter(m => dimanchesDuMois.length > 0 && presencesMois.filter(p => p.membre_id === m.id && p.present).length === 0).length})</p>
+              {dimanchesDuMois.length === 0 ? (
+                <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun dimanche pointé pour ce mois.</p>
+              ) : membres.filter(m => presencesMois.filter(p => p.membre_id === m.id && p.present).length === 0).length === 0 ? (
+                <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun membre totalement absent ce mois — bon signe !</p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {membres.filter(m => presencesMois.filter(p => p.membre_id === m.id && p.present).length === 0).map(m => {
+                    const numeroWhatsApp = (m.telephone || "").replace(/[^\d]/g, "");
+                    const messageWhatsApp = encodeURIComponent(`Bonjour ${m.nom}, nous ne t'avons pas vu ce mois-ci au culte. Tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏`);
+                    return (
+                      <div key={m.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                        <div>
+                          <p style={{ fontWeight: 700, marginBottom: 2 }}>{m.nom}</p>
+                          <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomGem(m.gem_id)} · {m.telephone}</p>
+                        </div>
+                        {m.telephone && (
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <a href={`tel:${m.telephone}`} style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, textDecoration: "none", border: `1px solid ${GOLD_LIGHT}`, borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
+                              📞 Appeler
+                            </a>
+                            <a href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "#25D366", textDecoration: "none", border: "1px solid #25D366", borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
+                              💬 WhatsApp
+                            </a>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </>
           )}
         </>
