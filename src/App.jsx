@@ -242,6 +242,7 @@ function TableauDeBord({ compte }) {
   const [nbMessagesNonLus, setNbMessagesNonLus] = useState(0);
   const [membres, setMembres] = useState([]);
   const [regulariteParMembre, setRegulariteParMembre] = useState({});
+  const [rappelPointageGlobal, setRappelPointageGlobal] = useState(null);
   const [rechercheGlobale, setRechercheGlobale] = useState("");
   const [membreCible, setMembreCible] = useState(null);
   const [chargement, setChargement] = useState(true);
@@ -290,6 +291,7 @@ function TableauDeBord({ compte }) {
     ]);
     setTribus(t || []); setDepartements(d || []); setGems(g || []); setMembres(m || []); setMesAssignations(a || []);
     await calculerRegularite(m || []);
+    verifierPointageManquant(m || []).then(setRappelPointageGlobal);
     await rafraichirCompteurs();
     setChargement(false);
   }
@@ -544,6 +546,7 @@ function TableauDeBord({ compte }) {
         ) : page === "dashboard" ? (
           <>
             <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>Tableau de bord</h2>
+            <BanniereRappelPointage rappel={rappelPointageGlobal} />
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 24 }}>
               <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}>{membres.length}</p></div>
               <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>GEM actifs</p><p style={{ fontSize: 28, fontWeight: 700 }}>{gems.length}</p></div>
@@ -763,9 +766,65 @@ function dimancheActuel() {
   return d.toISOString().slice(0, 10); // format YYYY-MM-DD
 }
 
+// Redimensionne une photo côté navigateur avant stockage (évite d'alourdir la base).
+function redimensionnerPhoto(fichier) {
+  return new Promise((resolve, reject) => {
+    const lecteur = new FileReader();
+    lecteur.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const taille = 240;
+        const canvas = document.createElement("canvas");
+        canvas.width = taille; canvas.height = taille;
+        const ctx = canvas.getContext("2d");
+        const ratio = Math.max(taille / img.width, taille / img.height);
+        const largeur = img.width * ratio, hauteur = img.height * ratio;
+        ctx.drawImage(img, (taille - largeur) / 2, (taille - hauteur) / 2, largeur, hauteur);
+        resolve(canvas.toDataURL("image/jpeg", 0.75));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    lecteur.onerror = reject;
+    lecteur.readAsDataURL(fichier);
+  });
+}
+
+// Vérifie si le pointage du dernier dimanche passé est incomplet, pour afficher un rappel.
+async function verifierPointageManquant(listeMembres) {
+  if (listeMembres.length === 0) return null;
+  const aujourdHui = new Date();
+  if (aujourdHui.getDay() === 0) return null; // on est dimanche, le culte n'est pas encore terminé
+  const dimancheAVerifier = new Date(aujourdHui);
+  dimancheAVerifier.setDate(aujourdHui.getDate() - aujourdHui.getDay());
+  dimancheAVerifier.setHours(0, 0, 0, 0);
+  const dateStr = dimancheAVerifier.toISOString().slice(0, 10);
+  const { data: dim } = await supabase.from("dimanches").select("*").eq("date", dateStr).maybeSingle();
+  if (!dim) return { date: dateStr, manquants: listeMembres.length };
+  const idsMembres = listeMembres.map(m => m.id);
+  const { data: pres } = await supabase.from("presences").select("membre_id").eq("dimanche_id", dim.id).in("membre_id", idsMembres);
+  const pointes = new Set((pres || []).map(p => p.membre_id));
+  const manquants = listeMembres.filter(m => !pointes.has(m.id)).length;
+  return manquants > 0 ? { date: dateStr, manquants } : null;
+}
+
+function BanniereRappelPointage({ rappel }) {
+  if (!rappel) return null;
+  const dateFormatee = new Date(rappel.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
+  return (
+    <div style={{ backgroundColor: "rgba(208,175,28,0.15)", border: `1px solid ${GOLD}`, borderRadius: 12, padding: 14, marginBottom: 20, display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <span style={{ fontSize: 20 }}>⏰</span>
+      <p style={{ fontSize: 13, color: "#fff8e0", margin: 0 }}>
+        <b>Rappel :</b> le pointage du dimanche {dateFormatee} n'est pas complet — {rappel.manquants} membre{rappel.manquants > 1 ? "s" : ""} pas encore pointé{rappel.manquants > 1 ? "s" : ""}.
+      </p>
+    </div>
+  );
+}
+
 function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regulariteParMembre, membreCible, onMembreCibleConsomme, cardStyle }) {
   const [nom, setNom] = useState("");
   const [telephone, setTelephone] = useState("");
+  const [photo, setPhoto] = useState(null);
   const [nouveauConverti, setNouveauConverti] = useState(false);
   const [erreur, setErreur] = useState("");
   const [dimancheId, setDimancheId] = useState(null);
@@ -773,8 +832,9 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
   const [chargementPresences, setChargementPresences] = useState(true);
   const [santeParMembre, setSanteParMembre] = useState({}); // { membre_id: dernierEnregistrement }
   const [membreOuvert, setMembreOuvert] = useState(null);
+  const [rappelPointage, setRappelPointage] = useState(null);
 
-  useEffect(() => { chargerPresences(); chargerSante(); }, [membres.length]);
+  useEffect(() => { chargerPresences(); chargerSante(); verifierPointageManquant(membres).then(setRappelPointage); }, [membres.length]);
 
   useEffect(() => {
     if (membreCible && membres.some(m => m.id === membreCible)) {
@@ -825,12 +885,21 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
     await supabase.from("presences").upsert({ membre_id: membreId, dimanche_id: dimancheId, present: false, motif: motif || null }, { onConflict: "membre_id,dimanche_id" });
   }
 
+  async function surChoisirPhoto(e) {
+    const fichier = e.target.files[0];
+    if (!fichier) return;
+    try {
+      const dataUrl = await redimensionnerPhoto(fichier);
+      setPhoto(dataUrl);
+    } catch { setErreur("Impossible de charger cette photo."); }
+  }
+
   async function ajouterMembre() {
     setErreur("");
     if (!nom.trim() || !telephone.trim()) { setErreur("Nom et téléphone requis."); return; }
-    const { error } = await supabase.from("membres").insert({ gem_id: gem.id, nom: nom.trim(), telephone: telephone.trim(), nouveau_converti: nouveauConverti, etape_conversion: "accueil" });
+    const { error } = await supabase.from("membres").insert({ gem_id: gem.id, nom: nom.trim(), telephone: telephone.trim(), nouveau_converti: nouveauConverti, etape_conversion: "accueil", photo: photo || null });
     if (error) { setErreur(error.message); return; }
-    setNom(""); setTelephone(""); setNouveauConverti(false);
+    setNom(""); setTelephone(""); setNouveauConverti(false); setPhoto(null);
     onMembreAjoute();
   }
 
@@ -843,9 +912,16 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
       <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{gem.nom}</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>{membres.length} membre{membres.length > 1 ? "s" : ""}</p>
 
+      <BanniereRappelPointage rappel={rappelPointage} />
+
       <div style={{ ...cardStyle, marginBottom: 20 }}>
         <p style={{ fontWeight: 600, marginBottom: 10, fontSize: 14 }}>Ajouter un membre</p>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          {photo && <img src={photo} alt="" style={{ width: 40, height: 40, borderRadius: 999, objectFit: "cover", border: `1px solid ${GOLD}` }} />}
+          <label style={{ fontSize: 11, color: GOLD_LIGHT, cursor: "pointer", border: `1px solid ${TEAL_600}`, borderRadius: 8, padding: "8px 10px", whiteSpace: "nowrap" }}>
+            📷 Photo (optionnel)
+            <input type="file" accept="image/*" onChange={surChoisirPhoto} style={{ display: "none" }} />
+          </label>
           <input value={nom} onChange={e => setNom(e.target.value)} placeholder="Nom complet" style={{ flex: 1, minWidth: 160, padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
           <input value={telephone} onChange={e => setTelephone(e.target.value)} placeholder="Téléphone" style={{ flex: 1, minWidth: 160, padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
           <button onClick={ajouterMembre} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>Ajouter</button>
@@ -1016,10 +1092,30 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
     return RED_LIGHT;
   }
 
+  function initiales(nomComplet) {
+    return nomComplet.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]).join("").toUpperCase();
+  }
+
+  async function surChangerPhoto(e) {
+    const fichier = e.target.files[0];
+    if (!fichier) return;
+    const dataUrl = await redimensionnerPhoto(fichier);
+    await supabase.from("membres").update({ photo: dataUrl }).eq("id", membre.id);
+    if (onMisAJour) onMisAJour();
+  }
+
   return (
     <div style={cardStyle}>
       <button onClick={onToggle} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", color: CREAM, textAlign: "left" }}>
-        <div>
+        <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+          {membre.photo ? (
+            <img src={membre.photo} alt="" style={{ width: 40, height: 40, borderRadius: 999, objectFit: "cover", flexShrink: 0, border: `1px solid ${TEAL_600}` }} />
+          ) : (
+            <span style={{ width: 40, height: 40, borderRadius: 999, backgroundColor: TEAL_700, color: GOLD_LIGHT, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+              {initiales(membre.nom)}
+            </span>
+          )}
+          <div>
           <p style={{ fontWeight: 600 }}>{membre.nom}</p>
           {membre.telephone && (
             <a href={`tel:${membre.telephone}`} onClick={e => e.stopPropagation()} style={{ fontSize: 12, color: "#a9d6cf", textDecoration: "none" }}>
@@ -1044,6 +1140,7 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
             )}
           </div>
         </div>
+        </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: couleurScore(moyenne) }}>
             {moyenne !== null ? `Santé ${moyenne}/10` : "Non évaluée"}
@@ -1054,6 +1151,10 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
 
       {ouvert && (
         <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${TEAL_700}` }}>
+          <label style={{ display: "inline-block", fontSize: 11, color: GOLD_LIGHT, cursor: "pointer", border: `1px solid ${TEAL_600}`, borderRadius: 8, padding: "6px 10px", marginBottom: 14 }}>
+            📷 {membre.photo ? "Changer la photo" : "Ajouter une photo"}
+            <input type="file" accept="image/*" onChange={surChangerPhoto} style={{ display: "none" }} />
+          </label>
           <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
             <button onClick={() => setSousOnglet("sante")} style={{ flex: 1, padding: "6px 0", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "sante" ? TEAL_700 : TEAL_900, color: sousOnglet === "sante" ? GOLD_LIGHT : "#cdeae4" }}>
               Santé spirituelle
