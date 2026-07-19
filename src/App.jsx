@@ -2439,6 +2439,29 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
     telechargerCSV(lignes, ["GEM", "Rattachement", "Presents", "Total", "Taux"], `rapport-${dateAffichee?.date || "dimanche"}.csv`);
   }
 
+  async function partagerRapportHebdomadaire() {
+    const absents = membres.filter(m => presences[m.id] === false);
+    let texte = `📋 Rapport du dimanche ${dateFormatee}\n\n`;
+    texte += `Membres suivis : ${totalMembres}\n`;
+    texte += `Présents : ${totalPresents}\n`;
+    texte += `Taux de présence : ${tauxGlobal}%\n`;
+    texte += `Santé spirituelle moy. : ${scoreMoyenGlobal !== null ? `${scoreMoyenGlobal}/10` : "—"}\n\n`;
+    texte += `📵 Absents (${absents.length}) :\n`;
+    absents.forEach(m => {
+      const gemMembre = gems.find(g => g.id === m.gem_id);
+      texte += `- ${m.nom} (${gemMembre?.nom || "GEM inconnu"})${motifsParMembre[m.id] ? ` — Motif : ${motifsParMembre[m.id]}` : ""}\n`;
+    });
+
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: `Rapport du ${dateFormatee}`, text: texte });
+      } catch (e) { /* partage annulé par l'utilisateur */ }
+    } else {
+      await navigator.clipboard.writeText(texte);
+      alert("Le rapport a été copié — tu peux maintenant le coller où tu veux (WhatsApp, message, etc.).");
+    }
+  }
+
   function exporterCSVMensuel() {
     const lignes = [
       ...classementTribusPresenceMois.map(x => ({ Type: "Tribu", Critere: "Présence", Nom: x.nom, Membres: x.nbMembres, Valeur: `${x.valeur}%` })),
@@ -2560,9 +2583,10 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
                 <p style={{ fontSize: 13, color: "#a9d6cf", margin: 0 }}>Rapport du dimanche {dateFormatee}</p>
-                <div style={{ display: "flex", gap: 8 }}>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <button onClick={exporterCSVHebdomadaire} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>📊 Exporter CSV (Excel)</button>
                   <button onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
+                  <button onClick={partagerRapportHebdomadaire} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>📤 Partager</button>
                 </div>
               </div>
 
@@ -2615,9 +2639,14 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
                           {motifsParMembre[m.id] && <p style={{ fontSize: 12, color: "#e8c25a", marginTop: 4 }}>Motif : {motifsParMembre[m.id]}</p>}
                         </div>
                         {m.telephone && (
-                          <a href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "#25D366", textDecoration: "none", border: "1px solid #25D366", borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
-                            💬 WhatsApp
-                          </a>
+                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                            <a href={`tel:${m.telephone}`} style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, textDecoration: "none", border: `1px solid ${GOLD_LIGHT}`, borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
+                              📞 Appeler
+                            </a>
+                            <a href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "#25D366", textDecoration: "none", border: "1px solid #25D366", borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
+                              💬 WhatsApp
+                            </a>
+                          </div>
                         )}
                       </div>
                     );
