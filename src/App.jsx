@@ -473,6 +473,36 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onCreer
   const [recherche, setRecherche] = useState("");
   const [creationPour, setCreationPour] = useState(null);
   const [nomNouveauGem, setNomNouveauGem] = useState("");
+  const [responsablesParParent, setResponsablesParParent] = useState({}); // { parentId: { nom, telephone } }
+  const [responsablesParGem, setResponsablesParGem] = useState({}); // { gemId: { nom, telephone } }
+
+  useEffect(() => { chargerResponsables(); }, [type, gems.length]);
+
+  async function chargerResponsables() {
+    const roleCorrespondant = type === "tribu" ? "tribu_resp" : "departement_resp";
+    const [{ data: assignationsParent }, { data: assignationsGem }] = await Promise.all([
+      supabase.from("assignations").select("*").eq("statut", "actif").eq("role_demande", roleCorrespondant),
+      supabase.from("assignations").select("*").eq("statut", "actif").eq("role_demande", "gem"),
+    ]);
+    const idsComptes = [...new Set([...(assignationsParent || []), ...(assignationsGem || [])].map(a => a.compte_id))];
+    let comptesMap = {};
+    if (idsComptes.length > 0) {
+      const { data: c } = await supabase.from("comptes").select("*").in("id", idsComptes);
+      (c || []).forEach(cc => { comptesMap[cc.id] = cc; });
+    }
+    const mapParent = {};
+    (assignationsParent || []).forEach(a => {
+      const parentId = type === "tribu" ? a.tribu_id : a.departement_id;
+      if (parentId && comptesMap[a.compte_id]) mapParent[parentId] = comptesMap[a.compte_id];
+    });
+    setResponsablesParParent(mapParent);
+
+    const mapGem = {};
+    (assignationsGem || []).forEach(a => {
+      if (a.gem_id && comptesMap[a.compte_id]) mapGem[a.gem_id] = comptesMap[a.compte_id];
+    });
+    setResponsablesParGem(mapGem);
+  }
 
   const filtres = items.filter(it => it.nom.toLowerCase().includes(recherche.toLowerCase()));
 
@@ -495,18 +525,32 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onCreer
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
         {filtres.map(it => {
           const gemsDuParent = gems.filter(g => g.type === type && (type === "tribu" ? g.tribu_id : g.departement_id) === it.id);
+          const responsable = responsablesParParent[it.id];
           return (
             <div key={it.id} style={cardStyle}>
-              <p style={{ fontWeight: 700, marginBottom: 8 }}>{it.nom}</p>
+              <p style={{ fontWeight: 700, marginBottom: 4 }}>{it.nom}</p>
+              {responsable ? (
+                <p style={{ fontSize: 11, color: GOLD_LIGHT, marginBottom: 10 }}>
+                  {type === "tribu" ? "Patriarche/Matriarche" : "Responsable"} : {responsable.nom}
+                </p>
+              ) : (
+                <p style={{ fontSize: 11, color: "#a9d6cf", fontStyle: "italic", marginBottom: 10 }}>Aucun responsable désigné</p>
+              )}
               {gemsDuParent.length === 0 ? (
                 <p style={{ fontSize: 12, color: "#a9d6cf", fontStyle: "italic" }}>Aucun GEM pour l'instant.</p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  {gemsDuParent.map(g => (
-                    <button key={g.id} onClick={() => onOpenGem(g)} style={{ textAlign: "left", padding: "8px 10px", borderRadius: 8, backgroundColor: TEAL_700, color: GOLD_LIGHT, border: "none", fontSize: 13, cursor: "pointer" }}>
-                      {g.nom}
-                    </button>
-                  ))}
+                  {gemsDuParent.map(g => {
+                    const respGem = responsablesParGem[g.id];
+                    return (
+                      <button key={g.id} onClick={() => onOpenGem(g)} style={{ textAlign: "left", padding: "8px 10px", borderRadius: 8, backgroundColor: TEAL_700, color: GOLD_LIGHT, border: "none", fontSize: 13, cursor: "pointer", display: "flex", flexDirection: "column", gap: 2 }}>
+                        <span>{g.nom}</span>
+                        <span style={{ fontSize: 11, fontWeight: 400, color: respGem ? "#cdeae4" : "#7fae9f" }}>
+                          {respGem ? respGem.nom : "Sans responsable"}
+                        </span>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
               {estPasteur && (
