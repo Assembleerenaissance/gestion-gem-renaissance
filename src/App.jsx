@@ -322,6 +322,22 @@ function TableauDeBord({ compte }) {
 
   async function seDeconnecter() { await supabase.auth.signOut(); }
 
+  async function exporterDonneesJSON() {
+    const tables = ["tribus", "departements", "gems", "membres", "comptes", "assignations", "presences", "dimanches", "sante_spirituelle", "visites", "messages", "messages_directs", "evenements"];
+    const resultat = {};
+    for (const table of tables) {
+      const { data } = await supabase.from(table).select("*");
+      resultat[table] = data || [];
+    }
+    const blob = new Blob([JSON.stringify(resultat, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `gestion-gem-sauvegarde-${new Date().toISOString().slice(0, 10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   function allerAuMembre(membre) {
     const gemDuMembre = gems.find(g => g.id === membre.gem_id);
     if (!gemDuMembre) return;
@@ -510,6 +526,12 @@ function TableauDeBord({ compte }) {
               <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Départements</p><p style={{ fontSize: 28, fontWeight: 700 }}>{departements.length}</p></div>
             </div>
             <PrioritesPastorales membres={membres} gems={gems} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
+            <div style={{ marginTop: 24 }}>
+              <button onClick={exporterDonneesJSON} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+                💾 Exporter toutes les données (JSON)
+              </button>
+              <p style={{ fontSize: 11, color: "#a9d6cf", marginTop: 6 }}>Sauvegarde complète de secours — à faire régulièrement.</p>
+            </div>
           </>
         ) : page === "tribus" ? (
           <ListeParents
@@ -1977,6 +1999,36 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
   const classementTribus = vue === "mensuelle" ? calculerClassement("tribu", tribus) : [];
   const classementDepartements = vue === "mensuelle" ? calculerClassement("departement", departements) : [];
 
+  function telechargerCSV(lignes, entetes, nomFichier) {
+    const ligneEntete = entetes.join(",");
+    const corps = lignes.map(l => entetes.map(e => `"${String(l[e] ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob(["\uFEFF" + ligneEntete + "\n" + corps], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = nomFichier;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function exporterCSVHebdomadaire() {
+    const lignes = gems.map(g => {
+      const membresGem = membres.filter(m => m.gem_id === g.id);
+      const presentsGem = membresGem.filter(m => presences[m.id]).length;
+      const tauxGem = membresGem.length > 0 ? Math.round((presentsGem / membresGem.length) * 100) : 0;
+      return { GEM: g.nom, Rattachement: nomParent(g), Presents: presentsGem, Total: membresGem.length, Taux: `${tauxGem}%` };
+    });
+    telechargerCSV(lignes, ["GEM", "Rattachement", "Presents", "Total", "Taux"], `rapport-${dateAffichee?.date || "dimanche"}.csv`);
+  }
+
+  function exporterCSVMensuel() {
+    const lignes = [
+      ...classementTribus.map(x => ({ Type: "Tribu", Nom: x.nom, Membres: x.nbMembres, Taux: `${x.taux}%` })),
+      ...classementDepartements.map(x => ({ Type: "Département", Nom: x.nom, Membres: x.nbMembres, Taux: `${x.taux}%` })),
+    ];
+    telechargerCSV(lignes, ["Type", "Nom", "Membres", "Taux"], `rapport-mensuel-${moisChoisi}.csv`);
+  }
+
   function medaille(position) {
     if (position === 0) return "🥇";
     if (position === 1) return "🥈";
@@ -2048,7 +2100,13 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
             <p style={{ color: "#a9d6cf" }}>Chargement…</p>
           ) : (
             <>
-              <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>Rapport du dimanche {dateFormatee}</p>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
+                <p style={{ fontSize: 13, color: "#a9d6cf", margin: 0 }}>Rapport du dimanche {dateFormatee}</p>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={exporterCSVHebdomadaire} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>📊 Exporter CSV (Excel)</button>
+                  <button onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
+                </div>
+              </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 24 }}>
                 <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}>{totalMembres}</p></div>
@@ -2103,7 +2161,13 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
             <p style={{ color: "#a9d6cf" }}>Chargement…</p>
           ) : (
             <>
-              <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16, textTransform: "capitalize" }}>Rapport de {libelleMois(moisChoisi)} — {dimanchesDuMois.length} dimanche(s) enregistré(s)</p>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
+                <p style={{ fontSize: 13, color: "#a9d6cf", margin: 0, textTransform: "capitalize" }}>Rapport de {libelleMois(moisChoisi)} — {dimanchesDuMois.length} dimanche(s) enregistré(s)</p>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={exporterCSVMensuel} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>📊 Exporter CSV (Excel)</button>
+                  <button onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
+                </div>
+              </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 28 }}>
                 <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}>{totalMembres}</p></div>
