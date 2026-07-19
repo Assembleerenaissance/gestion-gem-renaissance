@@ -118,13 +118,20 @@ function EcranConnexion() {
     setChargement(false);
   }
 
+  function chiffresSeuls(tel) {
+    return (tel || "").replace(/[^\d]/g, "");
+  }
+
   async function envoyerDemandeOubli() {
     setMessageOubli("");
     if (!telephoneOubli.trim()) { setMessageOubli("Merci de saisir ton numéro de téléphone."); return; }
     setEnvoiOubliEnCours(true);
     // Enregistre une demande visible par le pasteur — l'app n'a pas de système d'e-mail,
     // la réinitialisation se fait manuellement par le pasteur ou un assistant désigné.
-    const { data: compteExistant } = await supabase.from("comptes").select("id").eq("telephone", telephoneOubli.trim()).maybeSingle();
+    // On compare uniquement les chiffres pour ignorer les différences de format (espaces, +225, tirets...).
+    const cible = chiffresSeuls(telephoneOubli);
+    const { data: tousLesComptes } = await supabase.from("comptes").select("id, telephone");
+    const compteExistant = (tousLesComptes || []).find(c => chiffresSeuls(c.telephone).endsWith(cible) || cible.endsWith(chiffresSeuls(c.telephone)));
     await supabase.from("demandes_mot_de_passe").insert({
       telephone: telephoneOubli.trim(),
       compte_id: compteExistant?.id || null,
@@ -1121,16 +1128,24 @@ function PageMotsDePasse({ cardStyle, onTraite }) {
 
   useEffect(() => { chargerDemandes(); }, []);
 
+  function chiffresSeuls(tel) {
+    return (tel || "").replace(/[^\d]/g, "");
+  }
+
   async function chargerDemandes() {
     setChargement(true);
     const { data: d } = await supabase.from("demandes_mot_de_passe").select("*").eq("statut", "attente").order("date_demande");
-    const idsComptes = [...new Set((d || []).map(x => x.compte_id).filter(Boolean))];
+    const { data: tousLesComptes } = await supabase.from("comptes").select("*");
     let map = {};
-    if (idsComptes.length > 0) {
-      const { data: c } = await supabase.from("comptes").select("*").in("id", idsComptes);
-      (c || []).forEach(compte => { map[compte.id] = compte; });
-    }
-    setDemandes(d || []);
+    (tousLesComptes || []).forEach(c => { map[c.id] = c; });
+    // Rattrape les demandes non liées (compte_id null) en comparant les numéros chiffre par chiffre
+    const demandesCorrigees = (d || []).map(demande => {
+      if (demande.compte_id) return demande;
+      const cible = chiffresSeuls(demande.telephone);
+      const trouve = (tousLesComptes || []).find(c => chiffresSeuls(c.telephone).endsWith(cible) || cible.endsWith(chiffresSeuls(c.telephone)));
+      return trouve ? { ...demande, compte_id: trouve.id } : demande;
+    });
+    setDemandes(demandesCorrigees);
     setComptesParId(map);
     setChargement(false);
   }
