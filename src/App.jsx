@@ -339,7 +339,7 @@ function TableauDeBord({ compte }) {
                 )}
               </button>
               {compte.role === "pasteur" && (
-                <button onClick={() => { setPage("assistants"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "assistants" ? TEAL_700 : "transparent", color: page === "assistants" ? GOLD_LIGHT : "#cdeae4" }}>Assistants</button>
+                <button onClick={() => { setPage("assistants"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "assistants" ? TEAL_700 : "transparent", color: page === "assistants" ? GOLD_LIGHT : "#cdeae4" }}>Rôles & Accès</button>
               )}
             </>
           ) : (
@@ -460,7 +460,7 @@ function TableauDeBord({ compte }) {
         ) : page === "mots_de_passe" ? (
           <PageMotsDePasse cardStyle={cardStyle} onTraite={rafraichirCompteurs} />
         ) : (
-          <PageAssistants compte={compte} cardStyle={cardStyle} />
+          <PageAssistants compte={compte} tribus={tribus} departements={departements} gems={gems} onChange={chargerDonnees} cardStyle={cardStyle} />
         )}
       </div>
     </div>
@@ -1350,7 +1350,42 @@ function MonEspace({ compte, assignation, gems, membres, tribus, departements, g
 
 /* ------------------------------- Assistants désignés ------------------------------- */
 
-function PageAssistants({ compte, cardStyle }) {
+function PageAssistants({ compte, tribus, departements, gems, onChange, cardStyle }) {
+  const [sousOnglet, setSousOnglet] = useState("assistants"); // assistants | attribuer | creer
+
+  const tabBtn = (val, label) => (
+    <button
+      onClick={() => setSousOnglet(val)}
+      style={{
+        padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer",
+        backgroundColor: sousOnglet === val ? GOLD : TEAL_900, color: sousOnglet === val ? TEAL_950 : "#cdeae4",
+      }}
+    >
+      {label}
+    </button>
+  );
+
+  return (
+    <div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Rôles & Accès</h2>
+      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+        {tabBtn("assistants", "Assistants désignés")}
+        {tabBtn("attribuer", "Attribuer un rôle")}
+        {tabBtn("creer", "Nouveau compte + rôle")}
+      </div>
+
+      {sousOnglet === "assistants" ? (
+        <SousPageAssistantsDesignes compte={compte} cardStyle={cardStyle} />
+      ) : sousOnglet === "attribuer" ? (
+        <SousPageAttribuerRole compte={compte} tribus={tribus} departements={departements} onChange={onChange} cardStyle={cardStyle} />
+      ) : (
+        <SousPageCreerCompte compte={compte} tribus={tribus} departements={departements} onChange={onChange} cardStyle={cardStyle} />
+      )}
+    </div>
+  );
+}
+
+function SousPageAssistantsDesignes({ compte, cardStyle }) {
   const [comptes, setComptes] = useState([]);
   const [chargement, setChargement] = useState(true);
 
@@ -1370,7 +1405,6 @@ function PageAssistants({ compte, cardStyle }) {
 
   return (
     <div>
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Assistants désignés</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>
         Un assistant a les mêmes droits que toi (voir toutes les données, valider les demandes) — utile pour te seconder.
       </p>
@@ -1401,6 +1435,230 @@ function PageAssistants({ compte, cardStyle }) {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+/* --- Attribuer un rôle actif directement à un compte déjà inscrit, sans passer par une demande --- */
+
+function SousPageAttribuerRole({ compte, tribus, departements, onChange, cardStyle }) {
+  const [comptes, setComptes] = useState([]);
+  const [chargement, setChargement] = useState(true);
+  const [recherche, setRecherche] = useState("");
+  const [compteChoisi, setCompteChoisi] = useState(null);
+
+  const [roleDemande, setRoleDemande] = useState("gem");
+  const [parentType, setParentType] = useState("tribu");
+  const [tribuId, setTribuId] = useState(tribus[0]?.id || "");
+  const [departementId, setDepartementId] = useState(departements[0]?.id || "");
+  const [nomGem, setNomGem] = useState("");
+  const [erreur, setErreur] = useState("");
+  const [enCours, setEnCours] = useState(false);
+  const [succes, setSucces] = useState("");
+
+  useEffect(() => { chargerComptes(); }, []);
+
+  async function chargerComptes() {
+    setChargement(true);
+    const [{ data: c }, { data: a }] = await Promise.all([
+      supabase.from("comptes").select("*").neq("id", compte.id).order("nom"),
+      supabase.from("assignations").select("*").eq("statut", "actif"),
+    ]);
+    const idsAvecRoleActif = new Set((a || []).map(x => x.compte_id));
+    setComptes((c || []).filter(cc => !idsAvecRoleActif.has(cc.id)));
+    setChargement(false);
+  }
+
+  function choisir(c) {
+    setCompteChoisi(c);
+    setErreur(""); setSucces("");
+  }
+
+  async function attribuer() {
+    setErreur(""); setSucces("");
+    if (roleDemande === "gem" && !nomGem.trim()) { setErreur("Merci de donner un nom au GEM."); return; }
+    setEnCours(true);
+
+    let gemId = null;
+    if (roleDemande === "gem") {
+      const { data: nouveauGem, error } = await supabase.from("gems").insert({
+        nom: nomGem.trim(),
+        type: parentType,
+        tribu_id: parentType === "tribu" ? tribuId : null,
+        departement_id: parentType === "departement" ? departementId : null,
+      }).select().single();
+      if (error) { setErreur(error.message); setEnCours(false); return; }
+      gemId = nouveauGem.id;
+    }
+
+    const payload = {
+      compte_id: compteChoisi.id,
+      role_demande: roleDemande,
+      statut: "actif",
+      gem_id: gemId,
+      tribu_id: roleDemande === "tribu_resp" ? tribuId : (roleDemande === "gem" && parentType === "tribu" ? tribuId : null),
+      departement_id: roleDemande === "departement_resp" ? departementId : (roleDemande === "gem" && parentType === "departement" ? departementId : null),
+      gem_nom_demande: roleDemande === "gem" ? nomGem.trim() : null,
+      valide_par: compte.id,
+    };
+    const { error: err2 } = await supabase.from("assignations").insert(payload);
+    if (err2) { setErreur(err2.message); setEnCours(false); return; }
+
+    setSucces(`✓ Rôle attribué à ${compteChoisi.nom}.`);
+    setEnCours(false);
+    setNomGem("");
+    if (onChange) onChange();
+    setTimeout(() => { setCompteChoisi(null); setSucces(""); chargerComptes(); }, 1500);
+  }
+
+  const comptesFiltres = comptes.filter(c => c.nom.toLowerCase().includes(recherche.toLowerCase()) || c.telephone.includes(recherche));
+
+  if (compteChoisi) {
+    return (
+      <div style={{ maxWidth: 480 }}>
+        <button onClick={() => setCompteChoisi(null)} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 12, fontSize: 13 }}>← Choisir un autre compte</button>
+        <p style={{ fontSize: 14, color: "#a9d6cf", marginBottom: 4 }}>Attribuer un rôle à :</p>
+        <p style={{ fontWeight: 700, fontSize: 18, marginBottom: 16 }}>{compteChoisi.nom} <span style={{ fontWeight: 400, fontSize: 13, color: "#a9d6cf" }}>({compteChoisi.telephone})</span></p>
+
+        <div style={{ ...cardStyle, display: "flex", flexDirection: "column", gap: 12 }}>
+          <SelecteurRole
+            roleDemande={roleDemande} setRoleDemande={setRoleDemande}
+            parentType={parentType} setParentType={setParentType}
+            tribuId={tribuId} setTribuId={setTribuId}
+            departementId={departementId} setDepartementId={setDepartementId}
+            nomGem={nomGem} setNomGem={setNomGem}
+            tribus={tribus} departements={departements}
+          />
+          {erreur && <p style={{ color: RED_LIGHT, fontSize: 12 }}>{erreur}</p>}
+          {succes && <p style={{ color: GOLD_LIGHT, fontSize: 12, fontWeight: 700 }}>{succes}</p>}
+          <button disabled={enCours} onClick={attribuer} style={{ padding: "10px 0", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>
+            {enCours ? "…" : "Attribuer ce rôle"}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>
+        Choisis un compte déjà inscrit (sans rôle actif) pour lui attribuer directement une responsabilité, sans attendre qu'il en fasse la demande.
+      </p>
+      <input
+        value={recherche}
+        onChange={e => setRecherche(e.target.value)}
+        placeholder="Rechercher un nom ou un téléphone..."
+        style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_850, color: CREAM, border: `1px solid ${TEAL_700}`, marginBottom: 16, width: "100%", maxWidth: 320 }}
+      />
+      {chargement ? (
+        <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+      ) : comptesFiltres.length === 0 ? (
+        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun compte disponible (tous les comptes inscrits ont déjà un rôle actif).</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {comptesFiltres.map(c => (
+            <button key={c.id} onClick={() => choisir(c)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ fontWeight: 700 }}>{c.nom}</span>
+              <span style={{ fontSize: 12, color: "#a9d6cf" }}>{c.telephone}</span>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* --- Créer un compte complet (nom, téléphone, mot de passe) et lui attribuer un rôle en une fois --- */
+
+function SousPageCreerCompte({ compte, tribus, departements, onChange, cardStyle }) {
+  const [nom, setNom] = useState("");
+  const [telephone, setTelephone] = useState("");
+  const [motDePasse, setMotDePasse] = useState("");
+  const [mdpVisible, setMdpVisible] = useState(false);
+
+  const [roleDemande, setRoleDemande] = useState("gem");
+  const [parentType, setParentType] = useState("tribu");
+  const [tribuId, setTribuId] = useState(tribus[0]?.id || "");
+  const [departementId, setDepartementId] = useState(departements[0]?.id || "");
+  const [nomGem, setNomGem] = useState("");
+
+  const [erreur, setErreur] = useState("");
+  const [succes, setSucces] = useState("");
+  const [enCours, setEnCours] = useState(false);
+
+  async function creer() {
+    setErreur(""); setSucces("");
+    if (!nom.trim() || !telephone.trim()) { setErreur("Nom et téléphone requis."); return; }
+    if (motDePasse.length < 8) { setErreur("Le mot de passe doit contenir au moins 8 caractères."); return; }
+    if (roleDemande === "gem" && !nomGem.trim()) { setErreur("Merci de donner un nom au GEM."); return; }
+
+    setEnCours(true);
+    const { data: session } = await supabase.auth.getSession();
+    const { data, error } = await supabase.functions.invoke("create-member", {
+      body: {
+        nom: nom.trim(),
+        telephone: telephone.trim(),
+        mot_de_passe: motDePasse,
+        role_demande: roleDemande,
+        tribu_id: roleDemande === "tribu_resp" ? tribuId : (roleDemande === "gem" && parentType === "tribu" ? tribuId : null),
+        departement_id: roleDemande === "departement_resp" ? departementId : (roleDemande === "gem" && parentType === "departement" ? departementId : null),
+        nom_gem: roleDemande === "gem" ? nomGem.trim() : null,
+      },
+      headers: { Authorization: `Bearer ${session?.session?.access_token}` },
+    });
+
+    if (error || data?.error) {
+      setErreur(data?.error || error.message || "Une erreur est survenue.");
+      setEnCours(false);
+      return;
+    }
+
+    setSucces(`✓ Compte créé pour ${nom.trim()} avec son rôle actif. Transmets-lui son téléphone et son mot de passe pour qu'il se connecte.`);
+    setNom(""); setTelephone(""); setMotDePasse(""); setNomGem("");
+    setEnCours(false);
+    if (onChange) onChange();
+  }
+
+  return (
+    <div style={{ maxWidth: 480 }}>
+      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>
+        Pour quelqu'un qui n'est pas encore inscrit : crée directement son compte et attribue-lui un rôle, en une seule fois.
+      </p>
+
+      <div style={{ ...cardStyle, display: "flex", flexDirection: "column", gap: 12 }}>
+        <input value={nom} onChange={e => setNom(e.target.value)} placeholder="Nom complet" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+        <input value={telephone} onChange={e => setTelephone(e.target.value)} placeholder="Téléphone" type="tel" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input
+            value={motDePasse}
+            onChange={e => setMotDePasse(e.target.value)}
+            placeholder="Mot de passe (8 car. min.)"
+            type={mdpVisible ? "text" : "password"}
+            style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}
+          />
+        </div>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#a9d6cf", cursor: "pointer", marginTop: -6 }}>
+          <input type="checkbox" checked={mdpVisible} onChange={e => setMdpVisible(e.target.checked)} />
+          Afficher le mot de passe
+        </label>
+
+        <p style={{ color: CREAM, fontWeight: 700, fontSize: 14, marginTop: 4 }}>Quel rôle lui attribuer ?</p>
+        <SelecteurRole
+          roleDemande={roleDemande} setRoleDemande={setRoleDemande}
+          parentType={parentType} setParentType={setParentType}
+          tribuId={tribuId} setTribuId={setTribuId}
+          departementId={departementId} setDepartementId={setDepartementId}
+          nomGem={nomGem} setNomGem={setNomGem}
+          tribus={tribus} departements={departements}
+        />
+
+        {erreur && <p style={{ color: RED_LIGHT, fontSize: 12 }}>{erreur}</p>}
+        {succes && <p style={{ color: GOLD_LIGHT, fontSize: 12, fontWeight: 700 }}>{succes}</p>}
+
+        <button disabled={enCours} onClick={creer} style={{ padding: "10px 0", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>
+          {enCours ? "…" : "Créer le compte et attribuer le rôle"}
+        </button>
+      </div>
     </div>
   );
 }
