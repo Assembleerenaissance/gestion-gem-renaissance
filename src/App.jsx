@@ -56,8 +56,14 @@ function EcranConnexion() {
   const [nom, setNom] = useState("");
   const [telephone, setTelephone] = useState("");
   const [motDePasse, setMotDePasse] = useState("");
+  const [motDePasseVisible, setMotDePasseVisible] = useState(false);
   const [erreur, setErreur] = useState("");
   const [chargement, setChargement] = useState(false);
+
+  const [motDePasseOublieOuvert, setMotDePasseOublieOuvert] = useState(false);
+  const [telephoneOubli, setTelephoneOubli] = useState("");
+  const [messageOubli, setMessageOubli] = useState("");
+  const [envoiOubliEnCours, setEnvoiOubliEnCours] = useState(false);
 
   const [tribus, setTribus] = useState([]);
   const [departements, setDepartements] = useState([]);
@@ -112,6 +118,24 @@ function EcranConnexion() {
     setChargement(false);
   }
 
+  async function envoyerDemandeOubli() {
+    setMessageOubli("");
+    if (!telephoneOubli.trim()) { setMessageOubli("Merci de saisir ton numéro de téléphone."); return; }
+    setEnvoiOubliEnCours(true);
+    // Enregistre une demande visible par le pasteur — l'app n'a pas de système d'e-mail,
+    // la réinitialisation se fait manuellement par le pasteur ou un assistant désigné.
+    const { data: compteExistant } = await supabase.from("comptes").select("id").eq("telephone", telephoneOubli.trim()).maybeSingle();
+    await supabase.from("demandes_mot_de_passe").insert({
+      telephone: telephoneOubli.trim(),
+      compte_id: compteExistant?.id || null,
+      statut: "attente",
+    });
+    setEnvoiOubliEnCours(false);
+    setMessageOubli("Ta demande a bien été transmise. Le Pasteur Dimitri Koffi, ou un assistant désigné, va te recontacter pour réinitialiser ton mot de passe.");
+  }
+
+  const inputPasswordStyle = { flex: 1, padding: 10, borderRadius: 8, backgroundColor: TEAL_850, color: CREAM, border: `1px solid ${TEAL_700}`, width: "100%" };
+
   return (
     <div
       style={{
@@ -124,35 +148,70 @@ function EcranConnexion() {
         <h1 style={{ color: CREAM, fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Gestion des GEM</h1>
         <p style={{ color: "#cdeae4", fontSize: 13, marginBottom: 20 }}>Assemblée RENAISSANCE — Vases d'Honneur</p>
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-          <button onClick={() => setMode("connexion")} style={{ flex: 1, padding: "8px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, backgroundColor: mode === "connexion" ? TEAL_700 : "transparent", color: mode === "connexion" ? GOLD_LIGHT : "#cdeae4", border: `1px solid ${TEAL_600}` }}>Se connecter</button>
-          <button onClick={() => setMode("inscription")} style={{ flex: 1, padding: "8px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, backgroundColor: mode === "inscription" ? TEAL_700 : "transparent", color: mode === "inscription" ? GOLD_LIGHT : "#cdeae4", border: `1px solid ${TEAL_600}` }}>Inscription</button>
+          <button onClick={() => { setMode("connexion"); setMotDePasseOublieOuvert(false); }} style={{ flex: 1, padding: "8px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, backgroundColor: mode === "connexion" ? TEAL_700 : "transparent", color: mode === "connexion" ? GOLD_LIGHT : "#cdeae4", border: `1px solid ${TEAL_600}` }}>Se connecter</button>
+          <button onClick={() => { setMode("inscription"); setMotDePasseOublieOuvert(false); }} style={{ flex: 1, padding: "8px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, backgroundColor: mode === "inscription" ? TEAL_700 : "transparent", color: mode === "inscription" ? GOLD_LIGHT : "#cdeae4", border: `1px solid ${TEAL_600}` }}>Inscription</button>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {mode === "inscription" && (
-            <input value={nom} onChange={e => setNom(e.target.value)} placeholder="Nom complet" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_850, color: CREAM, border: `1px solid ${TEAL_700}` }} />
-          )}
-          <input value={telephone} onChange={e => setTelephone(e.target.value)} placeholder="Téléphone" type="tel" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_850, color: CREAM, border: `1px solid ${TEAL_700}` }} />
-          <input value={motDePasse} onChange={e => setMotDePasse(e.target.value)} placeholder="Mot de passe (8 car. min.)" type="password" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_850, color: CREAM, border: `1px solid ${TEAL_700}` }} />
 
-          {mode === "inscription" && (
-            <>
-              <p style={{ color: CREAM, fontWeight: 700, fontSize: 14, marginTop: 8 }}>Quelle responsabilité occupes-tu ?</p>
-              <SelecteurRole
-                roleDemande={roleDemande} setRoleDemande={setRoleDemande}
-                parentType={parentType} setParentType={setParentType}
-                tribuId={tribuId} setTribuId={setTribuId}
-                departementId={departementId} setDepartementId={setDepartementId}
-                nomGem={nomGem} setNomGem={setNomGem}
-                tribus={tribus} departements={departements}
-              />
-            </>
-          )}
+        {mode === "connexion" && motDePasseOublieOuvert ? (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <p style={{ color: CREAM, fontWeight: 700, fontSize: 14 }}>Mot de passe oublié</p>
+            <p style={{ color: "#cdeae4", fontSize: 12, lineHeight: 1.4 }}>
+              L'application n'envoie pas d'e-mail. Indique ton numéro de téléphone : ta demande sera transmise au pasteur pour réinitialiser ton mot de passe.
+            </p>
+            <input value={telephoneOubli} onChange={e => setTelephoneOubli(e.target.value)} placeholder="Ton numéro de téléphone" type="tel" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_850, color: CREAM, border: `1px solid ${TEAL_700}` }} />
+            {messageOubli && <p style={{ color: messageOubli.startsWith("Ta demande") ? GOLD_LIGHT : RED_LIGHT, fontSize: 12 }}>{messageOubli}</p>}
+            <button disabled={envoiOubliEnCours} onClick={envoyerDemandeOubli} style={{ padding: "12px 0", borderRadius: 8, fontWeight: 700, fontSize: 14, backgroundColor: GOLD, color: TEAL_950, border: "none", cursor: "pointer" }}>
+              {envoiOubliEnCours ? "…" : "Envoyer la demande"}
+            </button>
+            <button onClick={() => { setMotDePasseOublieOuvert(false); setMessageOubli(""); }} style={{ padding: "8px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, backgroundColor: "transparent", color: "#cdeae4", border: "none", cursor: "pointer" }}>
+              ← Retour à la connexion
+            </button>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            {mode === "inscription" && (
+              <input value={nom} onChange={e => setNom(e.target.value)} placeholder="Nom complet" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_850, color: CREAM, border: `1px solid ${TEAL_700}` }} />
+            )}
+            <input value={telephone} onChange={e => setTelephone(e.target.value)} placeholder="Téléphone" type="tel" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_850, color: CREAM, border: `1px solid ${TEAL_700}` }} />
 
-          {erreur && <p style={{ color: RED_LIGHT, fontSize: 12 }}>{erreur}</p>}
-          <button disabled={chargement} onClick={mode === "connexion" ? seConnecter : sInscrire} style={{ padding: "12px 0", borderRadius: 8, fontWeight: 700, fontSize: 14, backgroundColor: GOLD, color: TEAL_950, border: "none", cursor: "pointer" }}>
-            {chargement ? "…" : mode === "connexion" ? "Accéder à mon espace" : "Créer mon compte"}
-          </button>
-        </div>
+            <input
+              value={motDePasse}
+              onChange={e => setMotDePasse(e.target.value)}
+              placeholder="Mot de passe (8 car. min.)"
+              type={motDePasseVisible ? "text" : "password"}
+              style={inputPasswordStyle}
+            />
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#cdeae4", cursor: "pointer", marginTop: -4 }}>
+              <input type="checkbox" checked={motDePasseVisible} onChange={e => setMotDePasseVisible(e.target.checked)} />
+              Afficher le mot de passe
+            </label>
+
+            {mode === "connexion" && (
+              <button onClick={() => { setMotDePasseOublieOuvert(true); setMessageOubli(""); setTelephoneOubli(telephone); }} style={{ alignSelf: "flex-end", background: "none", border: "none", color: GOLD_LIGHT, fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0, marginTop: -4 }}>
+                Mot de passe oublié ?
+              </button>
+            )}
+
+            {mode === "inscription" && (
+              <>
+                <p style={{ color: CREAM, fontWeight: 700, fontSize: 14, marginTop: 8 }}>Quelle responsabilité occupes-tu ?</p>
+                <SelecteurRole
+                  roleDemande={roleDemande} setRoleDemande={setRoleDemande}
+                  parentType={parentType} setParentType={setParentType}
+                  tribuId={tribuId} setTribuId={setTribuId}
+                  departementId={departementId} setDepartementId={setDepartementId}
+                  nomGem={nomGem} setNomGem={setNomGem}
+                  tribus={tribus} departements={departements}
+                />
+              </>
+            )}
+
+            {erreur && <p style={{ color: RED_LIGHT, fontSize: 12 }}>{erreur}</p>}
+            <button disabled={chargement} onClick={mode === "connexion" ? seConnecter : sInscrire} style={{ padding: "12px 0", borderRadius: 8, fontWeight: 700, fontSize: 14, backgroundColor: GOLD, color: TEAL_950, border: "none", cursor: "pointer" }}>
+              {chargement ? "…" : mode === "connexion" ? "Accéder à mon espace" : "Créer mon compte"}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
