@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { supabase } from "./supabaseClient";
 import { BERGER_IMG } from "./bergerImage";
+import { LOGO_VH } from "./logoVH";
 
 /* ============================================================================
    GESTION DES GEM — Étape 2 : Tribus, Départements, GEM, Membres
@@ -152,8 +153,11 @@ function EcranConnexion() {
       }}
     >
       <div style={{ width: "100%", maxWidth: mode === "inscription" ? 420 : 380, maxHeight: "92vh", overflowY: "auto", backgroundColor: "rgba(17,106,95,0.92)", backdropFilter: "blur(6px)", border: `1px solid ${TEAL_700}`, borderRadius: 16, padding: 24 }}>
-        <h1 style={{ color: CREAM, fontSize: 22, fontWeight: 700, marginBottom: 4 }}>Gestion des GEM</h1>
-        <p style={{ color: "#cdeae4", fontSize: 13, marginBottom: 20 }}>Assemblée RENAISSANCE — Vases d'Honneur</p>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+          <img src={LOGO_VH} alt="Vases d'Honneur" style={{ height: 72, width: "auto" }} />
+        </div>
+        <h1 style={{ color: CREAM, fontSize: 22, fontWeight: 700, marginBottom: 4, textAlign: "center" }}>Gestion des GEM</h1>
+        <p style={{ color: "#cdeae4", fontSize: 13, marginBottom: 20, textAlign: "center" }}>Assemblée RENAISSANCE — Vases d'Honneur</p>
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
           <button onClick={() => { setMode("connexion"); setMotDePasseOublieOuvert(false); }} style={{ flex: 1, padding: "8px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, backgroundColor: mode === "connexion" ? TEAL_700 : "transparent", color: mode === "connexion" ? GOLD_LIGHT : "#cdeae4", border: `1px solid ${TEAL_600}` }}>Se connecter</button>
           <button onClick={() => { setMode("inscription"); setMotDePasseOublieOuvert(false); }} style={{ flex: 1, padding: "8px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, backgroundColor: mode === "inscription" ? TEAL_700 : "transparent", color: mode === "inscription" ? GOLD_LIGHT : "#cdeae4", border: `1px solid ${TEAL_600}` }}>Inscription</button>
