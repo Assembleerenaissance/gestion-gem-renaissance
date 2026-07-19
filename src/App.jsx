@@ -227,6 +227,7 @@ function TableauDeBord({ compte }) {
   const [gems, setGems] = useState([]);
   const [mesAssignations, setMesAssignations] = useState([]);
   const [nbDemandesAttente, setNbDemandesAttente] = useState(0);
+  const [nbDemandesMdp, setNbDemandesMdp] = useState(0);
   const [nbMessagesNonLus, setNbMessagesNonLus] = useState(0);
   const [membres, setMembres] = useState([]);
   const [chargement, setChargement] = useState(true);
@@ -245,12 +246,14 @@ function TableauDeBord({ compte }) {
 
   async function rafraichirCompteurs() {
     if (estPasteur) {
-      const [{ count: cDemandes }, { count: cMessages }] = await Promise.all([
+      const [{ count: cDemandes }, { count: cMessages }, { count: cMdp }] = await Promise.all([
         supabase.from("assignations").select("*", { count: "exact", head: true }).eq("statut", "attente"),
         supabase.from("messages_directs").select("*", { count: "exact", head: true }).eq("lu", false),
+        supabase.from("demandes_mot_de_passe").select("*", { count: "exact", head: true }).eq("statut", "attente"),
       ]);
       setNbDemandesAttente(cDemandes || 0);
       setNbMessagesNonLus(cMessages || 0);
+      setNbDemandesMdp(cMdp || 0);
     } else {
       const seuilMessages = dernierMessageLu || "1970-01-01T00:00:00Z";
       const { count: cDiffusion } = await supabase.from("messages").select("*", { count: "exact", head: true }).gt("date", seuilMessages);
@@ -317,6 +320,14 @@ function TableauDeBord({ compte }) {
                 {nbMessagesNonLus > 0 && (
                   <span style={{ position: "absolute", top: -6, right: -6, backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
                     {nbMessagesNonLus}
+                  </span>
+                )}
+              </button>
+              <button onClick={() => { setPage("mots_de_passe"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "mots_de_passe" ? TEAL_700 : "transparent", color: page === "mots_de_passe" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
+                Mots de passe
+                {nbDemandesMdp > 0 && (
+                  <span style={{ position: "absolute", top: -6, right: -6, backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
+                    {nbDemandesMdp}
                   </span>
                 )}
               </button>
@@ -439,6 +450,8 @@ function TableauDeBord({ compte }) {
           <PageRapports gems={gems} membres={membres} tribus={tribus} departements={departements} cardStyle={cardStyle} />
         ) : page === "historique" ? (
           <PageHistorique cardStyle={cardStyle} />
+        ) : page === "mots_de_passe" ? (
+          <PageMotsDePasse cardStyle={cardStyle} onTraite={rafraichirCompteurs} />
         ) : (
           <PageAssistants compte={compte} cardStyle={cardStyle} />
         )}
@@ -1087,6 +1100,143 @@ function PageDemandes({ tribus, departements, compte, onTraite, cardStyle }) {
               </div>
             </div>
           ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* --------------------------- Page Mots de passe oubliés (pasteur) --------------------------- */
+
+function PageMotsDePasse({ cardStyle, onTraite }) {
+  const [demandes, setDemandes] = useState([]);
+  const [comptesParId, setComptesParId] = useState({});
+  const [chargement, setChargement] = useState(true);
+  const [demandeOuverte, setDemandeOuverte] = useState(null); // id de la demande en cours de traitement
+  const [nouveauMdp, setNouveauMdp] = useState("");
+  const [mdpVisible, setMdpVisible] = useState(false);
+  const [enCours, setEnCours] = useState(false);
+  const [erreur, setErreur] = useState("");
+  const [succes, setSucces] = useState("");
+
+  useEffect(() => { chargerDemandes(); }, []);
+
+  async function chargerDemandes() {
+    setChargement(true);
+    const { data: d } = await supabase.from("demandes_mot_de_passe").select("*").eq("statut", "attente").order("date_demande");
+    const idsComptes = [...new Set((d || []).map(x => x.compte_id).filter(Boolean))];
+    let map = {};
+    if (idsComptes.length > 0) {
+      const { data: c } = await supabase.from("comptes").select("*").in("id", idsComptes);
+      (c || []).forEach(compte => { map[compte.id] = compte; });
+    }
+    setDemandes(d || []);
+    setComptesParId(map);
+    setChargement(false);
+  }
+
+  async function ignorer(d) {
+    await supabase.from("demandes_mot_de_passe").update({ statut: "ignoree" }).eq("id", d.id);
+    chargerDemandes();
+    if (onTraite) onTraite();
+  }
+
+  function ouvrirReinitialisation(d) {
+    setDemandeOuverte(d.id);
+    setNouveauMdp("");
+    setErreur("");
+    setSucces("");
+  }
+
+  async function reinitialiser(d) {
+    setErreur(""); setSucces("");
+    if (!d.compte_id) { setErreur("Aucun compte trouvé avec ce numéro — vérifie le téléphone auprès de la personne."); return; }
+    if (nouveauMdp.length < 8) { setErreur("Le nouveau mot de passe doit contenir au moins 8 caractères."); return; }
+    setEnCours(true);
+    const { data: session } = await supabase.auth.getSession();
+    const { data, error } = await supabase.functions.invoke("reset-password", {
+      body: { compte_id: d.compte_id, nouveau_mot_de_passe: nouveauMdp },
+      headers: { Authorization: `Bearer ${session?.session?.access_token}` },
+    });
+    if (error || data?.error) {
+      setErreur(data?.error || error.message || "Une erreur est survenue.");
+      setEnCours(false);
+      return;
+    }
+    await supabase.from("demandes_mot_de_passe").update({ statut: "traitee" }).eq("id", d.id);
+    setSucces("✓ Mot de passe réinitialisé avec succès.");
+    setEnCours(false);
+    setTimeout(() => { chargerDemandes(); if (onTraite) onTraite(); }, 1200);
+  }
+
+  function formaterDate(date) {
+    return new Date(date).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  }
+
+  return (
+    <div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Mots de passe oubliés ({demandes.length})</h2>
+      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>
+        Ces demandes viennent de responsables qui n'arrivent plus à se connecter. Choisis un nouveau mot de passe pour eux et transmets-le leur directement.
+      </p>
+
+      {chargement ? (
+        <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+      ) : demandes.length === 0 ? (
+        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucune demande en attente pour le moment.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {demandes.map(d => {
+            const compteAssocie = d.compte_id ? comptesParId[d.compte_id] : null;
+            const ouverte = demandeOuverte === d.id;
+            return (
+              <div key={d.id} style={cardStyle}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
+                  <div>
+                    <p style={{ fontWeight: 700, marginBottom: 2 }}>{compteAssocie?.nom || "Numéro non reconnu"}</p>
+                    <p style={{ fontSize: 12, color: "#a9d6cf" }}>{d.telephone}</p>
+                    <p style={{ fontSize: 11, color: "#a9d6cf", marginTop: 2 }}>{formaterDate(d.date_demande)}</p>
+                    {!compteAssocie && <p style={{ fontSize: 11, color: RED_LIGHT, marginTop: 4 }}>Ce numéro ne correspond à aucun compte existant.</p>}
+                  </div>
+                  {!ouverte && (
+                    <div style={{ display: "flex", gap: 8 }}>
+                      {compteAssocie && (
+                        <button onClick={() => ouvrirReinitialisation(d)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 12 }}>Réinitialiser</button>
+                      )}
+                      <button onClick={() => ignorer(d)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: "transparent", color: RED_LIGHT, border: `1px solid ${RED_LIGHT}`, cursor: "pointer", fontSize: 12 }}>Ignorer</button>
+                    </div>
+                  )}
+                </div>
+
+                {ouverte && (
+                  <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${TEAL_700}` }}>
+                    <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 8 }}>Choisis un nouveau mot de passe pour {compteAssocie?.nom} :</p>
+                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                      <input
+                        value={nouveauMdp}
+                        onChange={e => setNouveauMdp(e.target.value)}
+                        placeholder="Nouveau mot de passe (8 car. min.)"
+                        type={mdpVisible ? "text" : "password"}
+                        style={{ flex: 1, minWidth: 200, padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}
+                      />
+                      <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#a9d6cf", cursor: "pointer" }}>
+                        <input type="checkbox" checked={mdpVisible} onChange={e => setMdpVisible(e.target.checked)} />
+                        Afficher
+                      </label>
+                    </div>
+                    {erreur && <p style={{ color: RED_LIGHT, fontSize: 12, marginTop: 8 }}>{erreur}</p>}
+                    {succes && <p style={{ color: GOLD_LIGHT, fontSize: 12, marginTop: 8, fontWeight: 700 }}>{succes}</p>}
+                    <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                      <button disabled={enCours} onClick={() => reinitialiser(d)} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 12 }}>
+                        {enCours ? "…" : "Confirmer la réinitialisation"}
+                      </button>
+                      <button onClick={() => setDemandeOuverte(null)} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: "transparent", color: "#a9d6cf", border: `1px solid ${TEAL_600}`, cursor: "pointer", fontSize: 12 }}>Annuler</button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
