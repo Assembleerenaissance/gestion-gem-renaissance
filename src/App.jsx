@@ -340,8 +340,11 @@ function TableauDeBord({ compte }) {
 
     const map = {};
     listeMembres.forEach(membre => {
+      const dateArrivee = membre.created_at ? membre.created_at.slice(0, 10) : null;
       let absencesConsecutives = 0, presencesConsecutives = 0, enCours = true;
       for (const dim of dimanchesRecents) {
+        // Ce dimanche précède (ou coïncide avec) l'arrivée du membre : on n'y était pas encore suivi, on arrête ici.
+        if (dateArrivee && dim.date <= dateArrivee) break;
         const pointage = (presencesRecentes || []).find(p => p.membre_id === membre.id && p.dimanche_id === dim.id);
         const present = pointage ? pointage.present : false;
         if (enCours) {
