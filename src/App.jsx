@@ -237,6 +237,7 @@ function TableauDeBord({ compte }) {
   const [nbDemandesMdp, setNbDemandesMdp] = useState(0);
   const [nbMessagesNonLus, setNbMessagesNonLus] = useState(0);
   const [membres, setMembres] = useState([]);
+  const [regulariteParMembre, setRegulariteParMembre] = useState({});
   const [chargement, setChargement] = useState(true);
 
   const estPasteur = compte.role === "pasteur" || compte.assistant === true;
@@ -281,8 +282,39 @@ function TableauDeBord({ compte }) {
       supabase.from("assignations").select("*").eq("compte_id", compte.id),
     ]);
     setTribus(t || []); setDepartements(d || []); setGems(g || []); setMembres(m || []); setMesAssignations(a || []);
+    await calculerRegularite(m || []);
     await rafraichirCompteurs();
     setChargement(false);
+  }
+
+  // Détermine, pour chaque membre, ses absences et présences consécutives sur les 8 derniers dimanches
+  // enregistrés (du plus récent au plus ancien). L'absence d'un pointage pour un dimanche passé
+  // est considérée comme une absence, exactement comme l'affiche l'écran de pointage.
+  async function calculerRegularite(listeMembres) {
+    const { data: dimanchesRecents } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(8);
+    if (!dimanchesRecents || dimanchesRecents.length === 0) { setRegulariteParMembre({}); return; }
+    const idsDimanches = dimanchesRecents.map(d => d.id);
+    const { data: presencesRecentes } = await supabase.from("presences").select("*").in("dimanche_id", idsDimanches);
+
+    const map = {};
+    listeMembres.forEach(membre => {
+      let absencesConsecutives = 0, presencesConsecutives = 0, enCours = true;
+      for (const dim of dimanchesRecents) {
+        const pointage = (presencesRecentes || []).find(p => p.membre_id === membre.id && p.dimanche_id === dim.id);
+        const present = pointage ? pointage.present : false;
+        if (enCours) {
+          if (present) {
+            if (absencesConsecutives > 0) { enCours = false; }
+            else presencesConsecutives++;
+          } else {
+            if (presencesConsecutives > 0) { enCours = false; }
+            else absencesConsecutives++;
+          }
+        }
+      }
+      map[membre.id] = { absencesConsecutives, presencesConsecutives };
+    });
+    setRegulariteParMembre(map);
   }
 
 
@@ -408,6 +440,7 @@ function TableauDeBord({ compte }) {
             setGemOuvert={setGemOuvert}
             onMembreAjoute={chargerDonnees}
             onCreerGem={chargerDonnees}
+            regulariteParMembre={regulariteParMembre}
             cardStyle={cardStyle}
           />
         ) : gemOuvert ? (
@@ -417,17 +450,19 @@ function TableauDeBord({ compte }) {
             membres={membres.filter(m => m.gem_id === gemOuvert.id)}
             onBack={() => setGemOuvert(null)}
             onMembreAjoute={chargerDonnees}
+            regulariteParMembre={regulariteParMembre}
             cardStyle={cardStyle}
           />
         ) : page === "dashboard" ? (
           <>
             <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>Tableau de bord</h2>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 24 }}>
               <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}>{membres.length}</p></div>
               <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>GEM actifs</p><p style={{ fontSize: 28, fontWeight: 700 }}>{gems.length}</p></div>
               <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Tribus</p><p style={{ fontSize: 28, fontWeight: 700 }}>{tribus.length}</p></div>
               <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Départements</p><p style={{ fontSize: 28, fontWeight: 700 }}>{departements.length}</p></div>
             </div>
+            <PrioritesPastorales membres={membres} gems={gems} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
           </>
         ) : page === "tribus" ? (
           <ListeParents
@@ -463,6 +498,50 @@ function TableauDeBord({ compte }) {
           <PageAssistants compte={compte} tribus={tribus} departements={departements} gems={gems} onChange={chargerDonnees} cardStyle={cardStyle} />
         )}
       </div>
+    </div>
+  );
+}
+
+/* ------------------------- Priorités pastorales ------------------------- */
+
+function PrioritesPastorales({ membres, gems, regulariteParMembre, cardStyle }) {
+  function nomGem(gemId) {
+    return gems.find(g => g.id === gemId)?.nom || "GEM inconnu";
+  }
+
+  const membresAlerte = membres
+    .map(m => ({ membre: m, regularite: regulariteParMembre[m.id] }))
+    .filter(x => x.regularite && x.regularite.absencesConsecutives >= 2)
+    .sort((a, b) => b.regularite.absencesConsecutives - a.regularite.absencesConsecutives);
+
+  return (
+    <div>
+      <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>⚠️ Priorités pastorales — membres à visiter</p>
+      {membresAlerte.length === 0 ? (
+        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun membre en absence répétée pour l'instant — tout va bien.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {membresAlerte.slice(0, 15).map(({ membre, regularite }) => (
+            <div key={membre.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, borderColor: RED_LIGHT }}>
+              <div>
+                <p style={{ fontWeight: 700, marginBottom: 2 }}>{membre.nom}</p>
+                <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomGem(membre.gem_id)}</p>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: RED_LIGHT }}>{regularite.absencesConsecutives} absences consécutives</span>
+                {membre.telephone && (
+                  <a href={`tel:${membre.telephone}`} style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, textDecoration: "none", border: `1px solid ${GOLD_LIGHT}`, borderRadius: 6, padding: "6px 10px" }}>
+                    📞 Appeler
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+          {membresAlerte.length > 15 && (
+            <p style={{ fontSize: 12, color: "#a9d6cf", fontStyle: "italic" }}>+ {membresAlerte.length - 15} autre(s) membre(s) en alerte.</p>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -580,7 +659,7 @@ function dimancheActuel() {
   return d.toISOString().slice(0, 10); // format YYYY-MM-DD
 }
 
-function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, cardStyle }) {
+function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regulariteParMembre, cardStyle }) {
   const [nom, setNom] = useState("");
   const [telephone, setTelephone] = useState("");
   const [nouveauConverti, setNouveauConverti] = useState(false);
@@ -712,6 +791,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, cardStyle }) 
               compte={compte}
               membre={m}
               derniereSante={santeParMembre[m.id]}
+              regularite={regulariteParMembre?.[m.id]}
               ouvert={membreOuvert === m.id}
               onToggle={() => setMembreOuvert(membreOuvert === m.id ? null : m.id)}
               onSauvegarde={chargerSante}
@@ -744,7 +824,7 @@ function couleurScore(score) {
   return RED_LIGHT;
 }
 
-function FicheMembre({ compte, membre, derniereSante, ouvert, onToggle, onSauvegarde, onMisAJour, cardStyle }) {
+function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onToggle, onSauvegarde, onMisAJour, cardStyle }) {
   const [valeurs, setValeurs] = useState(() => {
     const init = {};
     DIMENSIONS_SANTE.forEach(([cle]) => { init[cle] = derniereSante?.[cle] ?? 5; });
@@ -812,12 +892,28 @@ function FicheMembre({ compte, membre, derniereSante, ouvert, onToggle, onSauveg
       <button onClick={onToggle} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", color: CREAM, textAlign: "left" }}>
         <div>
           <p style={{ fontWeight: 600 }}>{membre.nom}</p>
-          <p style={{ fontSize: 12, color: "#a9d6cf" }}>{membre.telephone}</p>
-          {membre.nouveau_converti && (
-            <span style={{ fontSize: 10, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, borderRadius: 999, padding: "2px 8px", display: "inline-block", marginTop: 4 }}>
-              🌱 {LIBELLES_ETAPES[membre.etape_conversion || "accueil"]}
-            </span>
+          {membre.telephone && (
+            <a href={`tel:${membre.telephone}`} onClick={e => e.stopPropagation()} style={{ fontSize: 12, color: "#a9d6cf", textDecoration: "none" }}>
+              📞 {membre.telephone}
+            </a>
           )}
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
+            {membre.nouveau_converti && (
+              <span style={{ fontSize: 10, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, borderRadius: 999, padding: "2px 8px", display: "inline-block" }}>
+                🌱 {LIBELLES_ETAPES[membre.etape_conversion || "accueil"]}
+              </span>
+            )}
+            {regularite?.absencesConsecutives >= 2 && (
+              <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "2px 8px", display: "inline-block" }}>
+                ⚠️ {regularite.absencesConsecutives} absences — Visite à faire
+              </span>
+            )}
+            {regularite?.presencesConsecutives >= 4 && (
+              <span style={{ fontSize: 10, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD, borderRadius: 999, padding: "2px 8px", display: "inline-block" }}>
+                ⭐ Régulier ({regularite.presencesConsecutives})
+              </span>
+            )}
+          </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <span style={{ fontSize: 12, fontWeight: 700, color: couleurScore(moyenne) }}>
@@ -1304,7 +1400,7 @@ function PageMotsDePasse({ cardStyle, onTraite }) {
 
 /* ------------------------------- Mon espace (responsable) ------------------------------- */
 
-function MonEspace({ compte, assignation, gems, membres, tribus, departements, gemOuvert, setGemOuvert, onMembreAjoute, onCreerGem, cardStyle }) {
+function MonEspace({ compte, assignation, gems, membres, tribus, departements, gemOuvert, setGemOuvert, onMembreAjoute, onCreerGem, regulariteParMembre, cardStyle }) {
   const [nomNouveauGem, setNomNouveauGem] = useState("");
   const [creationOuverte, setCreationOuverte] = useState(false);
 
@@ -1318,6 +1414,7 @@ function MonEspace({ compte, assignation, gems, membres, tribus, departements, g
         membres={membres.filter(m => m.gem_id === gemOuvert.id)}
         onBack={() => setGemOuvert(null)}
         onMembreAjoute={onMembreAjoute}
+        regulariteParMembre={regulariteParMembre}
         cardStyle={cardStyle}
       />
     );
@@ -1334,6 +1431,7 @@ function MonEspace({ compte, assignation, gems, membres, tribus, departements, g
         membres={membres.filter(m => m.gem_id === monGem.id)}
         onBack={null}
         onMembreAjoute={onMembreAjoute}
+        regulariteParMembre={regulariteParMembre}
         cardStyle={cardStyle}
       />
     );
