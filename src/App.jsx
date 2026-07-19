@@ -617,12 +617,22 @@ function PrioritesPastorales({ membres, gems, regulariteParMembre, cardStyle }) 
                 <p style={{ fontWeight: 700, marginBottom: 2 }}>{membre.nom}</p>
                 <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomGem(membre.gem_id)}</p>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: RED_LIGHT }}>{regularite.absencesConsecutives} absences consécutives</span>
                 {membre.telephone && (
-                  <a href={`tel:${membre.telephone}`} style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, textDecoration: "none", border: `1px solid ${GOLD_LIGHT}`, borderRadius: 6, padding: "6px 10px" }}>
-                    📞 Appeler
-                  </a>
+                  <>
+                    <a href={`tel:${membre.telephone}`} style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, textDecoration: "none", border: `1px solid ${GOLD_LIGHT}`, borderRadius: 6, padding: "6px 10px" }}>
+                      📞 Appeler
+                    </a>
+                    <a
+                      href={`https://wa.me/${membre.telephone.replace(/[^\d]/g, "")}?text=${encodeURIComponent(`Bonjour ${membre.nom}, tu nous manques beaucoup ces derniers temps. Est-ce que tout va bien ? Nous t'aimons et espérons te revoir bientôt au culte. 🙏`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      style={{ fontSize: 12, fontWeight: 700, color: "#25D366", textDecoration: "none", border: "1px solid #25D366", borderRadius: 6, padding: "6px 10px" }}
+                    >
+                      💬 WhatsApp
+                    </a>
+                  </>
                 )}
               </div>
             </div>
