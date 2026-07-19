@@ -3016,6 +3016,7 @@ function PageCalendrier({ estPasteur, compte, onOuverture, cardStyle }) {
 function PageHistorique({ cardStyle }) {
   const [chargement, setChargement] = useState(true);
   const [presenceParDimanche, setPresenceParDimanche] = useState([]); // [{ date, presents, total }]
+  const [presenceParMois, setPresenceParMois] = useState([]); // [{ mois, taux }]
   const [santeParMois, setSanteParMois] = useState([]); // [{ mois, moyenne }]
   const [totalMembres, setTotalMembres] = useState(0);
 
@@ -3023,20 +3024,39 @@ function PageHistorique({ cardStyle }) {
 
   async function chargerHistorique() {
     setChargement(true);
-    const [{ data: dimanches }, { data: presences }, { data: sante }, { count: nbMembres }] = await Promise.all([
+    const [{ data: dimanchesRecents }, { data: dimanchesTous }, { data: presences }, { data: sante }, { count: nbMembres }] = await Promise.all([
       supabase.from("dimanches").select("*").order("date", { ascending: true }).limit(16),
+      supabase.from("dimanches").select("*").order("date", { ascending: true }).limit(200),
       supabase.from("presences").select("*"),
       supabase.from("sante_spirituelle").select("*"),
       supabase.from("membres").select("*", { count: "exact", head: true }),
     ]);
     setTotalMembres(nbMembres || 0);
 
-    const evolutionPresence = (dimanches || []).map(d => {
+    const evolutionPresence = (dimanchesRecents || []).map(d => {
       const presentsCeDimanche = (presences || []).filter(p => p.dimanche_id === d.id && p.present).length;
       const totalPointe = (presences || []).filter(p => p.dimanche_id === d.id).length;
       return { date: d.date, presents: presentsCeDimanche, total: totalPointe };
     });
     setPresenceParDimanche(evolutionPresence);
+
+    // Taux de présence moyen par mois (sur l'ensemble des dimanches enregistrés, pas seulement les 16 derniers)
+    const moisDimanches = {};
+    (dimanchesTous || []).forEach(d => {
+      const cle = d.date.slice(0, 7);
+      if (!moisDimanches[cle]) moisDimanches[cle] = [];
+      moisDimanches[cle].push(d.id);
+    });
+    const evolutionPresenceMois = Object.entries(moisDimanches)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-12)
+      .map(([mois, idsDim]) => {
+        const presentsMois = (presences || []).filter(p => idsDim.includes(p.dimanche_id) && p.present).length;
+        const slotsMois = idsDim.length * (nbMembres || 0);
+        const taux = slotsMois > 0 ? Math.round((presentsMois / slotsMois) * 100) : 0;
+        return { mois, taux };
+      });
+    setPresenceParMois(evolutionPresenceMois);
 
     const parMois = {};
     (sante || []).forEach(s => {
@@ -3084,6 +3104,23 @@ function PageHistorique({ cardStyle }) {
                     <span style={{ fontSize: 9, color: "#a9d6cf", marginTop: 4, whiteSpace: "nowrap" }}>
                       {new Date(p.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}
                     </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div style={{ ...cardStyle, marginBottom: 24 }}>
+            <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>Taux de présence moyen par mois</p>
+            {presenceParMois.length === 0 ? (
+              <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucune donnée mensuelle pour l'instant.</p>
+            ) : (
+              <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 140, overflowX: "auto", paddingBottom: 4 }}>
+                {presenceParMois.map((m, i) => (
+                  <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 34 }}>
+                    <span style={{ fontSize: 10, color: GOLD_LIGHT, fontWeight: 700, marginBottom: 3 }}>{m.taux}%</span>
+                    <div style={{ width: 20, height: Math.max(4, (m.taux / 100) * 90), backgroundColor: GOLD, borderRadius: 4 }} />
+                    <span style={{ fontSize: 9, color: "#a9d6cf", marginTop: 4, whiteSpace: "nowrap" }}>{libelleMois(m.mois)}</span>
                   </div>
                 ))}
               </div>
