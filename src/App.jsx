@@ -12,7 +12,29 @@ const TEAL_800 = "#188478", TEAL_700 = "#1F9C8D", TEAL_600 = "#27B3A1";
 const GOLD = "#D0AF1C", GOLD_LIGHT = "#E8CA4A", CREAM = "#FFFFFF";
 const RED_LIGHT = "#e2626d";
 
-export default function App() {
+// Filet de sécurité : si un bug imprévu survient n'importe où dans l'application,
+// on affiche un message clair avec un bouton pour recharger, plutôt qu'un écran blanc.
+class LimiteErreurs extends React.Component {
+  constructor(props) { super(props); this.state = { erreur: null }; }
+  static getDerivedStateFromError(erreur) { return { erreur }; }
+  componentDidCatch(erreur, info) { console.error("Erreur applicative :", erreur, info); }
+  render() {
+    if (this.state.erreur) {
+      return (
+        <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", backgroundColor: TEAL_950, color: CREAM, padding: 24, textAlign: "center" }}>
+          <p style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Une erreur inattendue est survenue</p>
+          <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20, maxWidth: 400 }}>Aucune donnée n'a été perdue. Recharge la page pour continuer.</p>
+          <button onClick={() => window.location.reload()} style={{ padding: "10px 20px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>
+            Recharger la page
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function App() {
   const [session, setSession] = useState(null);
   const [compte, setCompte] = useState(null);
   const [chargement, setChargement] = useState(true);
@@ -48,6 +70,14 @@ export default function App() {
   if (!session || !compte) return <EcranConnexion />;
 
   return <TableauDeBord compte={compte} />;
+}
+
+export default function AppAvecProtection() {
+  return (
+    <LimiteErreurs>
+      <App />
+    </LimiteErreurs>
+  );
 }
 
 /* --------------------------- Écran de connexion --------------------------- */
@@ -129,13 +159,16 @@ function EcranConnexion() {
     setEnvoiOubliEnCours(true);
     // Enregistre une demande visible par le pasteur — l'app n'a pas de système d'e-mail,
     // la réinitialisation se fait manuellement par le pasteur ou un assistant désigné.
-    // On compare uniquement les chiffres pour ignorer les différences de format (espaces, +225, tirets...).
-    const cible = chiffresSeuls(telephoneOubli);
-    const { data: tousLesComptes } = await supabase.from("comptes").select("id, telephone");
-    const compteExistant = (tousLesComptes || []).find(c => chiffresSeuls(c.telephone).endsWith(cible) || cible.endsWith(chiffresSeuls(c.telephone)));
+    // La recherche du compte correspondant se fait côté serveur (fonction sécurisée) :
+    // le navigateur ne reçoit jamais la liste des comptes, seulement le résultat.
+    let compteId = null;
+    try {
+      const { data } = await supabase.functions.invoke("lookup-phone", { body: { telephone: telephoneOubli.trim() } });
+      compteId = data?.compte_id || null;
+    } catch { /* si la fonction est indisponible, on enregistre quand même la demande sans lien de compte */ }
     await supabase.from("demandes_mot_de_passe").insert({
       telephone: telephoneOubli.trim(),
-      compte_id: compteExistant?.id || null,
+      compte_id: compteId,
       statut: "attente",
     });
     setEnvoiOubliEnCours(false);
@@ -917,7 +950,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
       <div style={{ ...cardStyle, marginBottom: 20 }}>
         <p style={{ fontWeight: 600, marginBottom: 10, fontSize: 14 }}>Ajouter un membre</p>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-          {photo && <img src={photo} alt="" style={{ width: 40, height: 40, borderRadius: 999, objectFit: "cover", border: `1px solid ${GOLD}` }} />}
+          {photo && <img src={photo} alt="" style={{ width: 40, height: 40, borderRadius: 999, objectFit: "cover", border: `1px solid ${GOLD}`, flexShrink: 0 }} />}
           <label style={{ fontSize: 11, color: GOLD_LIGHT, cursor: "pointer", border: `1px solid ${TEAL_600}`, borderRadius: 8, padding: "8px 10px", whiteSpace: "nowrap" }}>
             📷 Photo (optionnel)
             <input type="file" accept="image/*" onChange={surChoisirPhoto} style={{ display: "none" }} />
@@ -1099,9 +1132,17 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
   async function surChangerPhoto(e) {
     const fichier = e.target.files[0];
     if (!fichier) return;
-    const dataUrl = await redimensionnerPhoto(fichier);
-    await supabase.from("membres").update({ photo: dataUrl }).eq("id", membre.id);
-    if (onMisAJour) onMisAJour();
+    try {
+      const dataUrl = await redimensionnerPhoto(fichier);
+      const { error } = await supabase.from("membres").update({ photo: dataUrl }).eq("id", membre.id);
+      if (error) {
+        alert("La photo n'a pas pu être enregistrée : " + error.message + "\n\nVérifie que la colonne 'photo' a bien été ajoutée à la table membres dans Supabase.");
+        return;
+      }
+      if (onMisAJour) onMisAJour();
+    } catch (err) {
+      alert("Impossible de traiter cette photo : " + err.message);
+    }
   }
 
   return (
