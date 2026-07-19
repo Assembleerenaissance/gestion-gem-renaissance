@@ -243,6 +243,7 @@ function TableauDeBord({ compte }) {
   const [chargement, setChargement] = useState(true);
 
   const estPasteur = compte.role === "pasteur" || compte.assistant === true;
+  const aResponsabilitePersonnelle = mesAssignations.some(a => a.statut === "actif");
   const [dernierMessageLu, setDernierMessageLu] = useState(compte.dernier_message_lu || null);
   const [dernierEvenementVu, setDernierEvenementVu] = useState(compte.dernier_evenement_vu || null);
   const [nbNouveauxEvenements, setNbNouveauxEvenements] = useState(0);
@@ -392,6 +393,9 @@ function TableauDeBord({ compte }) {
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           {estPasteur ? (
             <>
+              {aResponsabilitePersonnelle && (
+                <button onClick={() => { setPage("mon_espace"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "mon_espace" ? TEAL_700 : "transparent", color: page === "mon_espace" ? GOLD_LIGHT : "#cdeae4" }}>Mon espace</button>
+              )}
               <button onClick={() => { setPage("dashboard"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "dashboard" ? TEAL_700 : "transparent", color: page === "dashboard" ? GOLD_LIGHT : "#cdeae4" }}>Tableau de bord</button>
               <button onClick={() => { setPage("tribus"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "tribus" ? TEAL_700 : "transparent", color: page === "tribus" ? GOLD_LIGHT : "#cdeae4" }}>Tribus</button>
               <button onClick={() => { setPage("departements"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "departements" ? TEAL_700 : "transparent", color: page === "departements" ? GOLD_LIGHT : "#cdeae4" }}>Départements</button>
@@ -461,7 +465,7 @@ function TableauDeBord({ compte }) {
       <div style={{ padding: 24 }}>
         {chargement ? (
           <p style={{ color: "#cdeae4" }}>Chargement des données…</p>
-        ) : !estPasteur && !mesAssignations.some(a => a.statut === "actif") ? (
+        ) : !estPasteur && !aResponsabilitePersonnelle ? (
           <DemanderResponsabilite
             compte={compte}
             tribus={tribus}
@@ -485,6 +489,23 @@ function TableauDeBord({ compte }) {
             estPasteur={estPasteur}
             compte={compte}
             onOuverture={() => { setDernierEvenementVu(new Date().toISOString()); setNbNouveauxEvenements(0); }}
+            cardStyle={cardStyle}
+          />
+        ) : page === "mon_espace" ? (
+          <MonEspace
+            compte={compte}
+            assignation={mesAssignations.find(a => a.statut === "actif")}
+            gems={gems}
+            membres={membres}
+            tribus={tribus}
+            departements={departements}
+            gemOuvert={gemOuvert}
+            setGemOuvert={setGemOuvert}
+            onMembreAjoute={chargerDonnees}
+            onCreerGem={chargerDonnees}
+            regulariteParMembre={regulariteParMembre}
+            membreCible={membreCible}
+            onMembreCibleConsomme={() => setMembreCible(null)}
             cardStyle={cardStyle}
           />
         ) : !estPasteur ? (
