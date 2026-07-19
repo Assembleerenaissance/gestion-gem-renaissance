@@ -792,16 +792,23 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
     if (membres.length > 0) {
       const { data: pres } = await supabase.from("presences").select("*").eq("dimanche_id", dim.id).in("membre_id", membres.map(m => m.id));
       const map = {};
-      (pres || []).forEach(p => { map[p.membre_id] = p.present; });
+      (pres || []).forEach(p => { map[p.membre_id] = { present: p.present, motif: p.motif || "" }; });
       setPresences(map);
     }
     setChargementPresences(false);
   }
 
   async function basculerPresence(membreId) {
-    const nouvelEtat = !presences[membreId];
-    setPresences(prev => ({ ...prev, [membreId]: nouvelEtat }));
-    await supabase.from("presences").upsert({ membre_id: membreId, dimanche_id: dimancheId, present: nouvelEtat }, { onConflict: "membre_id,dimanche_id" });
+    const etatActuel = presences[membreId];
+    const nouvelEtat = !etatActuel?.present;
+    const motifConserve = nouvelEtat ? "" : (etatActuel?.motif || "");
+    setPresences(prev => ({ ...prev, [membreId]: { present: nouvelEtat, motif: motifConserve } }));
+    await supabase.from("presences").upsert({ membre_id: membreId, dimanche_id: dimancheId, present: nouvelEtat, motif: motifConserve || null }, { onConflict: "membre_id,dimanche_id" });
+  }
+
+  async function enregistrerMotif(membreId, motif) {
+    setPresences(prev => ({ ...prev, [membreId]: { ...prev[membreId], motif } }));
+    await supabase.from("presences").upsert({ membre_id: membreId, dimanche_id: dimancheId, present: false, motif: motif || null }, { onConflict: "membre_id,dimanche_id" });
   }
 
   async function ajouterMembre() {
@@ -813,7 +820,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
     onMembreAjoute();
   }
 
-  const presentsCount = membres.filter(m => presences[m.id]).length;
+  const presentsCount = membres.filter(m => presences[m.id]?.present).length;
   const dateAffichee = new Date(dimancheActuel() + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
   return (
@@ -854,23 +861,34 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {membres.map(m => {
-              const present = !!presences[m.id];
+              const present = !!presences[m.id]?.present;
+              const motif = presences[m.id]?.motif || "";
               return (
-                <button
-                  key={m.id}
-                  onClick={() => basculerPresence(m.id)}
-                  style={{
-                    display: "flex", justifyContent: "space-between", alignItems: "center",
-                    padding: "10px 14px", borderRadius: 8, cursor: "pointer", textAlign: "left",
-                    backgroundColor: present ? "rgba(208,175,28,0.15)" : TEAL_900,
-                    border: `1px solid ${present ? GOLD : TEAL_700}`, color: CREAM,
-                  }}
-                >
-                  <span>{m.nom}</span>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: present ? GOLD_LIGHT : "#a9d6cf" }}>
-                    {present ? "✓ Présent" : "Absent"}
-                  </span>
-                </button>
+                <div key={m.id}>
+                  <button
+                    onClick={() => basculerPresence(m.id)}
+                    style={{
+                      display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%",
+                      padding: "10px 14px", borderRadius: present || !motif ? 8 : "8px 8px 0 0", cursor: "pointer", textAlign: "left",
+                      backgroundColor: present ? "rgba(208,175,28,0.15)" : TEAL_900,
+                      border: `1px solid ${present ? GOLD : TEAL_700}`, color: CREAM,
+                    }}
+                  >
+                    <span>{m.nom}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: present ? GOLD_LIGHT : "#a9d6cf" }}>
+                      {present ? "✓ Présent" : "Absent"}
+                    </span>
+                  </button>
+                  {!present && (
+                    <input
+                      defaultValue={motif}
+                      onBlur={e => enregistrerMotif(m.id, e.target.value)}
+                      onClick={e => e.stopPropagation()}
+                      placeholder="Motif de l'absence (optionnel)..."
+                      style={{ width: "100%", padding: "8px 14px", fontSize: 12, backgroundColor: TEAL_950, color: "#cdeae4", border: `1px solid ${TEAL_700}`, borderTop: "none", borderRadius: "0 0 8px 8px" }}
+                    />
+                  )}
+                </div>
               );
             })}
           </div>
@@ -1495,11 +1513,265 @@ function PageMotsDePasse({ cardStyle, onTraite }) {
   );
 }
 
+/* ------------------- Rapports & Évolution scopés (responsable dépt/tribu) ------------------- */
+
+function RapportPerimetre({ gems, membres, cardStyle }) {
+  const [vue, setVue] = useState("hebdomadaire");
+  const [dimanches, setDimanches] = useState([]);
+  const [dimancheChoisi, setDimancheChoisi] = useState(null);
+  const [presences, setPresences] = useState({});
+  const [motifsParMembre, setMotifsParMembre] = useState({});
+  const [santeParMembre, setSanteParMembre] = useState({});
+  const [dimanchesDuMois, setDimanchesDuMois] = useState([]);
+  const [moisChoisi, setMoisChoisi] = useState(null);
+  const [presencesMois, setPresencesMois] = useState([]);
+  const [santeMois, setSanteMois] = useState([]);
+  const [chargement, setChargement] = useState(true);
+
+  const idsMembres = membres.map(m => m.id);
+
+  useEffect(() => { chargerDimanches(); }, []);
+  useEffect(() => { if (dimancheChoisi && vue === "hebdomadaire") chargerHebdo(); }, [dimancheChoisi, vue]);
+  useEffect(() => { if (moisChoisi && vue === "mensuelle") chargerMensuel(); }, [moisChoisi, vue]);
+
+  async function chargerDimanches() {
+    const { data } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(52);
+    setDimanches(data || []);
+    if (data && data.length > 0) {
+      setDimancheChoisi(data[0].id);
+      setMoisChoisi([...new Set(data.map(d => d.date.slice(0, 7)))][0]);
+    } else {
+      setChargement(false);
+    }
+  }
+
+  async function chargerHebdo() {
+    setChargement(true);
+    if (idsMembres.length === 0) { setPresences({}); setMotifsParMembre({}); setSanteParMembre({}); setChargement(false); return; }
+    const [{ data: pres }, { data: sante }] = await Promise.all([
+      supabase.from("presences").select("*").eq("dimanche_id", dimancheChoisi).in("membre_id", idsMembres),
+      supabase.from("sante_spirituelle").select("*").in("membre_id", idsMembres).order("date_maj", { ascending: false }),
+    ]);
+    const mapPres = {}, mapMotifs = {};
+    (pres || []).forEach(p => { mapPres[p.membre_id] = p.present; if (p.motif) mapMotifs[p.membre_id] = p.motif; });
+    setPresences(mapPres);
+    setMotifsParMembre(mapMotifs);
+    const mapSante = {};
+    (sante || []).forEach(s => { if (!mapSante[s.membre_id]) mapSante[s.membre_id] = s; });
+    setSanteParMembre(mapSante);
+    setChargement(false);
+  }
+
+  async function chargerMensuel() {
+    setChargement(true);
+    const dimanchesFiltres = dimanches.filter(d => d.date.slice(0, 7) === moisChoisi);
+    setDimanchesDuMois(dimanchesFiltres);
+    const idsDim = dimanchesFiltres.map(d => d.id);
+    const debut = `${moisChoisi}-01`, fin = `${moisChoisi}-31`;
+    const [{ data: pres }, { data: sante }] = await Promise.all([
+      (idsDim.length > 0 && idsMembres.length > 0) ? supabase.from("presences").select("*").in("dimanche_id", idsDim).in("membre_id", idsMembres) : Promise.resolve({ data: [] }),
+      idsMembres.length > 0 ? supabase.from("sante_spirituelle").select("*").in("membre_id", idsMembres).gte("date_maj", debut).lte("date_maj", fin + "T23:59:59") : Promise.resolve({ data: [] }),
+    ]);
+    setPresencesMois(pres || []);
+    setSanteMois(sante || []);
+    setChargement(false);
+  }
+
+  function libelleMois(cle) {
+    if (!cle) return "";
+    const [annee, mois] = cle.split("-");
+    return new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  }
+
+  const moisDisponibles = [...new Set(dimanches.map(d => d.date.slice(0, 7)))];
+
+  const totalMembres = membres.length;
+  const totalPresents = membres.filter(m => presences[m.id]).length;
+  const tauxGlobal = totalMembres > 0 ? Math.round((totalPresents / totalMembres) * 100) : 0;
+  const scoresValides = membres.map(m => moyenneSante(santeParMembre[m.id])).filter(s => s !== null);
+  const scoreMoyenGlobal = scoresValides.length > 0 ? Math.round((scoresValides.reduce((a, b) => a + b, 0) / scoresValides.length) * 10) / 10 : null;
+  const dateAffichee = dimanches.find(d => d.id === dimancheChoisi);
+  const dateFormatee = dateAffichee ? new Date(dateAffichee.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : "";
+
+  const totalSlotsMois = dimanchesDuMois.length * membres.length;
+  const totalPresentsMois = presencesMois.filter(p => p.present).length;
+  const tauxMoyenMois = totalSlotsMois > 0 ? Math.round((totalPresentsMois / totalSlotsMois) * 100) : 0;
+  const scoresMois = santeMois.map(s => moyenneSante(s)).filter(s => s !== null);
+  const scoreMoyenMois = scoresMois.length > 0 ? Math.round((scoresMois.reduce((a, b) => a + b, 0) / scoresMois.length) * 10) / 10 : null;
+
+  function nomGem(gemId) { return gems.find(g => g.id === gemId)?.nom || ""; }
+
+  if (gems.length === 0) return <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun GEM dans ton périmètre pour l'instant.</p>;
+
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <button onClick={() => setVue("hebdomadaire")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "hebdomadaire" ? GOLD : TEAL_900, color: vue === "hebdomadaire" ? TEAL_950 : "#cdeae4" }}>Hebdomadaire</button>
+        <button onClick={() => setVue("mensuelle")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "mensuelle" ? GOLD : TEAL_900, color: vue === "mensuelle" ? TEAL_950 : "#cdeae4" }}>Mensuelle</button>
+      </div>
+
+      {dimanches.length === 0 ? (
+        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun dimanche enregistré pour l'instant.</p>
+      ) : vue === "hebdomadaire" ? (
+        <>
+          <select value={dimancheChoisi || ""} onChange={e => setDimancheChoisi(e.target.value)} style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, marginBottom: 16 }}>
+            {dimanches.map(d => <option key={d.id} value={d.id}>{new Date(d.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</option>)}
+          </select>
+          {chargement ? <p style={{ color: "#a9d6cf" }}>Chargement…</p> : (
+            <>
+              <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>Rapport du dimanche {dateFormatee}</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
+                <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Membres</p><p style={{ fontSize: 24, fontWeight: 700 }}>{totalMembres}</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Présents</p><p style={{ fontSize: 24, fontWeight: 700, color: GOLD_LIGHT }}>{totalPresents}</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Taux</p><p style={{ fontSize: 24, fontWeight: 700 }}>{tauxGlobal}%</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Santé moy.</p><p style={{ fontSize: 24, fontWeight: 700, color: couleurScore(scoreMoyenGlobal) }}>{scoreMoyenGlobal !== null ? `${scoreMoyenGlobal}/10` : "—"}</p></div>
+              </div>
+
+              <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>📵 Absents ({membres.filter(m => presences[m.id] === false).length})</p>
+              {membres.filter(m => presences[m.id] === false).length === 0 ? (
+                <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun absent pointé pour ce dimanche.</p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {membres.filter(m => presences[m.id] === false).map(m => {
+                    const numeroWhatsApp = (m.telephone || "").replace(/[^\d]/g, "");
+                    const messageWhatsApp = encodeURIComponent(`Bonjour ${m.nom}, tu nous as manqué au culte de ce dimanche. Tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏`);
+                    return (
+                      <div key={m.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                        <div>
+                          <p style={{ fontWeight: 700, marginBottom: 2 }}>{m.nom}</p>
+                          <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomGem(m.gem_id)} · {m.telephone}</p>
+                          {motifsParMembre[m.id] && <p style={{ fontSize: 12, color: "#e8c25a", marginTop: 4 }}>Motif : {motifsParMembre[m.id]}</p>}
+                        </div>
+                        {m.telephone && (
+                          <a href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "#25D366", textDecoration: "none", border: "1px solid #25D366", borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
+                            💬 WhatsApp
+                          </a>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </>
+      ) : (
+        <>
+          <select value={moisChoisi || ""} onChange={e => setMoisChoisi(e.target.value)} style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, marginBottom: 16, textTransform: "capitalize" }}>
+            {moisDisponibles.map(m => <option key={m} value={m}>{libelleMois(m)}</option>)}
+          </select>
+          {chargement ? <p style={{ color: "#a9d6cf" }}>Chargement…</p> : (
+            <>
+              <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16, textTransform: "capitalize" }}>Rapport de {libelleMois(moisChoisi)} — {dimanchesDuMois.length} dimanche(s)</p>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12 }}>
+                <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Membres</p><p style={{ fontSize: 24, fontWeight: 700 }}>{totalMembres}</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Taux moyen</p><p style={{ fontSize: 24, fontWeight: 700 }}>{tauxMoyenMois}%</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Santé moy.</p><p style={{ fontSize: 24, fontWeight: 700, color: couleurScore(scoreMoyenMois) }}>{scoreMoyenMois !== null ? `${scoreMoyenMois}/10` : "—"}</p></div>
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function EvolutionPerimetre({ membres, cardStyle }) {
+  const [chargement, setChargement] = useState(true);
+  const [presenceParDimanche, setPresenceParDimanche] = useState([]);
+  const [santeParMois, setSanteParMois] = useState([]);
+
+  const idsMembres = membres.map(m => m.id);
+
+  useEffect(() => { chargerEvolution(); }, [membres.length]);
+
+  async function chargerEvolution() {
+    setChargement(true);
+    if (idsMembres.length === 0) { setPresenceParDimanche([]); setSanteParMois([]); setChargement(false); return; }
+    const [{ data: dimanches }, { data: presences }, { data: sante }] = await Promise.all([
+      supabase.from("dimanches").select("*").order("date", { ascending: true }).limit(16),
+      supabase.from("presences").select("*").in("membre_id", idsMembres),
+      supabase.from("sante_spirituelle").select("*").in("membre_id", idsMembres),
+    ]);
+    const evolutionPresence = (dimanches || []).map(d => {
+      const presentsCeDimanche = (presences || []).filter(p => p.dimanche_id === d.id && p.present).length;
+      const totalPointe = (presences || []).filter(p => p.dimanche_id === d.id).length;
+      return { date: d.date, presents: presentsCeDimanche, total: totalPointe };
+    });
+    setPresenceParDimanche(evolutionPresence);
+
+    const parMois = {};
+    (sante || []).forEach(s => {
+      const cle = s.date_maj.slice(0, 7);
+      const moy = moyenneSante(s);
+      if (moy === null) return;
+      if (!parMois[cle]) parMois[cle] = [];
+      parMois[cle].push(moy);
+    });
+    const evolutionSante = Object.entries(parMois)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-12)
+      .map(([mois, valeurs]) => ({ mois, moyenne: Math.round((valeurs.reduce((a, b) => a + b, 0) / valeurs.length) * 10) / 10 }));
+    setSanteParMois(evolutionSante);
+    setChargement(false);
+  }
+
+  function libelleMois(cle) {
+    const [annee, mois] = cle.split("-");
+    return new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "short", year: "2-digit" });
+  }
+
+  const maxPresents = Math.max(1, ...presenceParDimanche.map(p => p.presents));
+
+  if (chargement) return <p style={{ color: "#a9d6cf" }}>Chargement…</p>;
+
+  return (
+    <div>
+      <div style={{ ...cardStyle, marginBottom: 24 }}>
+        <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>Présence par dimanche</p>
+        {presenceParDimanche.length === 0 ? (
+          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun pointage de présence pour l'instant.</p>
+        ) : (
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 140, overflowX: "auto", paddingBottom: 4 }}>
+            {presenceParDimanche.map((p, i) => (
+              <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 34 }}>
+                <span style={{ fontSize: 10, color: GOLD_LIGHT, fontWeight: 700, marginBottom: 3 }}>{p.presents}</span>
+                <div style={{ width: 20, height: Math.max(4, (p.presents / maxPresents) * 90), backgroundColor: GOLD, borderRadius: 4 }} />
+                <span style={{ fontSize: 9, color: "#a9d6cf", marginTop: 4, whiteSpace: "nowrap" }}>
+                  {new Date(p.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}
+                </span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div style={cardStyle}>
+        <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>Santé spirituelle moyenne par mois</p>
+        {santeParMois.length === 0 ? (
+          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucune évaluation enregistrée pour l'instant.</p>
+        ) : (
+          <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 140, overflowX: "auto", paddingBottom: 4 }}>
+            {santeParMois.map((s, i) => (
+              <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 34 }}>
+                <span style={{ fontSize: 10, color: couleurScore(s.moyenne), fontWeight: 700, marginBottom: 3 }}>{s.moyenne}</span>
+                <div style={{ width: 20, height: Math.max(4, (s.moyenne / 10) * 90), backgroundColor: couleurScore(s.moyenne), borderRadius: 4 }} />
+                <span style={{ fontSize: 9, color: "#a9d6cf", marginTop: 4, whiteSpace: "nowrap" }}>{libelleMois(s.mois)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* ------------------------------- Mon espace (responsable) ------------------------------- */
 
 function MonEspace({ compte, assignation, gems, membres, tribus, departements, gemOuvert, setGemOuvert, onMembreAjoute, onCreerGem, regulariteParMembre, membreCible, onMembreCibleConsomme, cardStyle }) {
   const [nomNouveauGem, setNomNouveauGem] = useState("");
   const [creationOuverte, setCreationOuverte] = useState(false);
+  const [sousOnglet, setSousOnglet] = useState("gems");
 
   if (!assignation) return <p style={{ color: "#a9d6cf" }}>Aucune responsabilité active trouvée.</p>;
 
@@ -1544,6 +1816,7 @@ function MonEspace({ compte, assignation, gems, membres, tribus, departements, g
     ? departements.find(d => d.id === assignation.departement_id)
     : tribus.find(t => t.id === assignation.tribu_id);
   const gemsDuPerimetre = gems.filter(g => estDept ? g.departement_id === assignation.departement_id : g.tribu_id === assignation.tribu_id);
+  const membresDuPerimetre = membres.filter(m => gemsDuPerimetre.some(g => g.id === m.gem_id));
 
   async function creerGem() {
     if (!nomNouveauGem.trim()) return;
@@ -1562,30 +1835,44 @@ function MonEspace({ compte, assignation, gems, membres, tribus, departements, g
       <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>
         {estDept ? "Mon département" : "Ma tribu"} — {parent?.nom || "…"}
       </h2>
-      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>{gemsDuPerimetre.length} GEM sous ta responsabilité</p>
+      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>{gemsDuPerimetre.length} GEM sous ta responsabilité</p>
 
-      <div style={{ ...cardStyle, marginBottom: 20 }}>
-        {creationOuverte ? (
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            <input value={nomNouveauGem} onChange={e => setNomNouveauGem(e.target.value)} placeholder="Nom du nouveau GEM" style={{ flex: 1, minWidth: 160, padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
-            <button onClick={creerGem} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>Créer</button>
-          </div>
-        ) : (
-          <button onClick={() => setCreationOuverte(true)} style={{ fontSize: 13, color: GOLD_LIGHT, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>+ Créer un nouveau GEM</button>
-        )}
+      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+        <button onClick={() => setSousOnglet("gems")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "gems" ? GOLD : TEAL_900, color: sousOnglet === "gems" ? TEAL_950 : "#cdeae4" }}>Mes GEM</button>
+        <button onClick={() => setSousOnglet("rapports")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "rapports" ? GOLD : TEAL_900, color: sousOnglet === "rapports" ? TEAL_950 : "#cdeae4" }}>Rapports</button>
+        <button onClick={() => setSousOnglet("evolution")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "evolution" ? GOLD : TEAL_900, color: sousOnglet === "evolution" ? TEAL_950 : "#cdeae4" }}>Évolution</button>
       </div>
 
-      {gemsDuPerimetre.length === 0 ? (
-        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun GEM pour l'instant dans ton périmètre.</p>
+      {sousOnglet === "rapports" ? (
+        <RapportPerimetre gems={gemsDuPerimetre} membres={membresDuPerimetre} cardStyle={cardStyle} />
+      ) : sousOnglet === "evolution" ? (
+        <EvolutionPerimetre membres={membresDuPerimetre} cardStyle={cardStyle} />
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {gemsDuPerimetre.map(g => (
-            <button key={g.id} onClick={() => setGemOuvert(g)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <span style={{ fontWeight: 700 }}>{g.nom}</span>
-              <span style={{ fontSize: 12, color: "#a9d6cf" }}>{membres.filter(m => m.gem_id === g.id).length} membre(s)</span>
-            </button>
-          ))}
-        </div>
+        <>
+          <div style={{ ...cardStyle, marginBottom: 20 }}>
+            {creationOuverte ? (
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <input value={nomNouveauGem} onChange={e => setNomNouveauGem(e.target.value)} placeholder="Nom du nouveau GEM" style={{ flex: 1, minWidth: 160, padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+                <button onClick={creerGem} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>Créer</button>
+              </div>
+            ) : (
+              <button onClick={() => setCreationOuverte(true)} style={{ fontSize: 13, color: GOLD_LIGHT, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>+ Créer un nouveau GEM</button>
+            )}
+          </div>
+
+          {gemsDuPerimetre.length === 0 ? (
+            <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun GEM pour l'instant dans ton périmètre.</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {gemsDuPerimetre.map(g => (
+                <button key={g.id} onClick={() => setGemOuvert(g)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontWeight: 700 }}>{g.nom}</span>
+                  <span style={{ fontSize: 12, color: "#a9d6cf" }}>{membres.filter(m => m.gem_id === g.id).length} membre(s)</span>
+                </button>
+              ))}
+            </div>
+          )}
+        </>
       )}
     </div>
   );
@@ -1914,6 +2201,7 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
   const [dimanches, setDimanches] = useState([]);
   const [dimancheChoisi, setDimancheChoisi] = useState(null);
   const [presences, setPresences] = useState({}); // { membre_id: true/false }
+  const [motifsParMembre, setMotifsParMembre] = useState({}); // { membre_id: motif }
   const [santeParMembre, setSanteParMembre] = useState({}); // { membre_id: dernierEnregistrement }
 
   const [dimanchesDuMois, setDimanchesDuMois] = useState([]);
@@ -1946,8 +2234,10 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
       supabase.from("sante_spirituelle").select("*").order("date_maj", { ascending: false }),
     ]);
     const mapPres = {};
-    (pres || []).forEach(p => { mapPres[p.membre_id] = p.present; });
+    const mapMotifs = {};
+    (pres || []).forEach(p => { mapPres[p.membre_id] = p.present; if (p.motif) mapMotifs[p.membre_id] = p.motif; });
     setPresences(mapPres);
+    setMotifsParMembre(mapMotifs);
     const mapSante = {};
     (sante || []).forEach(s => { if (s.membre_id && !mapSante[s.membre_id]) mapSante[s.membre_id] = s; });
     setSanteParMembre(mapSante);
@@ -2155,6 +2445,33 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
                           <p style={{ fontSize: 13, fontWeight: 700, color: GOLD_LIGHT }}>{presentsGem} / {membresGem.length} présents</p>
                           <p style={{ fontSize: 12, color: "#a9d6cf" }}>{tauxGem}% de présence</p>
                         </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              <p style={{ fontWeight: 600, fontSize: 14, marginTop: 28, marginBottom: 10 }}>📵 Absents ce dimanche ({membres.filter(m => presences[m.id] === false).length})</p>
+              {membres.filter(m => presences[m.id] === false).length === 0 ? (
+                <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun absent pointé pour ce dimanche.</p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {membres.filter(m => presences[m.id] === false).map(m => {
+                    const gemMembre = gems.find(g => g.id === m.gem_id);
+                    const numeroWhatsApp = (m.telephone || "").replace(/[^\d]/g, "");
+                    const messageWhatsApp = encodeURIComponent(`Bonjour ${m.nom}, tu nous as manqué au culte de ce dimanche. Tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏`);
+                    return (
+                      <div key={m.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                        <div>
+                          <p style={{ fontWeight: 700, marginBottom: 2 }}>{m.nom}</p>
+                          <p style={{ fontSize: 12, color: "#a9d6cf" }}>{gemMembre?.nom || "GEM inconnu"} · {m.telephone}</p>
+                          {motifsParMembre[m.id] && <p style={{ fontSize: 12, color: "#e8c25a", marginTop: 4 }}>Motif : {motifsParMembre[m.id]}</p>}
+                        </div>
+                        {m.telephone && (
+                          <a href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "#25D366", textDecoration: "none", border: "1px solid #25D366", borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
+                            💬 WhatsApp
+                          </a>
+                        )}
                       </div>
                     );
                   })}
