@@ -2196,7 +2196,7 @@ function SousPageCreerCompte({ compte, tribus, departements, onChange, cardStyle
 /* ------------------------------- Rapports ------------------------------- */
 
 function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
-  const [vue, setVue] = useState("hebdomadaire"); // hebdomadaire | mensuelle
+  const [vue, setVue] = useState("hebdomadaire"); // hebdomadaire | mensuelle | annuelle
 
   const [dimanches, setDimanches] = useState([]);
   const [dimancheChoisi, setDimancheChoisi] = useState(null);
@@ -2209,19 +2209,27 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
   const [presencesMois, setPresencesMois] = useState([]); // toutes les lignes presences du mois
   const [santeMois, setSanteMois] = useState([]);
 
+  const [dimanchesAnnee, setDimanchesAnnee] = useState([]);
+  const [anneeChoisie, setAnneeChoisie] = useState(null); // "YYYY"
+  const [presencesAnnee, setPresencesAnnee] = useState([]);
+  const [santeAnnee, setSanteAnnee] = useState([]);
+
   const [chargement, setChargement] = useState(true);
 
   useEffect(() => { chargerDimanches(); }, []);
   useEffect(() => { if (dimancheChoisi && vue === "hebdomadaire") chargerDonneesRapport(); }, [dimancheChoisi, vue]);
   useEffect(() => { if (moisChoisi && vue === "mensuelle") chargerDonneesMois(); }, [moisChoisi, vue]);
+  useEffect(() => { if (anneeChoisie && vue === "annuelle") chargerDonneesAnnee(); }, [anneeChoisie, vue]);
 
   async function chargerDimanches() {
-    const { data } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(52);
+    const { data } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(200);
     setDimanches(data || []);
     if (data && data.length > 0) {
       setDimancheChoisi(data[0].id);
       const moisDisponibles = [...new Set(data.map(d => d.date.slice(0, 7)))];
       setMoisChoisi(moisDisponibles[0]);
+      const anneesDisponibles = [...new Set(data.map(d => d.date.slice(0, 4)))];
+      setAnneeChoisie(anneesDisponibles[0]);
     } else {
       setChargement(false);
     }
@@ -2262,16 +2270,39 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
     setChargement(false);
   }
 
+  async function chargerDonneesAnnee() {
+    setChargement(true);
+    const dimanchesFiltres = dimanches.filter(d => d.date.slice(0, 4) === anneeChoisie);
+    setDimanchesAnnee(dimanchesFiltres);
+    const idsDimanches = dimanchesFiltres.map(d => d.id);
+    const debutAnnee = `${anneeChoisie}-01-01`;
+    const finAnnee = `${anneeChoisie}-12-31`;
+    const [{ data: pres }, { data: sante }] = await Promise.all([
+      idsDimanches.length > 0
+        ? supabase.from("presences").select("*").in("dimanche_id", idsDimanches)
+        : Promise.resolve({ data: [] }),
+      supabase.from("sante_spirituelle").select("*").gte("date_maj", debutAnnee).lte("date_maj", finAnnee + "T23:59:59"),
+    ]);
+    setPresencesAnnee(pres || []);
+    setSanteAnnee(sante || []);
+    setChargement(false);
+  }
+
   function nomParent(g) {
     if (g.tribu_id) return tribus.find(t => t.id === g.tribu_id)?.nom || "";
     return departements.find(d => d.id === g.departement_id)?.nom || "";
   }
 
   const moisDisponibles = [...new Set(dimanches.map(d => d.date.slice(0, 7)))];
+  const anneesDisponibles = [...new Set(dimanches.map(d => d.date.slice(0, 4)))];
   function libelleMois(cle) {
     if (!cle) return "";
     const [annee, mois] = cle.split("-");
     return new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  }
+  function libelleMoisCourt(cle) {
+    const [annee, mois] = cle.split("-");
+    return new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "short" });
   }
 
   // --- Vue hebdomadaire ---
@@ -2290,25 +2321,84 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
   const scoresMois = santeMois.map(s => moyenneSante(s)).filter(s => s !== null);
   const scoreMoyenMois = scoresMois.length > 0 ? Math.round((scoresMois.reduce((a, b) => a + b, 0) / scoresMois.length) * 10) / 10 : null;
 
-  // --- Classement tribus / départements (vue mensuelle) ---
-  function calculerClassement(type, items) {
+  // --- Vue annuelle : taux moyen et santé de l'année ---
+  const totalSlotsAnnee = dimanchesAnnee.length * membres.length;
+  const totalPresentsAnnee = presencesAnnee.filter(p => p.present).length;
+  const tauxMoyenAnnee = totalSlotsAnnee > 0 ? Math.round((totalPresentsAnnee / totalSlotsAnnee) * 100) : 0;
+  const scoresAnnee = santeAnnee.map(s => moyenneSante(s)).filter(s => s !== null);
+  const scoreMoyenAnnee = scoresAnnee.length > 0 ? Math.round((scoresAnnee.reduce((a, b) => a + b, 0) / scoresAnnee.length) * 10) / 10 : null;
+
+  const evolutionMensuelleAnnee = [...new Set(dimanchesAnnee.map(d => d.date.slice(0, 7)))].sort().map(mois => {
+    const dimanchesMoisCourant = dimanchesAnnee.filter(d => d.date.slice(0, 7) === mois);
+    const idsDimMois = dimanchesMoisCourant.map(d => d.id);
+    const slots = dimanchesMoisCourant.length * membres.length;
+    const presents = presencesAnnee.filter(p => idsDimMois.includes(p.dimanche_id) && p.present).length;
+    return { mois, taux: slots > 0 ? Math.round((presents / slots) * 100) : 0 };
+  });
+
+  // --- Classements génériques (présence, santé, membres) ---
+  function calculerClassementPresence(type, items, dimanchesPeriode, presencesPeriode) {
     return items
       .map(it => {
         const gemsDuParent = gems.filter(g => g.type === type && (type === "tribu" ? g.tribu_id : g.departement_id) === it.id);
         const idsGems = gemsDuParent.map(g => g.id);
         const membresDuParent = membres.filter(m => idsGems.includes(m.gem_id));
         const idsMembres = membresDuParent.map(m => m.id);
-        const slots = dimanchesDuMois.length * membresDuParent.length;
-        const presents = presencesMois.filter(p => idsMembres.includes(p.membre_id) && p.present).length;
-        const taux = slots > 0 ? Math.round((presents / slots) * 100) : null;
-        return { nom: it.nom, taux, nbMembres: membresDuParent.length };
+        const slots = dimanchesPeriode.length * membresDuParent.length;
+        const presents = presencesPeriode.filter(p => idsMembres.includes(p.membre_id) && p.present).length;
+        const valeur = slots > 0 ? Math.round((presents / slots) * 100) : null;
+        return { nom: it.nom, valeur, nbMembres: membresDuParent.length };
       })
-      .filter(x => x.taux !== null)
-      .sort((a, b) => b.taux - a.taux);
+      .filter(x => x.valeur !== null)
+      .sort((a, b) => b.valeur - a.valeur);
   }
 
-  const classementTribus = vue === "mensuelle" ? calculerClassement("tribu", tribus) : [];
-  const classementDepartements = vue === "mensuelle" ? calculerClassement("departement", departements) : [];
+  function calculerClassementSante(type, items, santePeriode) {
+    return items
+      .map(it => {
+        const gemsDuParent = gems.filter(g => g.type === type && (type === "tribu" ? g.tribu_id : g.departement_id) === it.id);
+        const idsGems = gemsDuParent.map(g => g.id);
+        const membresDuParent = membres.filter(m => idsGems.includes(m.gem_id));
+        const idsMembres = membresDuParent.map(m => m.id);
+        const scoresParMembre = {};
+        santePeriode.filter(s => idsMembres.includes(s.membre_id)).forEach(s => {
+          const moy = moyenneSante(s);
+          if (moy === null) return;
+          if (!scoresParMembre[s.membre_id]) scoresParMembre[s.membre_id] = [];
+          scoresParMembre[s.membre_id].push(moy);
+        });
+        const moyennesMembres = Object.values(scoresParMembre).map(arr => arr.reduce((a, b) => a + b, 0) / arr.length);
+        const valeur = moyennesMembres.length > 0 ? Math.round((moyennesMembres.reduce((a, b) => a + b, 0) / moyennesMembres.length) * 10) / 10 : null;
+        return { nom: it.nom, valeur, nbMembres: membresDuParent.length };
+      })
+      .filter(x => x.valeur !== null)
+      .sort((a, b) => b.valeur - a.valeur);
+  }
+
+  function calculerClassementMembres(dimanchesPeriode, presencesPeriode, limite) {
+    return membres
+      .map(m => {
+        const slots = dimanchesPeriode.length;
+        const presents = presencesPeriode.filter(p => p.membre_id === m.id && p.present).length;
+        const valeur = slots > 0 ? Math.round((presents / slots) * 100) : null;
+        return { id: m.id, nom: m.nom, gemNom: gems.find(g => g.id === m.gem_id)?.nom || "", valeur };
+      })
+      .filter(x => x.valeur !== null && x.valeur > 0)
+      .sort((a, b) => b.valeur - a.valeur)
+      .slice(0, limite);
+  }
+
+  const classementTribusPresenceMois = vue === "mensuelle" ? calculerClassementPresence("tribu", tribus, dimanchesDuMois, presencesMois) : [];
+  const classementDepartementsPresenceMois = vue === "mensuelle" ? calculerClassementPresence("departement", departements, dimanchesDuMois, presencesMois) : [];
+  const classementTribusSanteMois = vue === "mensuelle" ? calculerClassementSante("tribu", tribus, santeMois) : [];
+  const classementDepartementsSanteMois = vue === "mensuelle" ? calculerClassementSante("departement", departements, santeMois) : [];
+  const classementMembresMois = vue === "mensuelle" ? calculerClassementMembres(dimanchesDuMois, presencesMois, 10) : [];
+
+  const classementTribusPresenceAnnee = vue === "annuelle" ? calculerClassementPresence("tribu", tribus, dimanchesAnnee, presencesAnnee) : [];
+  const classementDepartementsPresenceAnnee = vue === "annuelle" ? calculerClassementPresence("departement", departements, dimanchesAnnee, presencesAnnee) : [];
+  const classementTribusSanteAnnee = vue === "annuelle" ? calculerClassementSante("tribu", tribus, santeAnnee) : [];
+  const classementDepartementsSanteAnnee = vue === "annuelle" ? calculerClassementSante("departement", departements, santeAnnee) : [];
+  const classementMembresAnnee = vue === "annuelle" ? calculerClassementMembres(dimanchesAnnee, presencesAnnee, 10) : [];
 
   function telechargerCSV(lignes, entetes, nomFichier) {
     const ligneEntete = entetes.join(",");
@@ -2334,10 +2424,24 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
 
   function exporterCSVMensuel() {
     const lignes = [
-      ...classementTribus.map(x => ({ Type: "Tribu", Nom: x.nom, Membres: x.nbMembres, Taux: `${x.taux}%` })),
-      ...classementDepartements.map(x => ({ Type: "Département", Nom: x.nom, Membres: x.nbMembres, Taux: `${x.taux}%` })),
+      ...classementTribusPresenceMois.map(x => ({ Type: "Tribu", Critere: "Présence", Nom: x.nom, Membres: x.nbMembres, Valeur: `${x.valeur}%` })),
+      ...classementDepartementsPresenceMois.map(x => ({ Type: "Département", Critere: "Présence", Nom: x.nom, Membres: x.nbMembres, Valeur: `${x.valeur}%` })),
+      ...classementTribusSanteMois.map(x => ({ Type: "Tribu", Critere: "Santé", Nom: x.nom, Membres: x.nbMembres, Valeur: `${x.valeur}/10` })),
+      ...classementDepartementsSanteMois.map(x => ({ Type: "Département", Critere: "Santé", Nom: x.nom, Membres: x.nbMembres, Valeur: `${x.valeur}/10` })),
+      ...classementMembresMois.map(x => ({ Type: "Membre", Critere: "Régularité", Nom: `${x.nom} (${x.gemNom})`, Membres: "", Valeur: `${x.valeur}%` })),
     ];
-    telechargerCSV(lignes, ["Type", "Nom", "Membres", "Taux"], `rapport-mensuel-${moisChoisi}.csv`);
+    telechargerCSV(lignes, ["Type", "Critere", "Nom", "Membres", "Valeur"], `rapport-mensuel-${moisChoisi}.csv`);
+  }
+
+  function exporterCSVAnnuel() {
+    const lignes = [
+      ...classementTribusPresenceAnnee.map(x => ({ Type: "Tribu", Critere: "Présence", Nom: x.nom, Membres: x.nbMembres, Valeur: `${x.valeur}%` })),
+      ...classementDepartementsPresenceAnnee.map(x => ({ Type: "Département", Critere: "Présence", Nom: x.nom, Membres: x.nbMembres, Valeur: `${x.valeur}%` })),
+      ...classementTribusSanteAnnee.map(x => ({ Type: "Tribu", Critere: "Santé", Nom: x.nom, Membres: x.nbMembres, Valeur: `${x.valeur}/10` })),
+      ...classementDepartementsSanteAnnee.map(x => ({ Type: "Département", Critere: "Santé", Nom: x.nom, Membres: x.nbMembres, Valeur: `${x.valeur}/10` })),
+      ...classementMembresAnnee.map(x => ({ Type: "Membre", Critere: "Régularité", Nom: `${x.nom} (${x.gemNom})`, Membres: "", Valeur: `${x.valeur}%` })),
+    ];
+    telechargerCSV(lignes, ["Type", "Critere", "Nom", "Membres", "Valeur"], `rapport-annuel-${anneeChoisie}.csv`);
   }
 
   function medaille(position) {
@@ -2347,12 +2451,12 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
     return `${position + 1}.`;
   }
 
-  function Classement({ titre, liste }) {
+  function Classement({ titre, liste, suffixe, maxValeur }) {
     return (
-      <div style={{ marginBottom: 24 }}>
-        <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>{titre}</p>
+      <div style={{ marginBottom: 20 }}>
+        <p style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>{titre}</p>
         {liste.length === 0 ? (
-          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Pas assez de données ce mois-ci pour établir un classement.</p>
+          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Pas assez de données pour établir un classement.</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {liste.map((item, i) => (
@@ -2362,11 +2466,34 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
                     <span style={{ marginRight: 8 }}>{medaille(i)}</span>
                     {item.nom}
                   </span>
-                  <span style={{ fontWeight: 700, fontSize: 13, color: GOLD_LIGHT }}>{item.taux}%</span>
+                  <span style={{ fontWeight: 700, fontSize: 13, color: GOLD_LIGHT }}>{item.valeur}{suffixe}</span>
                 </div>
                 <div style={{ height: 6, borderRadius: 999, backgroundColor: TEAL_900, overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${item.taux}%`, backgroundColor: GOLD, borderRadius: 999 }} />
+                  <div style={{ height: "100%", width: `${Math.min(100, (item.valeur / maxValeur) * 100)}%`, backgroundColor: GOLD, borderRadius: 999 }} />
                 </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function ClassementMembres({ liste }) {
+    return (
+      <div style={{ marginBottom: 20 }}>
+        <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>🏅 Top 10 des membres les plus réguliers</p>
+        {liste.length === 0 ? (
+          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Pas assez de pointages pour établir ce classement.</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {liste.map((item, i) => (
+              <div key={item.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <div>
+                  <span style={{ fontWeight: 700, fontSize: 13 }}>{medaille(i)} {item.nom}</span>
+                  <p style={{ fontSize: 11, color: "#a9d6cf", margin: 0 }}>{item.gemNom}</p>
+                </div>
+                <span style={{ fontWeight: 700, fontSize: 13, color: GOLD_LIGHT }}>{item.valeur}%</span>
               </div>
             ))}
           </div>
@@ -2379,12 +2506,15 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
     <div>
       <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Rapports</h2>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
         <button onClick={() => setVue("hebdomadaire")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "hebdomadaire" ? GOLD : TEAL_900, color: vue === "hebdomadaire" ? TEAL_950 : "#cdeae4" }}>
           Vue hebdomadaire
         </button>
         <button onClick={() => setVue("mensuelle")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "mensuelle" ? GOLD : TEAL_900, color: vue === "mensuelle" ? TEAL_950 : "#cdeae4" }}>
           Vue mensuelle
+        </button>
+        <button onClick={() => setVue("annuelle")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "annuelle" ? GOLD : TEAL_900, color: vue === "annuelle" ? TEAL_950 : "#cdeae4" }}>
+          Vue annuelle
         </button>
       </div>
 
@@ -2480,7 +2610,7 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
             </>
           )}
         </>
-      ) : (
+      ) : vue === "mensuelle" ? (
         <>
           <div style={{ marginBottom: 20 }}>
             <label style={{ fontSize: 12, color: "#a9d6cf", display: "block", marginBottom: 6 }}>Mois</label>
@@ -2513,9 +2643,75 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
                 <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Santé spirituelle moy.</p><p style={{ fontSize: 28, fontWeight: 700, color: couleurScore(scoreMoyenMois) }}>{scoreMoyenMois !== null ? `${scoreMoyenMois}/10` : "—"}</p></div>
               </div>
 
-              <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>🏆 Classement par régularité</p>
-              <Classement titre="Tribus" liste={classementTribus} />
-              <Classement titre="Départements" liste={classementDepartements} />
+              <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>🏆 Classement par régularité (présence)</p>
+              <Classement titre="Tribus" liste={classementTribusPresenceMois} suffixe="%" maxValeur={100} />
+              <Classement titre="Départements" liste={classementDepartementsPresenceMois} suffixe="%" maxValeur={100} />
+
+              <p style={{ fontWeight: 700, fontSize: 16, marginTop: 24, marginBottom: 14 }}>🌱 Classement par santé spirituelle</p>
+              <Classement titre="Tribus" liste={classementTribusSanteMois} suffixe="/10" maxValeur={10} />
+              <Classement titre="Départements" liste={classementDepartementsSanteMois} suffixe="/10" maxValeur={10} />
+
+              <ClassementMembres liste={classementMembresMois} />
+            </>
+          )}
+        </>
+      ) : (
+        <>
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ fontSize: 12, color: "#a9d6cf", display: "block", marginBottom: 6 }}>Année</label>
+            <select
+              value={anneeChoisie || ""}
+              onChange={e => setAnneeChoisie(e.target.value)}
+              style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, minWidth: 160 }}
+            >
+              {anneesDisponibles.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+          </div>
+
+          {chargement ? (
+            <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+          ) : (
+            <>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
+                <p style={{ fontSize: 13, color: "#a9d6cf", margin: 0 }}>Rapport annuel {anneeChoisie} — {dimanchesAnnee.length} dimanche(s) enregistré(s)</p>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={exporterCSVAnnuel} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>📊 Exporter CSV (Excel)</button>
+                  <button onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
+                </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 28 }}>
+                <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}>{totalMembres}</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Taux de présence annuel</p><p style={{ fontSize: 28, fontWeight: 700 }}>{tauxMoyenAnnee}%</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Santé spirituelle moy.</p><p style={{ fontSize: 28, fontWeight: 700, color: couleurScore(scoreMoyenAnnee) }}>{scoreMoyenAnnee !== null ? `${scoreMoyenAnnee}/10` : "—"}</p></div>
+              </div>
+
+              <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>📈 Évolution mensuelle du taux de présence — {anneeChoisie}</p>
+              {evolutionMensuelleAnnee.length === 0 ? (
+                <p style={{ color: "#a9d6cf", fontSize: 13, marginBottom: 24 }}>Pas encore de données pour cette année.</p>
+              ) : (
+                <div style={{ ...cardStyle, marginBottom: 28 }}>
+                  <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 130, overflowX: "auto", paddingBottom: 4 }}>
+                    {evolutionMensuelleAnnee.map((m, i) => (
+                      <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 34 }}>
+                        <span style={{ fontSize: 10, color: GOLD_LIGHT, fontWeight: 700, marginBottom: 3 }}>{m.taux}%</span>
+                        <div style={{ width: 20, height: Math.max(4, (m.taux / 100) * 80), backgroundColor: GOLD, borderRadius: 4 }} />
+                        <span style={{ fontSize: 9, color: "#a9d6cf", marginTop: 4, textTransform: "capitalize" }}>{libelleMoisCourt(m.mois)}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>🏆 Classement annuel par régularité (présence)</p>
+              <Classement titre="Tribus" liste={classementTribusPresenceAnnee} suffixe="%" maxValeur={100} />
+              <Classement titre="Départements" liste={classementDepartementsPresenceAnnee} suffixe="%" maxValeur={100} />
+
+              <p style={{ fontWeight: 700, fontSize: 16, marginTop: 24, marginBottom: 14 }}>🌱 Classement annuel par santé spirituelle</p>
+              <Classement titre="Tribus" liste={classementTribusSanteAnnee} suffixe="/10" maxValeur={10} />
+              <Classement titre="Départements" liste={classementDepartementsSanteAnnee} suffixe="/10" maxValeur={10} />
+
+              <ClassementMembres liste={classementMembresAnnee} />
             </>
           )}
         </>
