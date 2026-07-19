@@ -988,8 +988,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
               const motif = presences[m.id]?.motif || "";
               return (
                 <div key={m.id}>
-                  <button
-                    onClick={() => basculerPresence(m.id)}
+                  <label
                     style={{
                       display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%",
                       padding: "10px 14px", borderRadius: present || !motif ? 8 : "8px 8px 0 0", cursor: "pointer", textAlign: "left",
@@ -997,11 +996,19 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
                       border: `1px solid ${present ? GOLD : TEAL_700}`, color: CREAM,
                     }}
                   >
-                    <span>{m.nom}</span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <input
+                        type="checkbox"
+                        checked={present}
+                        onChange={() => basculerPresence(m.id)}
+                        style={{ width: 18, height: 18, cursor: "pointer", accentColor: GOLD }}
+                      />
+                      <span>{m.nom}</span>
+                    </span>
                     <span style={{ fontSize: 12, fontWeight: 700, color: present ? GOLD_LIGHT : "#a9d6cf" }}>
                       {present ? "✓ Présent" : "Absent"}
                     </span>
-                  </button>
+                  </label>
                   {!present && (
                     <input
                       defaultValue={motif}
