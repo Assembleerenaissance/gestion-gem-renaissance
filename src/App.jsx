@@ -1808,20 +1808,34 @@ function SousPageCreerCompte({ compte, tribus, departements, onChange, cardStyle
 /* ------------------------------- Rapports ------------------------------- */
 
 function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
+  const [vue, setVue] = useState("hebdomadaire"); // hebdomadaire | mensuelle
+
   const [dimanches, setDimanches] = useState([]);
   const [dimancheChoisi, setDimancheChoisi] = useState(null);
   const [presences, setPresences] = useState({}); // { membre_id: true/false }
   const [santeParMembre, setSanteParMembre] = useState({}); // { membre_id: dernierEnregistrement }
+
+  const [dimanchesDuMois, setDimanchesDuMois] = useState([]);
+  const [moisChoisi, setMoisChoisi] = useState(null); // "YYYY-MM"
+  const [presencesMois, setPresencesMois] = useState([]); // toutes les lignes presences du mois
+  const [santeMois, setSanteMois] = useState([]);
+
   const [chargement, setChargement] = useState(true);
 
   useEffect(() => { chargerDimanches(); }, []);
-  useEffect(() => { if (dimancheChoisi) chargerDonneesRapport(); }, [dimancheChoisi]);
+  useEffect(() => { if (dimancheChoisi && vue === "hebdomadaire") chargerDonneesRapport(); }, [dimancheChoisi, vue]);
+  useEffect(() => { if (moisChoisi && vue === "mensuelle") chargerDonneesMois(); }, [moisChoisi, vue]);
 
   async function chargerDimanches() {
-    const { data } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(26);
+    const { data } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(52);
     setDimanches(data || []);
-    if (data && data.length > 0) setDimancheChoisi(data[0].id);
-    else setChargement(false);
+    if (data && data.length > 0) {
+      setDimancheChoisi(data[0].id);
+      const moisDisponibles = [...new Set(data.map(d => d.date.slice(0, 7)))];
+      setMoisChoisi(moisDisponibles[0]);
+    } else {
+      setChargement(false);
+    }
   }
 
   async function chargerDonneesRapport() {
@@ -1839,78 +1853,210 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
     setChargement(false);
   }
 
+  async function chargerDonneesMois() {
+    setChargement(true);
+    const dimanchesFiltres = dimanches.filter(d => d.date.slice(0, 7) === moisChoisi);
+    setDimanchesDuMois(dimanchesFiltres);
+    const idsDimanches = dimanchesFiltres.map(d => d.id);
+    const debutMois = `${moisChoisi}-01`;
+    const finMois = `${moisChoisi}-31`;
+    const [{ data: pres }, { data: sante }] = await Promise.all([
+      idsDimanches.length > 0
+        ? supabase.from("presences").select("*").in("dimanche_id", idsDimanches)
+        : Promise.resolve({ data: [] }),
+      supabase.from("sante_spirituelle").select("*").gte("date_maj", debutMois).lte("date_maj", finMois + "T23:59:59"),
+    ]);
+    setPresencesMois(pres || []);
+    setSanteMois(sante || []);
+    setChargement(false);
+  }
+
   function nomParent(g) {
     if (g.tribu_id) return tribus.find(t => t.id === g.tribu_id)?.nom || "";
     return departements.find(d => d.id === g.departement_id)?.nom || "";
   }
 
+  const moisDisponibles = [...new Set(dimanches.map(d => d.date.slice(0, 7)))];
+  function libelleMois(cle) {
+    if (!cle) return "";
+    const [annee, mois] = cle.split("-");
+    return new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  }
+
+  // --- Vue hebdomadaire ---
   const totalMembres = membres.length;
   const totalPresents = membres.filter(m => presences[m.id]).length;
   const tauxGlobal = totalMembres > 0 ? Math.round((totalPresents / totalMembres) * 100) : 0;
-
   const scoresValides = membres.map(m => moyenneSante(santeParMembre[m.id])).filter(s => s !== null);
   const scoreMoyenGlobal = scoresValides.length > 0 ? Math.round((scoresValides.reduce((a, b) => a + b, 0) / scoresValides.length) * 10) / 10 : null;
-
   const dateAffichee = dimanches.find(d => d.id === dimancheChoisi);
   const dateFormatee = dateAffichee ? new Date(dateAffichee.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : "";
+
+  // --- Vue mensuelle : taux moyen et santé du mois ---
+  const totalSlotsMois = dimanchesDuMois.length * membres.length;
+  const totalPresentsMois = presencesMois.filter(p => p.present).length;
+  const tauxMoyenMois = totalSlotsMois > 0 ? Math.round((totalPresentsMois / totalSlotsMois) * 100) : 0;
+  const scoresMois = santeMois.map(s => moyenneSante(s)).filter(s => s !== null);
+  const scoreMoyenMois = scoresMois.length > 0 ? Math.round((scoresMois.reduce((a, b) => a + b, 0) / scoresMois.length) * 10) / 10 : null;
+
+  // --- Classement tribus / départements (vue mensuelle) ---
+  function calculerClassement(type, items) {
+    return items
+      .map(it => {
+        const gemsDuParent = gems.filter(g => g.type === type && (type === "tribu" ? g.tribu_id : g.departement_id) === it.id);
+        const idsGems = gemsDuParent.map(g => g.id);
+        const membresDuParent = membres.filter(m => idsGems.includes(m.gem_id));
+        const idsMembres = membresDuParent.map(m => m.id);
+        const slots = dimanchesDuMois.length * membresDuParent.length;
+        const presents = presencesMois.filter(p => idsMembres.includes(p.membre_id) && p.present).length;
+        const taux = slots > 0 ? Math.round((presents / slots) * 100) : null;
+        return { nom: it.nom, taux, nbMembres: membresDuParent.length };
+      })
+      .filter(x => x.taux !== null)
+      .sort((a, b) => b.taux - a.taux);
+  }
+
+  const classementTribus = vue === "mensuelle" ? calculerClassement("tribu", tribus) : [];
+  const classementDepartements = vue === "mensuelle" ? calculerClassement("departement", departements) : [];
+
+  function medaille(position) {
+    if (position === 0) return "🥇";
+    if (position === 1) return "🥈";
+    if (position === 2) return "🥉";
+    return `${position + 1}.`;
+  }
+
+  function Classement({ titre, liste }) {
+    return (
+      <div style={{ marginBottom: 24 }}>
+        <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>{titre}</p>
+        {liste.length === 0 ? (
+          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Pas assez de données ce mois-ci pour établir un classement.</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {liste.map((item, i) => (
+              <div key={item.nom} style={cardStyle}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                  <span style={{ fontWeight: 700, fontSize: 13 }}>
+                    <span style={{ marginRight: 8 }}>{medaille(i)}</span>
+                    {item.nom}
+                  </span>
+                  <span style={{ fontWeight: 700, fontSize: 13, color: GOLD_LIGHT }}>{item.taux}%</span>
+                </div>
+                <div style={{ height: 6, borderRadius: 999, backgroundColor: TEAL_900, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${item.taux}%`, backgroundColor: GOLD, borderRadius: 999 }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div>
       <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Rapports</h2>
 
-      <div style={{ marginBottom: 20 }}>
-        <label style={{ fontSize: 12, color: "#a9d6cf", display: "block", marginBottom: 6 }}>Dimanche</label>
-        <select
-          value={dimancheChoisi || ""}
-          onChange={e => setDimancheChoisi(e.target.value)}
-          style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, minWidth: 220 }}
-        >
-          {dimanches.map(d => (
-            <option key={d.id} value={d.id}>
-              {new Date(d.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
-            </option>
-          ))}
-        </select>
+      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+        <button onClick={() => setVue("hebdomadaire")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "hebdomadaire" ? GOLD : TEAL_900, color: vue === "hebdomadaire" ? TEAL_950 : "#cdeae4" }}>
+          Vue hebdomadaire
+        </button>
+        <button onClick={() => setVue("mensuelle")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "mensuelle" ? GOLD : TEAL_900, color: vue === "mensuelle" ? TEAL_950 : "#cdeae4" }}>
+          Vue mensuelle
+        </button>
       </div>
 
-      {chargement ? (
-        <p style={{ color: "#a9d6cf" }}>Chargement…</p>
-      ) : dimanches.length === 0 ? (
+      {dimanches.length === 0 ? (
         <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun dimanche enregistré pour l'instant — le pointage de présence en créera automatiquement.</p>
-      ) : (
+      ) : vue === "hebdomadaire" ? (
         <>
-          <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>Rapport du dimanche {dateFormatee}</p>
-
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 24 }}>
-            <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}>{totalMembres}</p></div>
-            <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Présents ce dimanche</p><p style={{ fontSize: 28, fontWeight: 700, color: GOLD_LIGHT }}>{totalPresents}</p></div>
-            <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Taux de présence</p><p style={{ fontSize: 28, fontWeight: 700 }}>{tauxGlobal}%</p></div>
-            <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Santé spirituelle moy.</p><p style={{ fontSize: 28, fontWeight: 700, color: couleurScore(scoreMoyenGlobal) }}>{scoreMoyenGlobal !== null ? `${scoreMoyenGlobal}/10` : "—"}</p></div>
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ fontSize: 12, color: "#a9d6cf", display: "block", marginBottom: 6 }}>Dimanche</label>
+            <select
+              value={dimancheChoisi || ""}
+              onChange={e => setDimancheChoisi(e.target.value)}
+              style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, minWidth: 220 }}
+            >
+              {dimanches.map(d => (
+                <option key={d.id} value={d.id}>
+                  {new Date(d.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+                </option>
+              ))}
+            </select>
           </div>
 
-          <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>Détail par GEM</p>
-          {gems.length === 0 ? (
-            <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun GEM créé pour l'instant.</p>
+          {chargement ? (
+            <p style={{ color: "#a9d6cf" }}>Chargement…</p>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {gems.map(g => {
-                const membresGem = membres.filter(m => m.gem_id === g.id);
-                const presentsGem = membresGem.filter(m => presences[m.id]).length;
-                const tauxGem = membresGem.length > 0 ? Math.round((presentsGem / membresGem.length) * 100) : 0;
-                return (
-                  <div key={g.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                    <div>
-                      <p style={{ fontWeight: 700 }}>{g.nom}</p>
-                      <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomParent(g)}</p>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <p style={{ fontSize: 13, fontWeight: 700, color: GOLD_LIGHT }}>{presentsGem} / {membresGem.length} présents</p>
-                      <p style={{ fontSize: 12, color: "#a9d6cf" }}>{tauxGem}% de présence</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <>
+              <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>Rapport du dimanche {dateFormatee}</p>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 24 }}>
+                <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}>{totalMembres}</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Présents ce dimanche</p><p style={{ fontSize: 28, fontWeight: 700, color: GOLD_LIGHT }}>{totalPresents}</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Taux de présence</p><p style={{ fontSize: 28, fontWeight: 700 }}>{tauxGlobal}%</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Santé spirituelle moy.</p><p style={{ fontSize: 28, fontWeight: 700, color: couleurScore(scoreMoyenGlobal) }}>{scoreMoyenGlobal !== null ? `${scoreMoyenGlobal}/10` : "—"}</p></div>
+              </div>
+
+              <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>Détail par GEM</p>
+              {gems.length === 0 ? (
+                <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun GEM créé pour l'instant.</p>
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {gems.map(g => {
+                    const membresGem = membres.filter(m => m.gem_id === g.id);
+                    const presentsGem = membresGem.filter(m => presences[m.id]).length;
+                    const tauxGem = membresGem.length > 0 ? Math.round((presentsGem / membresGem.length) * 100) : 0;
+                    return (
+                      <div key={g.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                        <div>
+                          <p style={{ fontWeight: 700 }}>{g.nom}</p>
+                          <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomParent(g)}</p>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: GOLD_LIGHT }}>{presentsGem} / {membresGem.length} présents</p>
+                          <p style={{ fontSize: 12, color: "#a9d6cf" }}>{tauxGem}% de présence</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </>
+          )}
+        </>
+      ) : (
+        <>
+          <div style={{ marginBottom: 20 }}>
+            <label style={{ fontSize: 12, color: "#a9d6cf", display: "block", marginBottom: 6 }}>Mois</label>
+            <select
+              value={moisChoisi || ""}
+              onChange={e => setMoisChoisi(e.target.value)}
+              style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, minWidth: 220, textTransform: "capitalize" }}
+            >
+              {moisDisponibles.map(m => (
+                <option key={m} value={m} style={{ textTransform: "capitalize" }}>{libelleMois(m)}</option>
+              ))}
+            </select>
+          </div>
+
+          {chargement ? (
+            <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+          ) : (
+            <>
+              <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16, textTransform: "capitalize" }}>Rapport de {libelleMois(moisChoisi)} — {dimanchesDuMois.length} dimanche(s) enregistré(s)</p>
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 28 }}>
+                <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}>{totalMembres}</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Taux de présence moyen</p><p style={{ fontSize: 28, fontWeight: 700 }}>{tauxMoyenMois}%</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Santé spirituelle moy.</p><p style={{ fontSize: 28, fontWeight: 700, color: couleurScore(scoreMoyenMois) }}>{scoreMoyenMois !== null ? `${scoreMoyenMois}/10` : "—"}</p></div>
+              </div>
+
+              <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>🏆 Classement par régularité</p>
+              <Classement titre="Tribus" liste={classementTribus} />
+              <Classement titre="Départements" liste={classementDepartements} />
+            </>
           )}
         </>
       )}
