@@ -34,6 +34,45 @@ function StylesGlobaux() {
   );
 }
 
+// Boîte de dialogue pour demander la suppression d'un membre — motif obligatoire,
+// la suppression réelle n'a lieu qu'après validation par le pasteur ou un assistant.
+function BoiteDemandeSuppression({ nomMembre, onEnvoyer, onAnnuler }) {
+  const [motif, setMotif] = useState("");
+  const [erreur, setErreur] = useState("");
+
+  function valider() {
+    if (!motif.trim()) { setErreur("Le motif est obligatoire."); return; }
+    onEnvoyer(motif.trim());
+  }
+
+  return (
+    <div className="fade-in" style={{ position: "fixed", inset: 0, backgroundColor: "rgba(5,20,18,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
+      <div style={{ backgroundColor: "#14776B", border: "1px solid #1F9C8D", borderRadius: 16, padding: 24, maxWidth: 420, width: "100%", boxShadow: "0 20px 50px rgba(0,0,0,0.4)" }}>
+        <p style={{ fontWeight: 700, fontSize: 17, marginBottom: 10, color: "#FFFFFF" }}>Demander la suppression de {nomMembre}</p>
+        <p style={{ fontSize: 13, color: "#cdeae4", marginBottom: 14, lineHeight: 1.5 }}>
+          Cette suppression sera soumise au pasteur et aux assistants pour validation — le membre ne sera pas retiré immédiatement.
+        </p>
+        <textarea
+          value={motif}
+          onChange={e => { setMotif(e.target.value); setErreur(""); }}
+          rows={3}
+          placeholder="Motif de la suppression (obligatoire)..."
+          style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: "#116A5F", color: "#FFFFFF", border: "1px solid #27B3A1", resize: "vertical", fontSize: 13 }}
+        />
+        {erreur && <p style={{ color: "#e2626d", fontSize: 12, marginTop: 6 }}>{erreur}</p>}
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap", marginTop: 16 }}>
+          <button className="btn-app" onClick={onAnnuler} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: "transparent", color: "#cdeae4", border: "1px solid #27B3A1", fontWeight: 600, cursor: "pointer" }}>
+            Annuler
+          </button>
+          <button className="btn-app" onClick={valider} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: "#e2626d", color: "#fff", border: "none", fontWeight: 700, cursor: "pointer" }}>
+            Envoyer la demande
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // Boîte de dialogue de confirmation personnalisée — remplace les popups natives du navigateur.
 function BoiteConfirmation({ titre, message, texteConfirmer, dangereux, onConfirmer, onAnnuler }) {
   return (
@@ -370,6 +409,7 @@ function TableauDeBord({ compte }) {
   const [mesAssignations, setMesAssignations] = useState([]);
   const [nbDemandesAttente, setNbDemandesAttente] = useState(0);
   const [nbDemandesMdp, setNbDemandesMdp] = useState(0);
+  const [nbDemandesSuppression, setNbDemandesSuppression] = useState(0);
   const [nbMessagesNonLus, setNbMessagesNonLus] = useState(0);
   const [membres, setMembres] = useState([]);
   const [regulariteParMembre, setRegulariteParMembre] = useState({});
@@ -393,14 +433,16 @@ function TableauDeBord({ compte }) {
 
   async function rafraichirCompteurs() {
     if (estPasteur) {
-      const [{ count: cDemandes }, { count: cMessages }, { count: cMdp }] = await Promise.all([
+      const [{ count: cDemandes }, { count: cMessages }, { count: cMdp }, { count: cSuppression }] = await Promise.all([
         supabase.from("assignations").select("*", { count: "exact", head: true }).eq("statut", "attente"),
         supabase.from("messages_directs").select("*", { count: "exact", head: true }).eq("lu", false),
         supabase.from("demandes_mot_de_passe").select("*", { count: "exact", head: true }).eq("statut", "attente"),
+        supabase.from("demandes_suppression_membre").select("*", { count: "exact", head: true }).eq("statut", "attente"),
       ]);
       setNbDemandesAttente(cDemandes || 0);
       setNbMessagesNonLus(cMessages || 0);
       setNbDemandesMdp(cMdp || 0);
+      setNbDemandesSuppression(cSuppression || 0);
     } else {
       const seuilMessages = dernierMessageLu || "1970-01-01T00:00:00Z";
       const { count: cDiffusion } = await supabase.from("messages").select("*", { count: "exact", head: true }).gt("date", seuilMessages);
@@ -593,6 +635,16 @@ function TableauDeBord({ compte }) {
                   </span>
                 )}
               </button>
+              <button
+ className="btn-app"
+ onClick={() => { setPage("suppressions"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "suppressions" ? TEAL_700 : "transparent", color: page === "suppressions" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
+                Suppressions
+                {nbDemandesSuppression > 0 && (
+                  <span style={{ position: "absolute", top: -6, right: -6, backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
+                    {nbDemandesSuppression}
+                  </span>
+                )}
+              </button>
               {compte.role === "pasteur" && (
                 <button
  className="btn-app"
@@ -709,6 +761,7 @@ function TableauDeBord({ compte }) {
           />
         ) : parentOuvert ? (
           <DetailParent
+            compte={compte}
             parent={parentOuvert.item}
             type={parentOuvert.type}
             gems={gems}
@@ -771,6 +824,8 @@ function TableauDeBord({ compte }) {
           <PageHistorique cardStyle={cardStyle} />
         ) : page === "mots_de_passe" ? (
           <PageMotsDePasse cardStyle={cardStyle} onTraite={rafraichirCompteurs} />
+        ) : page === "suppressions" ? (
+          <PageSuppressions compte={compte} cardStyle={cardStyle} onTraite={rafraichirCompteurs} />
         ) : (
           <PageAssistants compte={compte} tribus={tribus} departements={departements} gems={gems} onChange={chargerDonnees} cardStyle={cardStyle} />
         )}
@@ -825,7 +880,36 @@ function AnniversairesAVenir({ membres, gems, cardStyle }) {
   );
 }
 
+// Pagination réutilisable — page précédente / suivante, avec indicateur.
+function Pagination({ page, setPage, totalPages }) {
+  if (totalPages <= 1) return null;
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, marginTop: 16 }}>
+      <button
+        className="btn-app"
+        onClick={() => setPage(p => Math.max(1, p - 1))}
+        disabled={page === 1}
+        style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 13, cursor: page === 1 ? "not-allowed" : "pointer" }}
+      >
+        ← Précédent
+      </button>
+      <span style={{ fontSize: 13, color: "#a9d6cf" }}>Page {page} / {totalPages}</span>
+      <button
+        className="btn-app"
+        onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+        disabled={page === totalPages}
+        style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 13, cursor: page === totalPages ? "not-allowed" : "pointer" }}
+      >
+        Suivant →
+      </button>
+    </div>
+  );
+}
+
 function PrioritesPastorales({ membres, gems, regulariteParMembre, cardStyle }) {
+  const [page, setPage] = useState(1);
+  const PAR_PAGE = 10;
+
   function nomGem(gemId) {
     return gems.find(g => g.id === gemId)?.nom || "GEM inconnu";
   }
@@ -835,14 +919,17 @@ function PrioritesPastorales({ membres, gems, regulariteParMembre, cardStyle }) 
     .filter(x => x.regularite && x.regularite.absencesConsecutives >= 2)
     .sort((a, b) => b.regularite.absencesConsecutives - a.regularite.absencesConsecutives);
 
+  const totalPages = Math.max(1, Math.ceil(membresAlerte.length / PAR_PAGE));
+  const membresAffiches = membresAlerte.slice((page - 1) * PAR_PAGE, page * PAR_PAGE);
+
   return (
     <div>
-      <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>⚠️ Priorités pastorales — membres à visiter</p>
+      <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>⚠️ Priorités pastorales — membres à visiter ({membresAlerte.length})</p>
       {membresAlerte.length === 0 ? (
         <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun membre en absence répétée pour l'instant — tout va bien.</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {membresAlerte.slice(0, 15).map(({ membre, regularite }) => (
+          {membresAffiches.map(({ membre, regularite }) => (
             <div key={membre.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, borderColor: RED_LIGHT }}>
               <div>
                 <p style={{ fontWeight: 700, marginBottom: 2 }}>{membre.nom}</p>
@@ -866,9 +953,7 @@ function PrioritesPastorales({ membres, gems, regulariteParMembre, cardStyle }) 
               </div>
             </div>
           ))}
-          {membresAlerte.length > 15 && (
-            <p style={{ fontSize: 12, color: "#a9d6cf", fontStyle: "italic" }}>+ {membresAlerte.length - 15} autre(s) membre(s) en alerte.</p>
-          )}
+          <Pagination page={page} setPage={setPage} totalPages={totalPages} />
         </div>
       )}
     </div>
@@ -992,13 +1077,15 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
 
 /* ------------------------- Détail Tribu/Département (tous les membres) ------------------------- */
 
-function DetailParent({ parent, type, gems, membres, regulariteParMembre, onBack, onChange, cardStyle }) {
+function DetailParent({ compte, parent, type, gems, membres, regulariteParMembre, onBack, onChange, cardStyle }) {
   const [santeParMembre, setSanteParMembre] = useState({});
   const [chargement, setChargement] = useState(true);
   const [recherche, setRecherche] = useState("");
   const [suppressionEnCours, setSuppressionEnCours] = useState(null);
   const [membreAConfirmer, setMembreAConfirmer] = useState(null);
-  const [nombreAffiche, setNombreAffiche] = useState(20);
+  const [page, setPage] = useState(1);
+
+  useEffect(() => { setPage(1); }, [recherche]);
 
   const gemsDuParent = gems.filter(g => g.type === type && (type === "tribu" ? g.tribu_id === parent.id : g.departement_id === parent.id));
   const idsGems = gemsDuParent.map(g => g.id);
@@ -1024,22 +1111,26 @@ function DetailParent({ parent, type, gems, membres, regulariteParMembre, onBack
     return nomComplet.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]).join("").toUpperCase();
   }
 
-  async function confirmerSuppression() {
+  async function envoyerDemandeSuppression(motif) {
     const membre = membreAConfirmer;
     setMembreAConfirmer(null);
     setSuppressionEnCours(membre.id);
-    await supabase.from("presences").delete().eq("membre_id", membre.id);
-    await supabase.from("sante_spirituelle").delete().eq("membre_id", membre.id);
-    await supabase.from("visites").delete().eq("membre_id", membre.id);
-    const { error } = await supabase.from("membres").delete().eq("id", membre.id);
+    const { error } = await supabase.from("demandes_suppression_membre").insert({
+      membre_id: membre.id,
+      membre_nom: membre.nom,
+      demande_par: compte?.id || null,
+      motif,
+      statut: "attente",
+    });
     setSuppressionEnCours(null);
-    if (error) { toast("Suppression impossible : " + error.message, "erreur"); return; }
-    toast(`${membre.nom} a bien été supprimé.`, "succes");
-    if (onChange) onChange();
+    if (error) { toast("Impossible d'envoyer la demande : " + error.message, "erreur"); return; }
+    toast(`Demande de suppression de ${membre.nom} envoyée au pasteur pour validation.`, "succes");
   }
 
   const membresFiltres = membresDuParent.filter(m => m.nom.toLowerCase().includes(recherche.toLowerCase()));
-  const membresAffiches = membresFiltres.slice(0, nombreAffiche);
+  const PAR_PAGE = 20;
+  const totalPages = Math.max(1, Math.ceil(membresFiltres.length / PAR_PAGE));
+  const membresAffiches = membresFiltres.slice((page - 1) * PAR_PAGE, page * PAR_PAGE);
 
   return (
     <div>
@@ -1128,23 +1219,14 @@ function DetailParent({ parent, type, gems, membres, regulariteParMembre, onBack
             );
           })}
         </div>
-        {membresFiltres.length > nombreAffiche && (
-          <button
- className="btn-app"
- onClick={() => setNombreAffiche(n => n + 20)} style={{ marginTop: 16, padding: "10px 20px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-            Afficher plus ({membresFiltres.length - nombreAffiche} restants)
-          </button>
-        )}
+        <Pagination page={page} setPage={setPage} totalPages={totalPages} />
         </>
       )}
 
       {membreAConfirmer && (
-        <BoiteConfirmation
-          titre="Supprimer ce membre ?"
-          message={`Es-tu sûr de vouloir supprimer définitivement ${membreAConfirmer.nom} ? Cette action est irréversible — son historique de présence, de santé spirituelle et de visites sera aussi supprimé.`}
-          texteConfirmer="Supprimer définitivement"
-          dangereux
-          onConfirmer={confirmerSuppression}
+        <BoiteDemandeSuppression
+          nomMembre={membreAConfirmer.nom}
+          onEnvoyer={envoyerDemandeSuppression}
           onAnnuler={() => setMembreAConfirmer(null)}
         />
       )}
@@ -1237,6 +1319,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
   const [santeParMembre, setSanteParMembre] = useState({}); // { membre_id: dernierEnregistrement }
   const [membreOuvert, setMembreOuvert] = useState(null);
   const [rappelPointage, setRappelPointage] = useState(null);
+  const [sousOnglet, setSousOnglet] = useState("membres"); // membres | activites
 
   useEffect(() => { chargerPresences(); chargerSante(); verifierPointageManquant(membres).then(setRappelPointage); }, [membres.length]);
 
@@ -1320,6 +1403,27 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
 
       <BanniereRappelPointage rappel={rappelPointage} />
 
+      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
+        <button
+          className="btn-app"
+          onClick={() => setSousOnglet("membres")}
+          style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "membres" ? GOLD : TEAL_900, color: sousOnglet === "membres" ? TEAL_950 : "#cdeae4" }}
+        >
+          Membres & Présence
+        </button>
+        <button
+          className="btn-app"
+          onClick={() => setSousOnglet("activites")}
+          style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "activites" ? GOLD : TEAL_900, color: sousOnglet === "activites" ? TEAL_950 : "#cdeae4" }}
+        >
+          📋 Activités de la semaine
+        </button>
+      </div>
+
+      {sousOnglet === "activites" ? (
+        <ActivitesSemaine gem={gem} membres={membres} compte={compte} cardStyle={cardStyle} />
+      ) : (
+        <>
       <div style={{ ...cardStyle, marginBottom: 20 }}>
         <p style={{ fontWeight: 600, marginBottom: 10, fontSize: 14 }}>Ajouter un membre</p>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -1422,6 +1526,183 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
           ))
         )}
       </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+/* --------------------------- Activités de la semaine (GEM) --------------------------- */
+
+const CHAMPS_ACTIVITE_TEXTE = [
+  ["jeune", "🕊️ Jeûne", "Qui a jeûné, combien de jours..."],
+  ["agape", "🍽️ Agapé", "Détails de l'agapé partagé cette semaine..."],
+  ["evangelisation", "📣 Évangélisation", "Où, avec qui, combien de personnes touchées..."],
+  ["autres", "➕ Autres activités", "Toute autre activité à mentionner..."],
+];
+
+function ActivitesSemaine({ gem, membres, compte, cardStyle }) {
+  const [dimancheId, setDimancheId] = useState(null);
+  const [activite, setActivite] = useState(null); // ligne activites_semaine en cours
+  const [chargement, setChargement] = useState(true);
+  const [enregistrement, setEnregistrement] = useState(false);
+
+  useEffect(() => { chargerActivite(); }, [gem.id]);
+
+  async function chargerActivite() {
+    setChargement(true);
+    const date = dimancheActuel();
+    let { data: dim } = await supabase.from("dimanches").select("*").eq("date", date).maybeSingle();
+    if (!dim) {
+      const { data: nouveauDim } = await supabase.from("dimanches").insert({ date }).select().single();
+      dim = nouveauDim;
+    }
+    setDimancheId(dim.id);
+
+    const { data: act } = await supabase.from("activites_semaine").select("*").eq("gem_id", gem.id).eq("dimanche_id", dim.id).maybeSingle();
+    setActivite(act || {
+      gem_id: gem.id, dimanche_id: dim.id,
+      visites_membres: [], appels_membres: [],
+      priere_jour: "", priere_heures: "",
+      jeune: "", agape: "", evangelisation: "", autres: "",
+      valide: false,
+    });
+    setChargement(false);
+  }
+
+  async function sauvegarder(champsMisAJour, { silencieux } = {}) {
+    const nouvelleActivite = { ...activite, ...champsMisAJour };
+    setActivite(nouvelleActivite);
+    if (!silencieux) setEnregistrement(true);
+    const payload = {
+      gem_id: gem.id, dimanche_id: dimancheId,
+      visites_membres: nouvelleActivite.visites_membres,
+      appels_membres: nouvelleActivite.appels_membres,
+      priere_jour: nouvelleActivite.priere_jour || null,
+      priere_heures: nouvelleActivite.priere_heures || null,
+      jeune: nouvelleActivite.jeune || null,
+      agape: nouvelleActivite.agape || null,
+      evangelisation: nouvelleActivite.evangelisation || null,
+      autres: nouvelleActivite.autres || null,
+      cree_par: compte?.id || null,
+    };
+    const { data, error } = await supabase.from("activites_semaine").upsert(payload, { onConflict: "gem_id,dimanche_id" }).select().single();
+    if (!silencieux) setEnregistrement(false);
+    if (error) { toast("Erreur d'enregistrement : " + error.message, "erreur"); return; }
+    setActivite(a => ({ ...a, id: data.id }));
+  }
+
+  function basculerMembreListe(champ, membreId) {
+    const listeActuelle = activite[champ] || [];
+    const nouvelleListe = listeActuelle.includes(membreId)
+      ? listeActuelle.filter(id => id !== membreId)
+      : [...listeActuelle, membreId];
+    sauvegarder({ [champ]: nouvelleListe }, { silencieux: true });
+  }
+
+  async function valider() {
+    setEnregistrement(true);
+    const { error } = await supabase.from("activites_semaine")
+      .update({ valide: true, date_validation: new Date().toISOString(), valide_par: compte?.id || null })
+      .eq("gem_id", gem.id).eq("dimanche_id", dimancheId);
+    setEnregistrement(false);
+    if (error) { toast("Impossible de valider le rapport : " + error.message, "erreur"); return; }
+    setActivite(a => ({ ...a, valide: true, date_validation: new Date().toISOString() }));
+    toast("✓ Rapport envoyé — Tu es béni pour ton engagement dans l'œuvre de Dieu 🙏", "succes");
+  }
+
+  if (chargement || !activite) return <p style={{ color: "#a9d6cf" }}>Chargement…</p>;
+
+  const dateAffichee = new Date(dimancheActuel() + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+        <p style={{ fontSize: 13, color: "#a9d6cf", margin: 0 }}>Semaine du {dateAffichee}</p>
+        {activite.valide && (
+          <span style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD, borderRadius: 999, padding: "6px 12px" }}>
+            ✓ Rapport validé
+          </span>
+        )}
+      </div>
+
+      {membres.length === 0 ? (
+        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Ajoute d'abord des membres à ce GEM pour pouvoir remplir les activités.</p>
+      ) : (
+        <>
+          <div style={{ ...cardStyle, marginBottom: 16 }}>
+            <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>🏠 Visites effectuées cette semaine</p>
+            <p style={{ fontSize: 11, color: "#a9d6cf", marginBottom: 10 }}>Coche chaque membre visité.</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {membres.map(m => {
+                const coche = (activite.visites_membres || []).includes(m.id);
+                return (
+                  <label key={m.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, backgroundColor: coche ? "rgba(208,175,28,0.15)" : TEAL_900, border: `1px solid ${coche ? GOLD : TEAL_700}`, borderRadius: 999, padding: "6px 12px", cursor: "pointer" }}>
+                    <input type="checkbox" checked={coche} onChange={() => basculerMembreListe("visites_membres", m.id)} style={{ accentColor: GOLD }} />
+                    {m.nom}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={{ ...cardStyle, marginBottom: 16 }}>
+            <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>📞 Appels effectués cette semaine</p>
+            <p style={{ fontSize: 11, color: "#a9d6cf", marginBottom: 10 }}>Coche chaque membre appelé.</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+              {membres.map(m => {
+                const coche = (activite.appels_membres || []).includes(m.id);
+                return (
+                  <label key={m.id} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, backgroundColor: coche ? "rgba(208,175,28,0.15)" : TEAL_900, border: `1px solid ${coche ? GOLD : TEAL_700}`, borderRadius: 999, padding: "6px 12px", cursor: "pointer" }}>
+                    <input type="checkbox" checked={coche} onChange={() => basculerMembreListe("appels_membres", m.id)} style={{ accentColor: GOLD }} />
+                    {m.nom}
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={{ ...cardStyle, marginBottom: 16 }}>
+            <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>🙏 Prière</p>
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+              <input
+                defaultValue={activite.priere_jour}
+                onBlur={e => sauvegarder({ priere_jour: e.target.value })}
+                placeholder="Jour (ex: Mercredi)"
+                style={{ flex: 1, minWidth: 160, padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}
+              />
+              <input
+                defaultValue={activite.priere_heures}
+                onBlur={e => sauvegarder({ priere_heures: e.target.value })}
+                placeholder="Heures (ex: 18h - 19h30)"
+                style={{ flex: 1, minWidth: 160, padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}
+              />
+            </div>
+          </div>
+
+          {CHAMPS_ACTIVITE_TEXTE.map(([champ, titre, placeholder]) => (
+            <div key={champ} style={{ ...cardStyle, marginBottom: 16 }}>
+              <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>{titre}</p>
+              <textarea
+                defaultValue={activite[champ]}
+                onBlur={e => sauvegarder({ [champ]: e.target.value })}
+                rows={2}
+                placeholder={placeholder}
+                style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, resize: "vertical" }}
+              />
+            </div>
+          ))}
+
+          <button
+            className="btn-app"
+            disabled={enregistrement}
+            onClick={valider}
+            style={{ padding: "12px 24px", borderRadius: 12, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}
+          >
+            {enregistrement ? "…" : activite.valide ? "✓ Revalider le rapport" : "Valider le rapport de la semaine"}
+          </button>
+        </>
+      )}
     </div>
   );
 }
@@ -1453,6 +1734,20 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
   });
   const [sauvegarde, setSauvegarde] = useState(false);
   const [sousOnglet, setSousOnglet] = useState("sante"); // sante | visites | parcours
+  const [demandeSuppressionOuverte, setDemandeSuppressionOuverte] = useState(false);
+
+  async function envoyerDemandeSuppression(motif) {
+    setDemandeSuppressionOuverte(false);
+    const { error } = await supabase.from("demandes_suppression_membre").insert({
+      membre_id: membre.id,
+      membre_nom: membre.nom,
+      demande_par: compte?.id || null,
+      motif,
+      statut: "attente",
+    });
+    if (error) { toast("Impossible d'envoyer la demande : " + error.message, "erreur"); return; }
+    toast(`Demande de suppression de ${membre.nom} envoyée au pasteur pour validation.`, "succes");
+  }
 
   const ETAPES_CONVERSION = ["accueil", "classe", "baptise", "integre"];
   const LIBELLES_ETAPES = { accueil: "Accueil", classe: "Classe de baptême", baptise: "Baptisé(e)", integre: "Intégré(e)" };
@@ -1612,6 +1907,13 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
                 style={{ padding: 6, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 11 }}
               />
             </label>
+            <button
+              className="btn-app"
+              onClick={e => { e.stopPropagation(); setDemandeSuppressionOuverte(true); }}
+              style={{ fontSize: 11, fontWeight: 700, color: RED_LIGHT, background: "none", border: `1px solid ${RED_LIGHT}`, borderRadius: 8, padding: "6px 10px", cursor: "pointer" }}
+            >
+              🗑️ Demander la suppression
+            </button>
           </div>
           <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
             <button
@@ -1735,6 +2037,13 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
             </>
           )}
         </div>
+      )}
+      {demandeSuppressionOuverte && (
+        <BoiteDemandeSuppression
+          nomMembre={membre.nom}
+          onEnvoyer={envoyerDemandeSuppression}
+          onAnnuler={() => setDemandeSuppressionOuverte(false)}
+        />
       )}
     </div>
   );
@@ -1964,6 +2273,104 @@ function PageDemandes({ tribus, departements, compte, onTraite, cardStyle }) {
 }
 
 /* --------------------------- Page Mots de passe oubliés (pasteur) --------------------------- */
+
+/* --------------------------- Page Suppressions de membres (pasteur) --------------------------- */
+
+function PageSuppressions({ compte, cardStyle, onTraite }) {
+  const [demandes, setDemandes] = useState([]);
+  const [comptesParId, setComptesParId] = useState({});
+  const [chargement, setChargement] = useState(true);
+  const [enCours, setEnCours] = useState(null);
+
+  useEffect(() => { chargerDemandes(); }, []);
+
+  async function chargerDemandes() {
+    setChargement(true);
+    const { data: d } = await supabase.from("demandes_suppression_membre").select("*").eq("statut", "attente").order("date_demande");
+    const idsComptes = [...new Set((d || []).map(x => x.demande_par).filter(Boolean))];
+    let map = {};
+    if (idsComptes.length > 0) {
+      const { data: c } = await supabase.from("comptes").select("*").in("id", idsComptes);
+      (c || []).forEach(cc => { map[cc.id] = cc; });
+    }
+    setDemandes(d || []);
+    setComptesParId(map);
+    setChargement(false);
+  }
+
+  async function approuver(d) {
+    setEnCours(d.id);
+    await supabase.from("presences").delete().eq("membre_id", d.membre_id);
+    await supabase.from("sante_spirituelle").delete().eq("membre_id", d.membre_id);
+    await supabase.from("visites").delete().eq("membre_id", d.membre_id);
+    const { error } = await supabase.from("membres").delete().eq("id", d.membre_id);
+    if (!error) {
+      await supabase.from("demandes_suppression_membre").update({ statut: "approuvee", traite_par: compte.id, date_traitement: new Date().toISOString() }).eq("id", d.id);
+    }
+    setEnCours(null);
+    if (error) { toast("Suppression impossible : " + error.message, "erreur"); return; }
+    toast(`${d.membre_nom} a été supprimé définitivement.`, "succes");
+    chargerDemandes();
+    if (onTraite) onTraite();
+  }
+
+  async function refuser(d) {
+    setEnCours(d.id);
+    await supabase.from("demandes_suppression_membre").update({ statut: "refusee", traite_par: compte.id, date_traitement: new Date().toISOString() }).eq("id", d.id);
+    setEnCours(null);
+    toast(`Demande de suppression de ${d.membre_nom} refusée.`, "info");
+    chargerDemandes();
+    if (onTraite) onTraite();
+  }
+
+  function formaterDate(d) {
+    return new Date(d).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+  }
+
+  return (
+    <div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Demandes de suppression ({demandes.length})</h2>
+      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>
+        Chaque suppression de membre doit être validée ici avant d'être effective.
+      </p>
+      {chargement ? (
+        <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+      ) : demandes.length === 0 ? (
+        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucune demande en attente pour le moment.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {demandes.map(d => (
+            <div key={d.id} style={cardStyle}>
+              <p style={{ fontWeight: 700, marginBottom: 2 }}>{d.membre_nom}</p>
+              <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 6 }}>
+                Demandé par {comptesParId[d.demande_par]?.nom || "…"} · {formaterDate(d.date_demande)}
+              </p>
+              <p style={{ fontSize: 13, color: "#e8c25a", marginBottom: 12 }}>Motif : {d.motif}</p>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button
+                  className="btn-app"
+                  disabled={enCours === d.id}
+                  onClick={() => approuver(d)}
+                  style={{ padding: "10px 18px", borderRadius: 10, backgroundColor: RED_LIGHT, color: "#fff", border: "none", fontWeight: 700, cursor: "pointer", fontSize: 12 }}
+                >
+                  {enCours === d.id ? "…" : "✓ Approuver la suppression"}
+                </button>
+                <button
+                  className="btn-app"
+                  disabled={enCours === d.id}
+                  onClick={() => refuser(d)}
+                  style={{ padding: "10px 18px", borderRadius: 10, backgroundColor: "transparent", color: "#a9d6cf", border: `1px solid ${TEAL_600}`, cursor: "pointer", fontSize: 12 }}
+                >
+                  Refuser
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function PageMotsDePasse({ cardStyle, onTraite }) {
   const [demandes, setDemandes] = useState([]);
@@ -2324,6 +2731,97 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
   );
 }
 
+/* --------------------- Activités de la semaine — vue groupée (dépt/tribu) --------------------- */
+
+function ActivitesSemainePerimetre({ gems, membres, cardStyle }) {
+  const [activites, setActivites] = useState([]);
+  const [chargement, setChargement] = useState(true);
+  const [gemDeplie, setGemDeplie] = useState(null);
+
+  useEffect(() => { chargerActivites(); }, [gems.length]);
+
+  async function chargerActivites() {
+    setChargement(true);
+    const date = dimancheActuel();
+    const { data: dim } = await supabase.from("dimanches").select("*").eq("date", date).maybeSingle();
+    if (!dim || gems.length === 0) { setActivites([]); setChargement(false); return; }
+    const idsGems = gems.map(g => g.id);
+    const { data } = await supabase.from("activites_semaine").select("*").eq("dimanche_id", dim.id).in("gem_id", idsGems);
+    setActivites(data || []);
+    setChargement(false);
+  }
+
+  function nomMembre(id) {
+    return membres.find(m => m.id === id)?.nom || "?";
+  }
+
+  const nbValides = activites.filter(a => a.valide).length;
+  const totalVisites = activites.reduce((s, a) => s + (a.visites_membres?.length || 0), 0);
+  const totalAppels = activites.reduce((s, a) => s + (a.appels_membres?.length || 0), 0);
+
+  if (gems.length === 0) return <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun GEM dans ton périmètre pour l'instant.</p>;
+
+  return (
+    <div>
+      {chargement ? (
+        <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+      ) : (
+        <>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
+            <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Rapports validés</p><p style={{ fontSize: 24, fontWeight: 700, color: GOLD_LIGHT }}>{nbValides} / {gems.length}</p></div>
+            <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Visites (total)</p><p style={{ fontSize: 24, fontWeight: 700 }}>{totalVisites}</p></div>
+            <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Appels (total)</p><p style={{ fontSize: 24, fontWeight: 700 }}>{totalAppels}</p></div>
+          </div>
+
+          <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>Détail par GEM</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {gems.map(g => {
+              const act = activites.find(a => a.gem_id === g.id);
+              const deplie = gemDeplie === g.id;
+              return (
+                <div key={g.id} style={cardStyle}>
+                  <button
+                    className="btn-app"
+                    onClick={() => setGemDeplie(deplie ? null : g.id)}
+                    style={{ width: "100%", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", color: CREAM, textAlign: "left" }}
+                  >
+                    <span style={{ fontWeight: 700 }}>{g.nom}</span>
+                    <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      {act?.valide ? (
+                        <span style={{ fontSize: 11, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD, borderRadius: 999, padding: "4px 10px" }}>✓ Validé</span>
+                      ) : (
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "#a9d6cf", backgroundColor: TEAL_900, borderRadius: 999, padding: "4px 10px" }}>Non rempli</span>
+                      )}
+                      <span style={{ color: "#a9d6cf" }}>{deplie ? "▲" : "▼"}</span>
+                    </span>
+                  </button>
+                  {deplie && (
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${TEAL_700}`, fontSize: 12, color: "#cdeae4", display: "flex", flexDirection: "column", gap: 8 }}>
+                      {!act ? (
+                        <p style={{ color: "#a9d6cf" }}>Aucune activité renseignée pour l'instant.</p>
+                      ) : (
+                        <>
+                          <p><b>🏠 Visites :</b> {(act.visites_membres || []).length > 0 ? act.visites_membres.map(nomMembre).join(", ") : "Aucune"}</p>
+                          <p><b>📞 Appels :</b> {(act.appels_membres || []).length > 0 ? act.appels_membres.map(nomMembre).join(", ") : "Aucun"}</p>
+                          <p><b>🙏 Prière :</b> {act.priere_jour || act.priere_heures ? `${act.priere_jour || ""} ${act.priere_heures || ""}`.trim() : "Non renseignée"}</p>
+                          {act.jeune && <p><b>🕊️ Jeûne :</b> {act.jeune}</p>}
+                          {act.agape && <p><b>🍽️ Agapé :</b> {act.agape}</p>}
+                          {act.evangelisation && <p><b>📣 Évangélisation :</b> {act.evangelisation}</p>}
+                          {act.autres && <p><b>➕ Autres :</b> {act.autres}</p>}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 function EvolutionPerimetre({ membres, cardStyle }) {
   const [chargement, setChargement] = useState(true);
   const [presenceParDimanche, setPresenceParDimanche] = useState([]);
@@ -2499,12 +2997,17 @@ function MonEspace({ compte, assignation, gems, membres, tribus, departements, g
         <button
  className="btn-app"
  onClick={() => setSousOnglet("evolution")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "evolution" ? GOLD : TEAL_900, color: sousOnglet === "evolution" ? TEAL_950 : "#cdeae4" }}>Évolution</button>
+        <button
+ className="btn-app"
+ onClick={() => setSousOnglet("activites")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "activites" ? GOLD : TEAL_900, color: sousOnglet === "activites" ? TEAL_950 : "#cdeae4" }}>📋 Activités de la semaine</button>
       </div>
 
       {sousOnglet === "rapports" ? (
         <RapportPerimetre gems={gemsDuPerimetre} membres={membresDuPerimetre} cardStyle={cardStyle} />
       ) : sousOnglet === "evolution" ? (
         <EvolutionPerimetre membres={membresDuPerimetre} cardStyle={cardStyle} />
+      ) : sousOnglet === "activites" ? (
+        <ActivitesSemainePerimetre gems={gemsDuPerimetre} membres={membresDuPerimetre} cardStyle={cardStyle} />
       ) : (
         <>
           <AnniversairesAVenir membres={membresDuPerimetre} gems={gems} cardStyle={cardStyle} />
@@ -2886,11 +3389,13 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
   const [moisChoisi, setMoisChoisi] = useState(null); // "YYYY-MM"
   const [presencesMois, setPresencesMois] = useState([]); // toutes les lignes presences du mois
   const [santeMois, setSanteMois] = useState([]);
+  const [activitesMois, setActivitesMois] = useState([]);
 
   const [dimanchesAnnee, setDimanchesAnnee] = useState([]);
   const [anneeChoisie, setAnneeChoisie] = useState(null); // "YYYY"
   const [presencesAnnee, setPresencesAnnee] = useState([]);
   const [santeAnnee, setSanteAnnee] = useState([]);
+  const [activitesAnnee, setActivitesAnnee] = useState([]);
 
   const [tauxPrecedentHebdo, setTauxPrecedentHebdo] = useState(null);
   const [tauxPrecedentMois, setTauxPrecedentMois] = useState(null);
@@ -2953,14 +3458,18 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
     const idsDimanches = dimanchesFiltres.map(d => d.id);
     const debutMois = `${moisChoisi}-01`;
     const finMois = `${moisChoisi}-31`;
-    const [{ data: pres }, { data: sante }] = await Promise.all([
+    const [{ data: pres }, { data: sante }, { data: activites }] = await Promise.all([
       idsDimanches.length > 0
         ? supabase.from("presences").select("*").in("dimanche_id", idsDimanches)
         : Promise.resolve({ data: [] }),
       supabase.from("sante_spirituelle").select("*").gte("date_maj", debutMois).lte("date_maj", finMois + "T23:59:59"),
+      idsDimanches.length > 0
+        ? supabase.from("activites_semaine").select("*").in("dimanche_id", idsDimanches).eq("valide", true)
+        : Promise.resolve({ data: [] }),
     ]);
     setPresencesMois(pres || []);
     setSanteMois(sante || []);
+    setActivitesMois(activites || []);
 
     // Mois précédent, pour la comparaison
     const [anneeStr, moisStr] = moisChoisi.split("-").map(Number);
@@ -2987,14 +3496,18 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
     const idsDimanches = dimanchesFiltres.map(d => d.id);
     const debutAnnee = `${anneeChoisie}-01-01`;
     const finAnnee = `${anneeChoisie}-12-31`;
-    const [{ data: pres }, { data: sante }] = await Promise.all([
+    const [{ data: pres }, { data: sante }, { data: activites }] = await Promise.all([
       idsDimanches.length > 0
         ? supabase.from("presences").select("*").in("dimanche_id", idsDimanches)
         : Promise.resolve({ data: [] }),
       supabase.from("sante_spirituelle").select("*").gte("date_maj", debutAnnee).lte("date_maj", finAnnee + "T23:59:59"),
+      idsDimanches.length > 0
+        ? supabase.from("activites_semaine").select("*").in("dimanche_id", idsDimanches).eq("valide", true)
+        : Promise.resolve({ data: [] }),
     ]);
     setPresencesAnnee(pres || []);
     setSanteAnnee(sante || []);
+    setActivitesAnnee(activites || []);
 
     // Année précédente, pour la comparaison
     const anneePrecedente = String(Number(anneeChoisie) - 1);
@@ -3106,6 +3619,22 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
       .sort((a, b) => b.valeur - a.valeur);
   }
 
+  // Taux de rapports hebdomadaires validés par un GEM, agrégé par tribu/département
+  function calculerClassementActivite(type, items, dimanchesPeriode, activitesPeriode) {
+    return items
+      .map(it => {
+        const gemsDuParent = gems.filter(g => g.type === type && (type === "tribu" ? g.tribu_id : g.departement_id) === it.id);
+        const idsGems = gemsDuParent.map(g => g.id);
+        if (idsGems.length === 0 || dimanchesPeriode.length === 0) return { nom: it.nom, valeur: null, nbMembres: 0 };
+        const totalAttendu = idsGems.length * dimanchesPeriode.length;
+        const totalValide = activitesPeriode.filter(a => idsGems.includes(a.gem_id)).length;
+        const valeur = totalAttendu > 0 ? Math.round((totalValide / totalAttendu) * 100) : null;
+        return { nom: it.nom, valeur, nbMembres: gemsDuParent.length };
+      })
+      .filter(x => x.valeur !== null)
+      .sort((a, b) => b.valeur - a.valeur);
+  }
+
   function calculerClassementMembres(dimanchesPeriode, presencesPeriode, limite) {
     return membres
       .map(m => {
@@ -3141,6 +3670,10 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
   const classementMembresMois = vue === "mensuelle" ? calculerClassementMembres(dimanchesDuMois, presencesMois, 10) : [];
   const classementTribusAmes = (vue === "mensuelle" || vue === "annuelle") ? calculerClassementAmes("tribu", tribus) : [];
   const classementDepartementsAmes = (vue === "mensuelle" || vue === "annuelle") ? calculerClassementAmes("departement", departements) : [];
+  const classementTribusActiviteMois = vue === "mensuelle" ? calculerClassementActivite("tribu", tribus, dimanchesDuMois, activitesMois) : [];
+  const classementDepartementsActiviteMois = vue === "mensuelle" ? calculerClassementActivite("departement", departements, dimanchesDuMois, activitesMois) : [];
+  const classementTribusActiviteAnnee = vue === "annuelle" ? calculerClassementActivite("tribu", tribus, dimanchesAnnee, activitesAnnee) : [];
+  const classementDepartementsActiviteAnnee = vue === "annuelle" ? calculerClassementActivite("departement", departements, dimanchesAnnee, activitesAnnee) : [];
 
   const classementTribusPresenceAnnee = vue === "annuelle" ? calculerClassementPresence("tribu", tribus, dimanchesAnnee, presencesAnnee) : [];
   const classementDepartementsPresenceAnnee = vue === "annuelle" ? calculerClassementPresence("departement", departements, dimanchesAnnee, presencesAnnee) : [];
@@ -3307,9 +3840,16 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
  onClick={() => setVue("annuelle")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "annuelle" ? GOLD : TEAL_900, color: vue === "annuelle" ? TEAL_950 : "#cdeae4" }}>
           Vue annuelle
         </button>
+        <button
+ className="btn-app"
+ onClick={() => setVue("activites")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "activites" ? GOLD : TEAL_900, color: vue === "activites" ? TEAL_950 : "#cdeae4" }}>
+          📋 Activités
+        </button>
       </div>
 
-      {dimanches.length === 0 ? (
+      {vue === "activites" ? (
+        <ActivitesSemainePerimetre gems={gems} membres={membres} cardStyle={cardStyle} />
+      ) : dimanches.length === 0 ? (
         <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun dimanche enregistré pour l'instant — le pointage de présence en créera automatiquement.</p>
       ) : vue === "hebdomadaire" ? (
         <>
@@ -3477,6 +4017,10 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
               <Classement titre="Tribus" liste={classementTribusAmes} suffixe="%" maxValeur={100} />
               <Classement titre="Départements" liste={classementDepartementsAmes} suffixe="%" maxValeur={100} />
 
+              <p style={{ fontWeight: 700, fontSize: 16, marginTop: 24, marginBottom: 14 }}>📋 Rapports d'activités hebdomadaires validés</p>
+              <Classement titre="Tribus" liste={classementTribusActiviteMois} suffixe="%" maxValeur={100} />
+              <Classement titre="Départements" liste={classementDepartementsActiviteMois} suffixe="%" maxValeur={100} />
+
               <ClassementMembres liste={classementMembresMois} />
             </>
           )}
@@ -3544,6 +4088,10 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
               <p style={{ fontWeight: 700, fontSize: 16, marginTop: 24, marginBottom: 14 }}>🌱 Suivi des âmes — taux d'intégration des nouveaux convertis</p>
               <Classement titre="Tribus" liste={classementTribusAmes} suffixe="%" maxValeur={100} />
               <Classement titre="Départements" liste={classementDepartementsAmes} suffixe="%" maxValeur={100} />
+
+              <p style={{ fontWeight: 700, fontSize: 16, marginTop: 24, marginBottom: 14 }}>📋 Rapports d'activités hebdomadaires validés</p>
+              <Classement titre="Tribus" liste={classementTribusActiviteAnnee} suffixe="%" maxValeur={100} />
+              <Classement titre="Départements" liste={classementDepartementsActiviteAnnee} suffixe="%" maxValeur={100} />
 
               <ClassementMembres liste={classementMembresAnnee} />
             </>
