@@ -2733,20 +2733,48 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
 
 /* --------------------- Activités de la semaine — vue groupée (dépt/tribu) --------------------- */
 
-function ActivitesSemainePerimetre({ gems, membres, cardStyle }) {
+function ActivitesSemainePerimetre({ gems, membres, tribus, departements, cardStyle }) {
+  const [vue, setVue] = useState("semaine"); // semaine | mois | annee
+  const [dimanches, setDimanches] = useState([]);
+  const [dimancheChoisi, setDimancheChoisi] = useState(null);
+  const [moisChoisi, setMoisChoisi] = useState(null);
+  const [anneeChoisie, setAnneeChoisie] = useState(null);
   const [activites, setActivites] = useState([]);
   const [chargement, setChargement] = useState(true);
   const [gemDeplie, setGemDeplie] = useState(null);
 
-  useEffect(() => { chargerActivites(); }, [gems.length]);
+  useEffect(() => { chargerDimanches(); }, []);
+  useEffect(() => { if (dimancheChoisi && vue === "semaine") chargerActivitesSemaine(); }, [dimancheChoisi, vue]);
+  useEffect(() => { if (moisChoisi && vue === "mois") chargerActivitesPeriode(dimanches.filter(d => d.date.slice(0, 7) === moisChoisi)); }, [moisChoisi, vue]);
+  useEffect(() => { if (anneeChoisie && vue === "annee") chargerActivitesPeriode(dimanches.filter(d => d.date.slice(0, 4) === anneeChoisie)); }, [anneeChoisie, vue]);
 
-  async function chargerActivites() {
+  async function chargerDimanches() {
+    const { data } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(200);
+    setDimanches(data || []);
+    if (data && data.length > 0) {
+      setDimancheChoisi(data[0].id);
+      setMoisChoisi([...new Set(data.map(d => d.date.slice(0, 7)))][0]);
+      setAnneeChoisie([...new Set(data.map(d => d.date.slice(0, 4)))][0]);
+    } else {
+      setChargement(false);
+    }
+  }
+
+  async function chargerActivitesSemaine() {
     setChargement(true);
-    const date = dimancheActuel();
-    const { data: dim } = await supabase.from("dimanches").select("*").eq("date", date).maybeSingle();
-    if (!dim || gems.length === 0) { setActivites([]); setChargement(false); return; }
+    if (gems.length === 0) { setActivites([]); setChargement(false); return; }
     const idsGems = gems.map(g => g.id);
-    const { data } = await supabase.from("activites_semaine").select("*").eq("dimanche_id", dim.id).in("gem_id", idsGems);
+    const { data } = await supabase.from("activites_semaine").select("*").eq("dimanche_id", dimancheChoisi).in("gem_id", idsGems);
+    setActivites(data || []);
+    setChargement(false);
+  }
+
+  async function chargerActivitesPeriode(dimanchesPeriode) {
+    setChargement(true);
+    const idsDim = dimanchesPeriode.map(d => d.id);
+    if (gems.length === 0 || idsDim.length === 0) { setActivites([]); setChargement(false); return; }
+    const idsGems = gems.map(g => g.id);
+    const { data } = await supabase.from("activites_semaine").select("*").in("dimanche_id", idsDim).in("gem_id", idsGems).eq("valide", true);
     setActivites(data || []);
     setChargement(false);
   }
@@ -2755,7 +2783,24 @@ function ActivitesSemainePerimetre({ gems, membres, cardStyle }) {
     return membres.find(m => m.id === id)?.nom || "?";
   }
 
-  const nbValides = activites.filter(a => a.valide).length;
+  function rattachement(g) {
+    if (tribus && g.tribu_id) return `Tribu de ${tribus.find(t => t.id === g.tribu_id)?.nom || "?"}`;
+    if (departements && g.departement_id) return `Département ${departements.find(d => d.id === g.departement_id)?.nom || "?"}`;
+    return "";
+  }
+
+  function libelleMois(cle) {
+    if (!cle) return "";
+    const [annee, mois] = cle.split("-");
+    return new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  }
+
+  const moisDisponibles = [...new Set(dimanches.map(d => d.date.slice(0, 7)))];
+  const anneesDisponibles = [...new Set(dimanches.map(d => d.date.slice(0, 4)))];
+  const dateAffichee = dimanches.find(d => d.id === dimancheChoisi);
+  const dateFormatee = dateAffichee ? new Date(dateAffichee.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : "";
+
+  const nbValides = vue === "semaine" ? activites.filter(a => a.valide).length : new Set(activites.map(a => a.gem_id)).size;
   const totalVisites = activites.reduce((s, a) => s + (a.visites_membres?.length || 0), 0);
   const totalAppels = activites.reduce((s, a) => s + (a.appels_membres?.length || 0), 0);
 
@@ -2763,59 +2808,105 @@ function ActivitesSemainePerimetre({ gems, membres, cardStyle }) {
 
   return (
     <div>
-      {chargement ? (
-        <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+        <button className="btn-app" onClick={() => setVue("semaine")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "semaine" ? GOLD : TEAL_900, color: vue === "semaine" ? TEAL_950 : "#cdeae4" }}>Par semaine</button>
+        <button className="btn-app" onClick={() => setVue("mois")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "mois" ? GOLD : TEAL_900, color: vue === "mois" ? TEAL_950 : "#cdeae4" }}>Par mois</button>
+        <button className="btn-app" onClick={() => setVue("annee")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "annee" ? GOLD : TEAL_900, color: vue === "annee" ? TEAL_950 : "#cdeae4" }}>Par année</button>
+      </div>
+
+      {dimanches.length === 0 ? (
+        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun dimanche enregistré pour l'instant.</p>
       ) : (
         <>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
-            <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Rapports validés</p><p style={{ fontSize: 24, fontWeight: 700, color: GOLD_LIGHT }}>{nbValides} / {gems.length}</p></div>
-            <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Visites (total)</p><p style={{ fontSize: 24, fontWeight: 700 }}>{totalVisites}</p></div>
-            <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Appels (total)</p><p style={{ fontSize: 24, fontWeight: 700 }}>{totalAppels}</p></div>
-          </div>
+          {vue === "semaine" ? (
+            <select value={dimancheChoisi || ""} onChange={e => setDimancheChoisi(e.target.value)} style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, marginBottom: 16 }}>
+              {dimanches.map(d => <option key={d.id} value={d.id}>{new Date(d.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</option>)}
+            </select>
+          ) : vue === "mois" ? (
+            <select value={moisChoisi || ""} onChange={e => setMoisChoisi(e.target.value)} style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, marginBottom: 16, textTransform: "capitalize" }}>
+              {moisDisponibles.map(m => <option key={m} value={m}>{libelleMois(m)}</option>)}
+            </select>
+          ) : (
+            <select value={anneeChoisie || ""} onChange={e => setAnneeChoisie(e.target.value)} style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, marginBottom: 16 }}>
+              {anneesDisponibles.map(a => <option key={a} value={a}>{a}</option>)}
+            </select>
+          )}
 
-          <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>Détail par GEM</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            {gems.map(g => {
-              const act = activites.find(a => a.gem_id === g.id);
-              const deplie = gemDeplie === g.id;
-              return (
-                <div key={g.id} style={cardStyle}>
-                  <button
-                    className="btn-app"
-                    onClick={() => setGemDeplie(deplie ? null : g.id)}
-                    style={{ width: "100%", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", color: CREAM, textAlign: "left" }}
-                  >
-                    <span style={{ fontWeight: 700 }}>{g.nom}</span>
-                    <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      {act?.valide ? (
-                        <span style={{ fontSize: 11, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD, borderRadius: 999, padding: "4px 10px" }}>✓ Validé</span>
-                      ) : (
-                        <span style={{ fontSize: 11, fontWeight: 700, color: "#a9d6cf", backgroundColor: TEAL_900, borderRadius: 999, padding: "4px 10px" }}>Non rempli</span>
-                      )}
-                      <span style={{ color: "#a9d6cf" }}>{deplie ? "▲" : "▼"}</span>
-                    </span>
-                  </button>
-                  {deplie && (
-                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${TEAL_700}`, fontSize: 12, color: "#cdeae4", display: "flex", flexDirection: "column", gap: 8 }}>
-                      {!act ? (
-                        <p style={{ color: "#a9d6cf" }}>Aucune activité renseignée pour l'instant.</p>
-                      ) : (
-                        <>
-                          <p><b>🏠 Visites :</b> {(act.visites_membres || []).length > 0 ? act.visites_membres.map(nomMembre).join(", ") : "Aucune"}</p>
-                          <p><b>📞 Appels :</b> {(act.appels_membres || []).length > 0 ? act.appels_membres.map(nomMembre).join(", ") : "Aucun"}</p>
-                          <p><b>🙏 Prière :</b> {act.priere_jour || act.priere_heures ? `${act.priere_jour || ""} ${act.priere_heures || ""}`.trim() : "Non renseignée"}</p>
-                          {act.jeune && <p><b>🕊️ Jeûne :</b> {act.jeune}</p>}
-                          {act.agape && <p><b>🍽️ Agapé :</b> {act.agape}</p>}
-                          {act.evangelisation && <p><b>📣 Évangélisation :</b> {act.evangelisation}</p>}
-                          {act.autres && <p><b>➕ Autres :</b> {act.autres}</p>}
-                        </>
+          {chargement ? (
+            <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+          ) : (
+            <>
+              {vue === "semaine" && <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>Semaine du {dateFormatee}</p>}
+
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
+                <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>{vue === "semaine" ? "Rapports validés" : "GEM ayant rapporté"}</p><p style={{ fontSize: 24, fontWeight: 700, color: GOLD_LIGHT }}>{nbValides} / {gems.length}</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Visites (total)</p><p style={{ fontSize: 24, fontWeight: 700 }}>{totalVisites}</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Appels (total)</p><p style={{ fontSize: 24, fontWeight: 700 }}>{totalAppels}</p></div>
+              </div>
+
+              <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>Détail par GEM</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {gems.map(g => {
+                  const activitesGem = activites.filter(a => a.gem_id === g.id);
+                  const act = vue === "semaine" ? activitesGem[0] : null;
+                  const deplie = gemDeplie === g.id;
+                  return (
+                    <div key={g.id} style={cardStyle}>
+                      <button
+                        className="btn-app"
+                        onClick={() => setGemDeplie(deplie ? null : g.id)}
+                        style={{ width: "100%", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", color: CREAM, textAlign: "left" }}
+                      >
+                        <span>
+                          <span style={{ fontWeight: 700, display: "block" }}>{g.nom}</span>
+                          {rattachement(g) && <span style={{ fontSize: 11, color: "#a9d6cf" }}>{rattachement(g)}</span>}
+                        </span>
+                        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                          {vue === "semaine" ? (
+                            act?.valide ? (
+                              <span style={{ fontSize: 11, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD, borderRadius: 999, padding: "4px 10px" }}>✓ Validé</span>
+                            ) : (
+                              <span style={{ fontSize: 11, fontWeight: 700, color: "#a9d6cf", backgroundColor: TEAL_900, borderRadius: 999, padding: "4px 10px" }}>Non rempli</span>
+                            )
+                          ) : (
+                            <span style={{ fontSize: 11, fontWeight: 700, color: activitesGem.length > 0 ? TEAL_950 : "#a9d6cf", backgroundColor: activitesGem.length > 0 ? GOLD : TEAL_900, borderRadius: 999, padding: "4px 10px" }}>
+                              {activitesGem.length} rapport{activitesGem.length > 1 ? "s" : ""}
+                            </span>
+                          )}
+                          <span style={{ color: "#a9d6cf" }}>{deplie ? "▲" : "▼"}</span>
+                        </span>
+                      </button>
+                      {deplie && (
+                        <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${TEAL_700}`, fontSize: 12, color: "#cdeae4", display: "flex", flexDirection: "column", gap: 12 }}>
+                          {activitesGem.length === 0 ? (
+                            <p style={{ color: "#a9d6cf" }}>Aucune activité renseignée pour cette période.</p>
+                          ) : (
+                            activitesGem.map(a => {
+                              const dim = dimanches.find(d => d.id === a.dimanche_id);
+                              return (
+                                <div key={a.id} style={{ display: "flex", flexDirection: "column", gap: 6, paddingBottom: 10, borderBottom: `1px solid ${TEAL_800}` }}>
+                                  {vue !== "semaine" && dim && (
+                                    <p style={{ fontWeight: 700, color: GOLD_LIGHT }}>Semaine du {new Date(dim.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</p>
+                                  )}
+                                  <p><b>🏠 Visites :</b> {(a.visites_membres || []).length > 0 ? a.visites_membres.map(nomMembre).join(", ") : "Aucune"}</p>
+                                  <p><b>📞 Appels :</b> {(a.appels_membres || []).length > 0 ? a.appels_membres.map(nomMembre).join(", ") : "Aucun"}</p>
+                                  <p><b>🙏 Prière :</b> {a.priere_jour || a.priere_heures ? `${a.priere_jour || ""} ${a.priere_heures || ""}`.trim() : "Non renseignée"}</p>
+                                  {a.jeune && <p><b>🕊️ Jeûne :</b> {a.jeune}</p>}
+                                  {a.agape && <p><b>🍽️ Agapé :</b> {a.agape}</p>}
+                                  {a.evangelisation && <p><b>📣 Évangélisation :</b> {a.evangelisation}</p>}
+                                  {a.autres && <p><b>➕ Autres :</b> {a.autres}</p>}
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
         </>
       )}
     </div>
@@ -3848,7 +3939,7 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
       </div>
 
       {vue === "activites" ? (
-        <ActivitesSemainePerimetre gems={gems} membres={membres} cardStyle={cardStyle} />
+        <ActivitesSemainePerimetre gems={gems} membres={membres} tribus={tribus} departements={departements} cardStyle={cardStyle} />
       ) : dimanches.length === 0 ? (
         <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun dimanche enregistré pour l'instant — le pointage de présence en créera automatiquement.</p>
       ) : vue === "hebdomadaire" ? (
@@ -4422,20 +4513,25 @@ function PageHistorique({ cardStyle }) {
   const [presenceParDimanche, setPresenceParDimanche] = useState([]); // [{ date, presents, total }]
   const [presenceParMois, setPresenceParMois] = useState([]); // [{ mois, taux }]
   const [santeParMois, setSanteParMois] = useState([]); // [{ mois, moyenne }]
+  const [activiteParMois, setActiviteParMois] = useState([]); // [{ mois, taux }]
   const [totalMembres, setTotalMembres] = useState(0);
+  const [totalGems, setTotalGems] = useState(0);
 
   useEffect(() => { chargerHistorique(); }, []);
 
   async function chargerHistorique() {
     setChargement(true);
-    const [{ data: dimanchesRecents }, { data: dimanchesTous }, { data: presences }, { data: sante }, { count: nbMembres }] = await Promise.all([
+    const [{ data: dimanchesRecents }, { data: dimanchesTous }, { data: presences }, { data: sante }, { data: activites }, { count: nbMembres }, { count: nbGems }] = await Promise.all([
       supabase.from("dimanches").select("*").order("date", { ascending: true }).limit(16),
       supabase.from("dimanches").select("*").order("date", { ascending: true }).limit(200),
       supabase.from("presences").select("*"),
       supabase.from("sante_spirituelle").select("*"),
+      supabase.from("activites_semaine").select("*").eq("valide", true),
       supabase.from("membres").select("*", { count: "exact", head: true }),
+      supabase.from("gems").select("*", { count: "exact", head: true }),
     ]);
     setTotalMembres(nbMembres || 0);
+    setTotalGems(nbGems || 0);
 
     const evolutionPresence = (dimanchesRecents || []).map(d => {
       const presentsCeDimanche = (presences || []).filter(p => p.dimanche_id === d.id && p.present).length;
@@ -4461,6 +4557,18 @@ function PageHistorique({ cardStyle }) {
         return { mois, taux };
       });
     setPresenceParMois(evolutionPresenceMois);
+
+    // Taux de rapports d'activités validés par mois
+    const evolutionActiviteMois = Object.entries(moisDimanches)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-12)
+      .map(([mois, idsDim]) => {
+        const validesMois = (activites || []).filter(a => idsDim.includes(a.dimanche_id)).length;
+        const attenduMois = idsDim.length * (nbGems || 0);
+        const taux = attenduMois > 0 ? Math.round((validesMois / attenduMois) * 100) : 0;
+        return { mois, taux };
+      });
+    setActiviteParMois(evolutionActiviteMois);
 
     const parMois = {};
     (sante || []).forEach(s => {
@@ -4527,7 +4635,7 @@ function PageHistorique({ cardStyle }) {
             )}
           </div>
 
-          <div style={cardStyle}>
+          <div style={{ ...cardStyle, marginBottom: 24 }}>
             <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>Santé spirituelle moyenne par mois</p>
             {santeParMois.length === 0 ? (
               <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucune évaluation enregistrée pour l'instant.</p>
@@ -4539,6 +4647,22 @@ function PageHistorique({ cardStyle }) {
                   texteAffiche: s.moyenne,
                   couleur: couleurScore(s.moyenne),
                   infoBulle: `${libelleMois(s.mois)} : santé spirituelle moyenne ${s.moyenne}/10`,
+                }))}
+              />
+            )}
+          </div>
+
+          <div style={cardStyle}>
+            <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>📋 Rapports d'activités validés par mois</p>
+            {activiteParMois.length === 0 ? (
+              <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun rapport d'activité enregistré pour l'instant.</p>
+            ) : (
+              <GraphiqueBarres
+                donnees={activiteParMois.map(a => ({
+                  libelle: libelleMois(a.mois),
+                  valeur: a.taux,
+                  texteAffiche: `${a.taux}%`,
+                  infoBulle: `${libelleMois(a.mois)} : ${a.taux}% des GEM ont rapporté leurs activités`,
                 }))}
               />
             )}
