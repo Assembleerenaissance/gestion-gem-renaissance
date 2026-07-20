@@ -765,14 +765,14 @@ function PrioritesPastorales({ membres, gems, regulariteParMembre, cardStyle }) 
                 <span style={{ fontSize: 12, fontWeight: 700, color: RED_LIGHT }}>{regularite.absencesConsecutives} absences consécutives</span>
                 {membre.telephone && (
                   <>
-                    <a href={`tel:${membre.telephone}`} style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 6, padding: "6px 12px" }}>
+                    <a href={`tel:${membre.telephone}`} style={{ fontSize: 14, fontWeight: 700, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 12, padding: "12px 20px", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
                       📞 Appeler
                     </a>
                     <a
                       href={`https://wa.me/${membre.telephone.replace(/[^\d]/g, "")}?text=${encodeURIComponent(`Bonjour ${membre.nom}, tu nous manques beaucoup ces derniers temps. Est-ce que tout va bien ? Nous t'aimons et espérons te revoir bientôt au culte. 🙏`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      style={{ fontSize: 12, fontWeight: 700, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 6, padding: "6px 12px" }}
+                      style={{ fontSize: 14, fontWeight: 700, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 12, padding: "12px 20px", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}
                     >
                       💬 WhatsApp
                     </a>
@@ -855,7 +855,7 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
                 <p style={{ fontWeight: 700, marginBottom: 4 }}>{it.nom}</p>
                 <button
  className="btn-app"
- onClick={() => onOpenParent(it)} style={{ fontSize: 11, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 6, padding: "6px 10px", cursor: "pointer", whiteSpace: "nowrap" }}>
+ onClick={() => onOpenParent(it)} style={{ fontSize: 13, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 12, padding: "10px 18px", cursor: "pointer", whiteSpace: "nowrap", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
                   👥 Tous les membres
                 </button>
               </div>
@@ -1021,10 +1021,10 @@ function DetailParent({ parent, type, gems, membres, regulariteParMembre, onBack
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     {m.telephone && (
                       <>
-                        <a href={`tel:${m.telephone}`} className="btn-app" style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
+                        <a href={`tel:${m.telephone}`} className="btn-app" style={{ fontSize: 14, fontWeight: 700, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 12, padding: "12px 20px", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
                           📞 Appeler
                         </a>
-                        <a href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" className="btn-app" style={{ fontSize: 12, fontWeight: 700, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
+                        <a href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" className="btn-app" style={{ fontSize: 14, fontWeight: 700, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 12, padding: "12px 20px", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
                           💬 WhatsApp
                         </a>
                       </>
@@ -1033,7 +1033,7 @@ function DetailParent({ parent, type, gems, membres, regulariteParMembre, onBack
                       className="btn-app"
                       onClick={() => setMembreAConfirmer(m)}
                       disabled={suppressionEnCours === m.id}
-                      style={{ fontSize: 12, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, border: "none", borderRadius: 6, padding: "8px 12px", cursor: "pointer", whiteSpace: "nowrap" }}
+                      style={{ fontSize: 14, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, border: "none", borderRadius: 12, padding: "12px 20px", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}
                     >
                       {suppressionEnCours === m.id ? "…" : "🗑️ Supprimer"}
                     </button>
@@ -2127,10 +2127,10 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
                         </div>
                         {m.telephone && (
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            <a href={`tel:${m.telephone}`} style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
+                            <a href={`tel:${m.telephone}`} style={{ fontSize: 14, fontWeight: 700, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 12, padding: "12px 20px", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
                               📞 Appeler
                             </a>
-                            <a href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
+                            <a href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, fontWeight: 700, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 12, padding: "12px 20px", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
                               💬 WhatsApp
                             </a>
                           </div>
@@ -2180,10 +2180,10 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
                         </div>
                         {m.telephone && (
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            <a href={`tel:${m.telephone}`} style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
+                            <a href={`tel:${m.telephone}`} style={{ fontSize: 14, fontWeight: 700, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 12, padding: "12px 20px", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
                               📞 Appeler
                             </a>
-                            <a href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
+                            <a href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, fontWeight: 700, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 12, padding: "12px 20px", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
                               💬 WhatsApp
                             </a>
                           </div>
@@ -2491,9 +2491,10 @@ function SousPageAssistantsDesignes({ compte, cardStyle }) {
                 className="btn-app"
                 onClick={() => basculerAssistant(c)}
                 style={{
-                  padding: "8px 16px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12,
-                  backgroundColor: c.assistant ? "rgba(208,175,28,0.15)" : GOLD,
-                  color: c.assistant ? GOLD_LIGHT : TEAL_950,
+                  padding: "12px 20px", borderRadius: 12, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 14,
+                  backgroundColor: c.assistant ? RED_LIGHT : GOLD,
+                  color: c.assistant ? "#fff" : TEAL_950,
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
                 }}
               >
                 {c.assistant ? "✓ Assistant désigné — Retirer" : "Désigner comme assistant"}
@@ -3258,10 +3259,10 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
                         </div>
                         {m.telephone && (
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            <a href={`tel:${m.telephone}`} style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
+                            <a href={`tel:${m.telephone}`} style={{ fontSize: 14, fontWeight: 700, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 12, padding: "12px 20px", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
                               📞 Appeler
                             </a>
-                            <a href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
+                            <a href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, fontWeight: 700, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 12, padding: "12px 20px", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
                               💬 WhatsApp
                             </a>
                           </div>
