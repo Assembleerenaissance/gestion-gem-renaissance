@@ -14,6 +14,50 @@ const RED_LIGHT = "#e2626d";
 
 // Filet de sécurité : si un bug imprévu survient n'importe où dans l'application,
 // on affiche un message clair avec un bouton pour recharger, plutôt qu'un écran blanc.
+// Styles globaux : transitions douces et effets de survol, injectés une seule fois.
+function StylesGlobaux() {
+  return (
+    <style>{`
+      .btn-app { transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease; }
+      .btn-app:hover:not(:disabled) { filter: brightness(1.12); transform: translateY(-1px); }
+      .btn-app:active:not(:disabled) { transform: translateY(0); filter: brightness(0.95); }
+      .btn-app:disabled { opacity: 0.6; cursor: not-allowed; }
+      .card-app { transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease; }
+      .card-app:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.25); }
+      .fade-in { animation: fadeInApp 0.22s ease; }
+      .barre-graphique { transition: opacity 0.15s ease; }
+      .barre-graphique:hover { opacity: 0.75; }
+      @keyframes fadeInApp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+      input, select, textarea { transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+      input:focus, select:focus, textarea:focus { outline: none; box-shadow: 0 0 0 2px rgba(208,175,28,0.4); }
+    `}</style>
+  );
+}
+
+// Boîte de dialogue de confirmation personnalisée — remplace les popups natives du navigateur.
+function BoiteConfirmation({ titre, message, texteConfirmer, dangereux, onConfirmer, onAnnuler }) {
+  return (
+    <div className="fade-in" style={{ position: "fixed", inset: 0, backgroundColor: "rgba(5,20,18,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
+      <div style={{ backgroundColor: "#14776B", border: "1px solid #1F9C8D", borderRadius: 16, padding: 24, maxWidth: 420, width: "100%", boxShadow: "0 20px 50px rgba(0,0,0,0.4)" }}>
+        <p style={{ fontWeight: 700, fontSize: 17, marginBottom: 10, color: "#FFFFFF" }}>{titre}</p>
+        <p style={{ fontSize: 13, color: "#cdeae4", marginBottom: 22, lineHeight: 1.5 }}>{message}</p>
+        <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+          <button
+ className="btn-app"
+ onClick={onAnnuler} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: "transparent", color: "#cdeae4", border: "1px solid #27B3A1", fontWeight: 600, cursor: "pointer" }}>
+            Annuler
+          </button>
+          <button
+ className="btn-app"
+ onClick={onConfirmer} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: dangereux ? "#e2626d" : "#D0AF1C", color: dangereux ? "#fff" : "#0D5C52", border: "none", fontWeight: 700, cursor: "pointer" }}>
+            {texteConfirmer}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 class LimiteErreurs extends React.Component {
   constructor(props) { super(props); this.state = { erreur: null }; }
   static getDerivedStateFromError(erreur) { return { erreur }; }
@@ -24,7 +68,9 @@ class LimiteErreurs extends React.Component {
         <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", backgroundColor: TEAL_950, color: CREAM, padding: 24, textAlign: "center" }}>
           <p style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Une erreur inattendue est survenue</p>
           <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20, maxWidth: 400 }}>Aucune donnée n'a été perdue. Recharge la page pour continuer.</p>
-          <button onClick={() => window.location.reload()} style={{ padding: "10px 20px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>
+          <button
+ className="btn-app"
+ onClick={() => window.location.reload()} style={{ padding: "10px 20px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>
             Recharger la page
           </button>
         </div>
@@ -75,6 +121,7 @@ function App() {
 export default function AppAvecProtection() {
   return (
     <LimiteErreurs>
+      <StylesGlobaux />
       <App />
     </LimiteErreurs>
   );
@@ -192,8 +239,12 @@ function EcranConnexion() {
         <h1 style={{ color: CREAM, fontSize: 22, fontWeight: 700, marginBottom: 4, textAlign: "center" }}>Gestion des GEM</h1>
         <p style={{ color: "#cdeae4", fontSize: 13, marginBottom: 20, textAlign: "center" }}>Assemblée RENAISSANCE — Vases d'Honneur</p>
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-          <button onClick={() => { setMode("connexion"); setMotDePasseOublieOuvert(false); }} style={{ flex: 1, padding: "8px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, backgroundColor: mode === "connexion" ? TEAL_700 : "transparent", color: mode === "connexion" ? GOLD_LIGHT : "#cdeae4", border: `1px solid ${TEAL_600}` }}>Se connecter</button>
-          <button onClick={() => { setMode("inscription"); setMotDePasseOublieOuvert(false); }} style={{ flex: 1, padding: "8px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, backgroundColor: mode === "inscription" ? TEAL_700 : "transparent", color: mode === "inscription" ? GOLD_LIGHT : "#cdeae4", border: `1px solid ${TEAL_600}` }}>Inscription</button>
+          <button
+ className="btn-app"
+ onClick={() => { setMode("connexion"); setMotDePasseOublieOuvert(false); }} style={{ flex: 1, padding: "8px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, backgroundColor: mode === "connexion" ? TEAL_700 : "transparent", color: mode === "connexion" ? GOLD_LIGHT : "#cdeae4", border: `1px solid ${TEAL_600}` }}>Se connecter</button>
+          <button
+ className="btn-app"
+ onClick={() => { setMode("inscription"); setMotDePasseOublieOuvert(false); }} style={{ flex: 1, padding: "8px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, backgroundColor: mode === "inscription" ? TEAL_700 : "transparent", color: mode === "inscription" ? GOLD_LIGHT : "#cdeae4", border: `1px solid ${TEAL_600}` }}>Inscription</button>
         </div>
 
         {mode === "connexion" && motDePasseOublieOuvert ? (
@@ -207,7 +258,9 @@ function EcranConnexion() {
             <button disabled={envoiOubliEnCours} onClick={envoyerDemandeOubli} style={{ padding: "12px 0", borderRadius: 8, fontWeight: 700, fontSize: 14, backgroundColor: GOLD, color: TEAL_950, border: "none", cursor: "pointer" }}>
               {envoiOubliEnCours ? "…" : "Envoyer la demande"}
             </button>
-            <button onClick={() => { setMotDePasseOublieOuvert(false); setMessageOubli(""); }} style={{ padding: "8px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, backgroundColor: "transparent", color: "#cdeae4", border: "none", cursor: "pointer" }}>
+            <button
+ className="btn-app"
+ onClick={() => { setMotDePasseOublieOuvert(false); setMessageOubli(""); }} style={{ padding: "8px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, backgroundColor: "transparent", color: "#cdeae4", border: "none", cursor: "pointer" }}>
               ← Retour à la connexion
             </button>
           </div>
@@ -231,7 +284,9 @@ function EcranConnexion() {
             </label>
 
             {mode === "connexion" && (
-              <button onClick={() => { setMotDePasseOublieOuvert(true); setMessageOubli(""); setTelephoneOubli(telephone); }} style={{ alignSelf: "flex-end", background: "none", border: "none", color: GOLD_LIGHT, fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0, marginTop: -4 }}>
+              <button
+ className="btn-app"
+ onClick={() => { setMotDePasseOublieOuvert(true); setMessageOubli(""); setTelephoneOubli(telephone); }} style={{ alignSelf: "flex-end", background: "none", border: "none", color: GOLD_LIGHT, fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0, marginTop: -4 }}>
                 Mot de passe oublié ?
               </button>
             )}
@@ -437,12 +492,22 @@ function TableauDeBord({ compte }) {
           {estPasteur ? (
             <>
               {aResponsabilitePersonnelle && (
-                <button onClick={() => { setPage("mon_espace"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "mon_espace" ? TEAL_700 : "transparent", color: page === "mon_espace" ? GOLD_LIGHT : "#cdeae4" }}>Mon espace</button>
+                <button
+ className="btn-app"
+ onClick={() => { setPage("mon_espace"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "mon_espace" ? TEAL_700 : "transparent", color: page === "mon_espace" ? GOLD_LIGHT : "#cdeae4" }}>Mon espace</button>
               )}
-              <button onClick={() => { setPage("dashboard"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "dashboard" ? TEAL_700 : "transparent", color: page === "dashboard" ? GOLD_LIGHT : "#cdeae4" }}>Tableau de bord</button>
-              <button onClick={() => { setPage("tribus"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "tribus" ? TEAL_700 : "transparent", color: page === "tribus" ? GOLD_LIGHT : "#cdeae4" }}>Tribus</button>
-              <button onClick={() => { setPage("departements"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "departements" ? TEAL_700 : "transparent", color: page === "departements" ? GOLD_LIGHT : "#cdeae4" }}>Départements</button>
-              <button onClick={() => { setPage("demandes"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "demandes" ? TEAL_700 : "transparent", color: page === "demandes" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
+              <button
+ className="btn-app"
+ onClick={() => { setPage("dashboard"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "dashboard" ? TEAL_700 : "transparent", color: page === "dashboard" ? GOLD_LIGHT : "#cdeae4" }}>Tableau de bord</button>
+              <button
+ className="btn-app"
+ onClick={() => { setPage("tribus"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "tribus" ? TEAL_700 : "transparent", color: page === "tribus" ? GOLD_LIGHT : "#cdeae4" }}>Tribus</button>
+              <button
+ className="btn-app"
+ onClick={() => { setPage("departements"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "departements" ? TEAL_700 : "transparent", color: page === "departements" ? GOLD_LIGHT : "#cdeae4" }}>Départements</button>
+              <button
+ className="btn-app"
+ onClick={() => { setPage("demandes"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "demandes" ? TEAL_700 : "transparent", color: page === "demandes" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
                 Demandes
                 {nbDemandesAttente > 0 && (
                   <span style={{ position: "absolute", top: -6, right: -6, backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
@@ -450,9 +515,15 @@ function TableauDeBord({ compte }) {
                   </span>
                 )}
               </button>
-              <button onClick={() => { setPage("rapports"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "rapports" ? TEAL_700 : "transparent", color: page === "rapports" ? GOLD_LIGHT : "#cdeae4" }}>Rapports</button>
-              <button onClick={() => { setPage("historique"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "historique" ? TEAL_700 : "transparent", color: page === "historique" ? GOLD_LIGHT : "#cdeae4" }}>Historique</button>
-              <button onClick={() => { setPage("calendrier"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "calendrier" ? TEAL_700 : "transparent", color: page === "calendrier" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
+              <button
+ className="btn-app"
+ onClick={() => { setPage("rapports"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "rapports" ? TEAL_700 : "transparent", color: page === "rapports" ? GOLD_LIGHT : "#cdeae4" }}>Rapports</button>
+              <button
+ className="btn-app"
+ onClick={() => { setPage("historique"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "historique" ? TEAL_700 : "transparent", color: page === "historique" ? GOLD_LIGHT : "#cdeae4" }}>Historique</button>
+              <button
+ className="btn-app"
+ onClick={() => { setPage("calendrier"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "calendrier" ? TEAL_700 : "transparent", color: page === "calendrier" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
                 Calendrier
                 {nbNouveauxEvenements > 0 && (
                   <span style={{ position: "absolute", top: -6, right: -6, backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
@@ -460,7 +531,9 @@ function TableauDeBord({ compte }) {
                   </span>
                 )}
               </button>
-              <button onClick={() => { setPage("messagerie"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "messagerie" ? TEAL_700 : "transparent", color: page === "messagerie" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
+              <button
+ className="btn-app"
+ onClick={() => { setPage("messagerie"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "messagerie" ? TEAL_700 : "transparent", color: page === "messagerie" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
                 Messagerie
                 {nbMessagesNonLus > 0 && (
                   <span style={{ position: "absolute", top: -6, right: -6, backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
@@ -468,7 +541,9 @@ function TableauDeBord({ compte }) {
                   </span>
                 )}
               </button>
-              <button onClick={() => { setPage("mots_de_passe"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "mots_de_passe" ? TEAL_700 : "transparent", color: page === "mots_de_passe" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
+              <button
+ className="btn-app"
+ onClick={() => { setPage("mots_de_passe"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "mots_de_passe" ? TEAL_700 : "transparent", color: page === "mots_de_passe" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
                 Mots de passe
                 {nbDemandesMdp > 0 && (
                   <span style={{ position: "absolute", top: -6, right: -6, backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
@@ -477,13 +552,19 @@ function TableauDeBord({ compte }) {
                 )}
               </button>
               {compte.role === "pasteur" && (
-                <button onClick={() => { setPage("assistants"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "assistants" ? TEAL_700 : "transparent", color: page === "assistants" ? GOLD_LIGHT : "#cdeae4" }}>Rôles & Accès</button>
+                <button
+ className="btn-app"
+ onClick={() => { setPage("assistants"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "assistants" ? TEAL_700 : "transparent", color: page === "assistants" ? GOLD_LIGHT : "#cdeae4" }}>Rôles & Accès</button>
               )}
             </>
           ) : (
             <>
-              <button onClick={() => setPage("dashboard")} style={{ ...btnStyle, backgroundColor: (page !== "messagerie" && page !== "calendrier") ? TEAL_700 : "transparent", color: (page !== "messagerie" && page !== "calendrier") ? GOLD_LIGHT : "#cdeae4" }}>Mon espace</button>
-              <button onClick={() => setPage("calendrier")} style={{ ...btnStyle, backgroundColor: page === "calendrier" ? TEAL_700 : "transparent", color: page === "calendrier" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
+              <button
+ className="btn-app"
+ onClick={() => setPage("dashboard")} style={{ ...btnStyle, backgroundColor: (page !== "messagerie" && page !== "calendrier") ? TEAL_700 : "transparent", color: (page !== "messagerie" && page !== "calendrier") ? GOLD_LIGHT : "#cdeae4" }}>Mon espace</button>
+              <button
+ className="btn-app"
+ onClick={() => setPage("calendrier")} style={{ ...btnStyle, backgroundColor: page === "calendrier" ? TEAL_700 : "transparent", color: page === "calendrier" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
                 Calendrier
                 {nbNouveauxEvenements > 0 && (
                   <span style={{ position: "absolute", top: -6, right: -6, backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
@@ -491,7 +572,9 @@ function TableauDeBord({ compte }) {
                   </span>
                 )}
               </button>
-              <button onClick={() => setPage("messagerie")} style={{ ...btnStyle, backgroundColor: page === "messagerie" ? TEAL_700 : "transparent", color: page === "messagerie" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
+              <button
+ className="btn-app"
+ onClick={() => setPage("messagerie")} style={{ ...btnStyle, backgroundColor: page === "messagerie" ? TEAL_700 : "transparent", color: page === "messagerie" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
                 Messagerie
                 {nbMessagesNonLus > 0 && (
                   <span style={{ position: "absolute", top: -6, right: -6, backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
@@ -501,7 +584,9 @@ function TableauDeBord({ compte }) {
               </button>
             </>
           )}
-          <button onClick={seDeconnecter} style={{ ...btnStyle, backgroundColor: "transparent", color: "#cdeae4" }}>Déconnexion</button>
+          <button
+ className="btn-app"
+ onClick={seDeconnecter} style={{ ...btnStyle, backgroundColor: "transparent", color: "#cdeae4" }}>Déconnexion</button>
         </div>
       </div>
 
@@ -603,7 +688,9 @@ function TableauDeBord({ compte }) {
             </div>
             <PrioritesPastorales membres={membres} gems={gems} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
             <div style={{ marginTop: 24 }}>
-              <button onClick={exporterDonneesJSON} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+              <button
+ className="btn-app"
+ onClick={exporterDonneesJSON} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
                 💾 Exporter toutes les données (JSON)
               </button>
               <p style={{ fontSize: 11, color: "#a9d6cf", marginTop: 6 }}>Sauvegarde complète de secours — à faire régulièrement.</p>
@@ -766,7 +853,9 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
             <div key={it.id} style={cardStyle}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
                 <p style={{ fontWeight: 700, marginBottom: 4 }}>{it.nom}</p>
-                <button onClick={() => onOpenParent(it)} style={{ fontSize: 11, fontWeight: 700, color: GOLD_LIGHT, background: "none", border: `1px solid ${GOLD_LIGHT}`, borderRadius: 6, padding: "4px 8px", cursor: "pointer", whiteSpace: "nowrap" }}>
+                <button
+ className="btn-app"
+ onClick={() => onOpenParent(it)} style={{ fontSize: 11, fontWeight: 700, color: GOLD_LIGHT, background: "none", border: `1px solid ${GOLD_LIGHT}`, borderRadius: 6, padding: "4px 8px", cursor: "pointer", whiteSpace: "nowrap" }}>
                   👥 Tous les membres
                 </button>
               </div>
@@ -798,10 +887,14 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
                 creationPour === it.id ? (
                   <div style={{ marginTop: 10, display: "flex", gap: 6 }}>
                     <input value={nomNouveauGem} onChange={e => setNomNouveauGem(e.target.value)} placeholder="Nom du GEM" style={{ flex: 1, padding: 6, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
-                    <button onClick={() => creerGem(it.id)} style={{ padding: "6px 10px", borderRadius: 6, backgroundColor: GOLD, color: TEAL_950, border: "none", fontSize: 12, fontWeight: 700 }}>OK</button>
+                    <button
+ className="btn-app"
+ onClick={() => creerGem(it.id)} style={{ padding: "6px 10px", borderRadius: 6, backgroundColor: GOLD, color: TEAL_950, border: "none", fontSize: 12, fontWeight: 700 }}>OK</button>
                   </div>
                 ) : (
-                  <button onClick={() => setCreationPour(it.id)} style={{ marginTop: 10, fontSize: 12, color: "#a9d6cf", background: "none", border: "none", cursor: "pointer" }}>+ Créer un GEM ici</button>
+                  <button
+ className="btn-app"
+ onClick={() => setCreationPour(it.id)} style={{ marginTop: 10, fontSize: 12, color: "#a9d6cf", background: "none", border: "none", cursor: "pointer" }}>+ Créer un GEM ici</button>
                 )
               )}
             </div>
@@ -819,6 +912,8 @@ function DetailParent({ parent, type, gems, membres, regulariteParMembre, onBack
   const [chargement, setChargement] = useState(true);
   const [recherche, setRecherche] = useState("");
   const [suppressionEnCours, setSuppressionEnCours] = useState(null);
+  const [membreAConfirmer, setMembreAConfirmer] = useState(null);
+  const [nombreAffiche, setNombreAffiche] = useState(20);
 
   const gemsDuParent = gems.filter(g => g.type === type && (type === "tribu" ? g.tribu_id === parent.id : g.departement_id === parent.id));
   const idsGems = gemsDuParent.map(g => g.id);
@@ -844,9 +939,9 @@ function DetailParent({ parent, type, gems, membres, regulariteParMembre, onBack
     return nomComplet.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]).join("").toUpperCase();
   }
 
-  async function supprimerMembre(membre) {
-    const confirmation = window.confirm(`Es-tu sûr de vouloir supprimer définitivement ${membre.nom} ? Cette action est irréversible — son historique de présence, de santé spirituelle et de visites sera aussi supprimé.`);
-    if (!confirmation) return;
+  async function confirmerSuppression() {
+    const membre = membreAConfirmer;
+    setMembreAConfirmer(null);
     setSuppressionEnCours(membre.id);
     await supabase.from("presences").delete().eq("membre_id", membre.id);
     await supabase.from("sante_spirituelle").delete().eq("membre_id", membre.id);
@@ -858,10 +953,13 @@ function DetailParent({ parent, type, gems, membres, regulariteParMembre, onBack
   }
 
   const membresFiltres = membresDuParent.filter(m => m.nom.toLowerCase().includes(recherche.toLowerCase()));
+  const membresAffiches = membresFiltres.slice(0, nombreAffiche);
 
   return (
     <div>
-      <button onClick={onBack} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 12, fontSize: 13 }}>← Retour</button>
+      <button
+ className="btn-app"
+ onClick={onBack} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 12, fontSize: 13 }}>← Retour</button>
       <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{parent.nom}</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>{membresDuParent.length} membre{membresDuParent.length > 1 ? "s" : ""} au total, répartis sur {gemsDuParent.length} GEM</p>
 
@@ -877,14 +975,15 @@ function DetailParent({ parent, type, gems, membres, regulariteParMembre, onBack
       ) : membresFiltres.length === 0 ? (
         <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun membre trouvé.</p>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {membresFiltres.map(m => {
+        <>
+        <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {membresAffiches.map(m => {
             const regularite = regulariteParMembre?.[m.id];
             const moyenne = moyenneSante(santeParMembre[m.id]);
             const numeroWhatsApp = (m.telephone || "").replace(/[^\d]/g, "");
             const messageWhatsApp = encodeURIComponent(`Bonjour ${m.nom}, comment vas-tu ? 🙏`);
             return (
-              <div key={m.id} style={cardStyle}>
+              <div key={m.id} className="card-app" style={cardStyle}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                     {m.photo ? (
@@ -922,17 +1021,19 @@ function DetailParent({ parent, type, gems, membres, regulariteParMembre, onBack
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     {m.telephone && (
                       <>
-                        <a href={`tel:${m.telephone}`} style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, textDecoration: "none", border: `1px solid ${GOLD_LIGHT}`, borderRadius: 6, padding: "8px 10px", whiteSpace: "nowrap" }}>
+                        <a href={`tel:${m.telephone}`} className="btn-app" style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, textDecoration: "none", border: `1px solid ${GOLD_LIGHT}`, borderRadius: 6, padding: "8px 10px", whiteSpace: "nowrap" }}>
                           📞 Appeler
                         </a>
-                        <a href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "#25D366", textDecoration: "none", border: "1px solid #25D366", borderRadius: 6, padding: "8px 10px", whiteSpace: "nowrap" }}>
+                        <a href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" className="btn-app" style={{ fontSize: 12, fontWeight: 700, color: "#25D366", textDecoration: "none", border: "1px solid #25D366", borderRadius: 6, padding: "8px 10px", whiteSpace: "nowrap" }}>
                           💬 WhatsApp
                         </a>
                       </>
                     )}
                     <button
-                      onClick={() => supprimerMembre(m)}
+                      className="btn-app"
+                      onClick={() => setMembreAConfirmer(m)}
                       disabled={suppressionEnCours === m.id}
+                      className="btn-app"
                       style={{ fontSize: 12, fontWeight: 700, color: RED_LIGHT, background: "none", border: `1px solid ${RED_LIGHT}`, borderRadius: 6, padding: "8px 10px", cursor: "pointer", whiteSpace: "nowrap" }}
                     >
                       {suppressionEnCours === m.id ? "…" : "🗑️ Supprimer"}
@@ -943,6 +1044,25 @@ function DetailParent({ parent, type, gems, membres, regulariteParMembre, onBack
             );
           })}
         </div>
+        {membresFiltres.length > nombreAffiche && (
+          <button
+ className="btn-app"
+ onClick={() => setNombreAffiche(n => n + 20)} style={{ marginTop: 16, padding: "10px 20px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+            Afficher plus ({membresFiltres.length - nombreAffiche} restants)
+          </button>
+        )}
+        </>
+      )}
+
+      {membreAConfirmer && (
+        <BoiteConfirmation
+          titre="Supprimer ce membre ?"
+          message={`Es-tu sûr de vouloir supprimer définitivement ${membreAConfirmer.nom} ? Cette action est irréversible — son historique de présence, de santé spirituelle et de visites sera aussi supprimé.`}
+          texteConfirmer="Supprimer définitivement"
+          dangereux
+          onConfirmer={confirmerSuppression}
+          onAnnuler={() => setMembreAConfirmer(null)}
+        />
       )}
     </div>
   );
@@ -1099,7 +1219,9 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
 
   return (
     <div>
-      {onBack && <button onClick={onBack} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 12, fontSize: 13 }}>← Retour</button>}
+      {onBack && <button
+ className="btn-app"
+ onClick={onBack} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 12, fontSize: 13 }}>← Retour</button>}
       <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{gem.nom}</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>{membres.length} membre{membres.length > 1 ? "s" : ""}</p>
 
@@ -1115,7 +1237,9 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
           </label>
           <input value={nom} onChange={e => setNom(e.target.value)} placeholder="Nom complet" style={{ flex: 1, minWidth: 160, padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
           <input value={telephone} onChange={e => setTelephone(e.target.value)} placeholder="Téléphone" style={{ flex: 1, minWidth: 160, padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
-          <button onClick={ajouterMembre} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>Ajouter</button>
+          <button
+ className="btn-app"
+ onClick={ajouterMembre} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>Ajouter</button>
         </div>
         <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 12, color: "#a9d6cf", cursor: "pointer" }}>
           <input type="checkbox" checked={nouveauConverti} onChange={e => setNouveauConverti(e.target.checked)} />
@@ -1312,7 +1436,9 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
 
   return (
     <div style={cardStyle}>
-      <button onClick={onToggle} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", color: CREAM, textAlign: "left" }}>
+      <button
+ className="btn-app"
+ onClick={onToggle} style={{ width: "100%", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", color: CREAM, textAlign: "left" }}>
         <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
           {membre.photo ? (
             <img src={membre.photo} alt="" style={{ width: 40, height: 40, borderRadius: 999, objectFit: "cover", flexShrink: 0, border: `1px solid ${TEAL_600}` }} />
@@ -1362,14 +1488,20 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
             <input type="file" accept="image/*" onChange={surChangerPhoto} style={{ display: "none" }} />
           </label>
           <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
-            <button onClick={() => setSousOnglet("sante")} style={{ flex: 1, padding: "6px 0", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "sante" ? TEAL_700 : TEAL_900, color: sousOnglet === "sante" ? GOLD_LIGHT : "#cdeae4" }}>
+            <button
+ className="btn-app"
+ onClick={() => setSousOnglet("sante")} style={{ flex: 1, padding: "6px 0", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "sante" ? TEAL_700 : TEAL_900, color: sousOnglet === "sante" ? GOLD_LIGHT : "#cdeae4" }}>
               Santé spirituelle
             </button>
-            <button onClick={() => setSousOnglet("visites")} style={{ flex: 1, padding: "6px 0", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "visites" ? TEAL_700 : TEAL_900, color: sousOnglet === "visites" ? GOLD_LIGHT : "#cdeae4" }}>
+            <button
+ className="btn-app"
+ onClick={() => setSousOnglet("visites")} style={{ flex: 1, padding: "6px 0", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "visites" ? TEAL_700 : TEAL_900, color: sousOnglet === "visites" ? GOLD_LIGHT : "#cdeae4" }}>
               Journal des visites
             </button>
             {membre.nouveau_converti && (
-              <button onClick={() => setSousOnglet("parcours")} style={{ flex: 1, padding: "6px 0", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "parcours" ? TEAL_700 : TEAL_900, color: sousOnglet === "parcours" ? GOLD_LIGHT : "#cdeae4" }}>
+              <button
+ className="btn-app"
+ onClick={() => setSousOnglet("parcours")} style={{ flex: 1, padding: "6px 0", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "parcours" ? TEAL_700 : TEAL_900, color: sousOnglet === "parcours" ? GOLD_LIGHT : "#cdeae4" }}>
                 Parcours
               </button>
             )}
@@ -1393,7 +1525,9 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
                   </div>
                 ))}
               </div>
-              <button onClick={enregistrer} style={{ marginTop: 14, padding: "8px 16px", borderRadius: 8, backgroundColor: sauvegarde ? TEAL_700 : GOLD, color: sauvegarde ? GOLD_LIGHT : TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>
+              <button
+ className="btn-app"
+ onClick={enregistrer} style={{ marginTop: 14, padding: "8px 16px", borderRadius: 8, backgroundColor: sauvegarde ? TEAL_700 : GOLD, color: sauvegarde ? GOLD_LIGHT : TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>
                 {sauvegarde ? "✓ Enregistré" : "Enregistrer"}
               </button>
             </>
@@ -1409,7 +1543,9 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
                   ))}
                 </div>
                 <textarea value={noteVisite} onChange={e => setNoteVisite(e.target.value)} rows={2} placeholder="Note sur la visite..." style={{ width: "100%", padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, resize: "vertical" }} />
-                <button onClick={enregistrerVisite} style={{ marginTop: 8, padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>
+                <button
+ className="btn-app"
+ onClick={enregistrerVisite} style={{ marginTop: 8, padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>
                   Enregistrer la visite
                 </button>
               </div>
@@ -1462,7 +1598,9 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
                 })}
               </div>
               {(membre.etape_conversion || "accueil") !== "integre" ? (
-                <button onClick={avancerEtape} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>
+                <button
+ className="btn-app"
+ onClick={avancerEtape} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>
                   Faire avancer à l'étape suivante
                 </button>
               ) : (
@@ -1540,7 +1678,9 @@ function DemanderResponsabilite({ compte, tribus, departements, mesAssignations,
 
         {erreur && <p style={{ color: RED_LIGHT, fontSize: 12 }}>{erreur}</p>}
 
-        <button onClick={envoyer} style={{ padding: "10px 0", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>
+        <button
+ className="btn-app"
+ onClick={envoyer} style={{ padding: "10px 0", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>
           Envoyer la demande
         </button>
       </div>
@@ -1575,8 +1715,12 @@ function SelecteurRole({ roleDemande, setRoleDemande, parentType, setParentType,
       {roleDemande === "gem" && (
         <>
           <div style={{ display: "flex", gap: 6 }}>
-            <button onClick={() => setParentType("tribu")} style={{ flex: 1, padding: 8, borderRadius: 8, fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", backgroundColor: parentType === "tribu" ? TEAL_700 : TEAL_900, color: CREAM }}>GEM d'une tribu</button>
-            <button onClick={() => setParentType("departement")} style={{ flex: 1, padding: 8, borderRadius: 8, fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", backgroundColor: parentType === "departement" ? TEAL_700 : TEAL_900, color: CREAM }}>GEM d'un département</button>
+            <button
+ className="btn-app"
+ onClick={() => setParentType("tribu")} style={{ flex: 1, padding: 8, borderRadius: 8, fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", backgroundColor: parentType === "tribu" ? TEAL_700 : TEAL_900, color: CREAM }}>GEM d'une tribu</button>
+            <button
+ className="btn-app"
+ onClick={() => setParentType("departement")} style={{ flex: 1, padding: 8, borderRadius: 8, fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", backgroundColor: parentType === "departement" ? TEAL_700 : TEAL_900, color: CREAM }}>GEM d'un département</button>
           </div>
           {parentType === "tribu" ? (
             <select value={tribuId} onChange={e => setTribuId(e.target.value)} style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}>
@@ -1678,8 +1822,12 @@ function PageDemandes({ tribus, departements, compte, onTraite, cardStyle }) {
                 <p style={{ fontSize: 11, color: "#a9d6cf" }}>{comptesParId[d.compte_id]?.telephone}</p>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={() => valider(d)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 12 }}>Valider</button>
-                <button onClick={() => refuser(d)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: "transparent", color: RED_LIGHT, border: `1px solid ${RED_LIGHT}`, cursor: "pointer", fontSize: 12 }}>Refuser</button>
+                <button
+ className="btn-app"
+ onClick={() => valider(d)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 12 }}>Valider</button>
+                <button
+ className="btn-app"
+ onClick={() => refuser(d)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: "transparent", color: RED_LIGHT, border: `1px solid ${RED_LIGHT}`, cursor: "pointer", fontSize: 12 }}>Refuser</button>
               </div>
             </div>
           ))}
@@ -1792,9 +1940,13 @@ function PageMotsDePasse({ cardStyle, onTraite }) {
                   {!ouverte && (
                     <div style={{ display: "flex", gap: 8 }}>
                       {compteAssocie && (
-                        <button onClick={() => ouvrirReinitialisation(d)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 12 }}>Réinitialiser</button>
+                        <button
+ className="btn-app"
+ onClick={() => ouvrirReinitialisation(d)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 12 }}>Réinitialiser</button>
                       )}
-                      <button onClick={() => ignorer(d)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: "transparent", color: RED_LIGHT, border: `1px solid ${RED_LIGHT}`, cursor: "pointer", fontSize: 12 }}>Ignorer</button>
+                      <button
+ className="btn-app"
+ onClick={() => ignorer(d)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: "transparent", color: RED_LIGHT, border: `1px solid ${RED_LIGHT}`, cursor: "pointer", fontSize: 12 }}>Ignorer</button>
                     </div>
                   )}
                 </div>
@@ -1821,7 +1973,9 @@ function PageMotsDePasse({ cardStyle, onTraite }) {
                       <button disabled={enCours} onClick={() => reinitialiser(d)} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 12 }}>
                         {enCours ? "…" : "Confirmer la réinitialisation"}
                       </button>
-                      <button onClick={() => setDemandeOuverte(null)} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: "transparent", color: "#a9d6cf", border: `1px solid ${TEAL_600}`, cursor: "pointer", fontSize: 12 }}>Annuler</button>
+                      <button
+ className="btn-app"
+ onClick={() => setDemandeOuverte(null)} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: "transparent", color: "#a9d6cf", border: `1px solid ${TEAL_600}`, cursor: "pointer", fontSize: 12 }}>Annuler</button>
                     </div>
                   </div>
                 )}
@@ -1927,8 +2081,12 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
   return (
     <div>
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
-        <button onClick={() => setVue("hebdomadaire")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "hebdomadaire" ? GOLD : TEAL_900, color: vue === "hebdomadaire" ? TEAL_950 : "#cdeae4" }}>Hebdomadaire</button>
-        <button onClick={() => setVue("mensuelle")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "mensuelle" ? GOLD : TEAL_900, color: vue === "mensuelle" ? TEAL_950 : "#cdeae4" }}>Mensuelle</button>
+        <button
+ className="btn-app"
+ onClick={() => setVue("hebdomadaire")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "hebdomadaire" ? GOLD : TEAL_900, color: vue === "hebdomadaire" ? TEAL_950 : "#cdeae4" }}>Hebdomadaire</button>
+        <button
+ className="btn-app"
+ onClick={() => setVue("mensuelle")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "mensuelle" ? GOLD : TEAL_900, color: vue === "mensuelle" ? TEAL_950 : "#cdeae4" }}>Mensuelle</button>
       </div>
 
       {dimanches.length === 0 ? (
@@ -1942,7 +2100,9 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
                 <p style={{ fontSize: 13, color: "#a9d6cf", margin: 0 }}>Rapport du dimanche {dateFormatee}</p>
-                <button onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
+                <button
+ className="btn-app"
+ onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
                 <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Membres</p><p style={{ fontSize: 24, fontWeight: 700 }}>{totalMembres}</p></div>
@@ -1993,7 +2153,9 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
                 <p style={{ fontSize: 13, color: "#a9d6cf", margin: 0, textTransform: "capitalize" }}>Rapport de {libelleMois(moisChoisi)} — {dimanchesDuMois.length} dimanche(s)</p>
-                <button onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
+                <button
+ className="btn-app"
+ onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
                 <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Membres</p><p style={{ fontSize: 24, fontWeight: 700 }}>{totalMembres}</p></div>
@@ -2202,9 +2364,15 @@ function MonEspace({ compte, assignation, gems, membres, tribus, departements, g
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>{gemsDuPerimetre.length} GEM sous ta responsabilité</p>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
-        <button onClick={() => setSousOnglet("gems")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "gems" ? GOLD : TEAL_900, color: sousOnglet === "gems" ? TEAL_950 : "#cdeae4" }}>Mes GEM</button>
-        <button onClick={() => setSousOnglet("rapports")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "rapports" ? GOLD : TEAL_900, color: sousOnglet === "rapports" ? TEAL_950 : "#cdeae4" }}>Rapports</button>
-        <button onClick={() => setSousOnglet("evolution")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "evolution" ? GOLD : TEAL_900, color: sousOnglet === "evolution" ? TEAL_950 : "#cdeae4" }}>Évolution</button>
+        <button
+ className="btn-app"
+ onClick={() => setSousOnglet("gems")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "gems" ? GOLD : TEAL_900, color: sousOnglet === "gems" ? TEAL_950 : "#cdeae4" }}>Mes GEM</button>
+        <button
+ className="btn-app"
+ onClick={() => setSousOnglet("rapports")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "rapports" ? GOLD : TEAL_900, color: sousOnglet === "rapports" ? TEAL_950 : "#cdeae4" }}>Rapports</button>
+        <button
+ className="btn-app"
+ onClick={() => setSousOnglet("evolution")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "evolution" ? GOLD : TEAL_900, color: sousOnglet === "evolution" ? TEAL_950 : "#cdeae4" }}>Évolution</button>
       </div>
 
       {sousOnglet === "rapports" ? (
@@ -2217,10 +2385,14 @@ function MonEspace({ compte, assignation, gems, membres, tribus, departements, g
             {creationOuverte ? (
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <input value={nomNouveauGem} onChange={e => setNomNouveauGem(e.target.value)} placeholder="Nom du nouveau GEM" style={{ flex: 1, minWidth: 160, padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
-                <button onClick={creerGem} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>Créer</button>
+                <button
+ className="btn-app"
+ onClick={creerGem} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>Créer</button>
               </div>
             ) : (
-              <button onClick={() => setCreationOuverte(true)} style={{ fontSize: 13, color: GOLD_LIGHT, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>+ Créer un nouveau GEM</button>
+              <button
+ className="btn-app"
+ onClick={() => setCreationOuverte(true)} style={{ fontSize: 13, color: GOLD_LIGHT, background: "none", border: "none", cursor: "pointer", fontWeight: 600 }}>+ Créer un nouveau GEM</button>
             )}
           </div>
 
@@ -2249,6 +2421,7 @@ function PageAssistants({ compte, tribus, departements, gems, onChange, cardStyl
 
   const tabBtn = (val, label) => (
     <button
+      className="btn-app"
       onClick={() => setSousOnglet(val)}
       style={{
         padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer",
@@ -2316,6 +2489,7 @@ function SousPageAssistantsDesignes({ compte, cardStyle }) {
                 <p style={{ fontSize: 12, color: "#a9d6cf" }}>{c.telephone}</p>
               </div>
               <button
+                className="btn-app"
                 onClick={() => basculerAssistant(c)}
                 style={{
                   padding: "8px 16px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: 700, fontSize: 12,
@@ -2410,7 +2584,9 @@ function SousPageAttribuerRole({ compte, tribus, departements, onChange, cardSty
   if (compteChoisi) {
     return (
       <div style={{ maxWidth: 480 }}>
-        <button onClick={() => setCompteChoisi(null)} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 12, fontSize: 13 }}>← Choisir un autre compte</button>
+        <button
+ className="btn-app"
+ onClick={() => setCompteChoisi(null)} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 12, fontSize: 13 }}>← Choisir un autre compte</button>
         <p style={{ fontSize: 14, color: "#a9d6cf", marginBottom: 4 }}>Attribuer un rôle à :</p>
         <p style={{ fontWeight: 700, fontSize: 18, marginBottom: 16 }}>{compteChoisi.nom} <span style={{ fontWeight: 400, fontSize: 13, color: "#a9d6cf" }}>({compteChoisi.telephone})</span></p>
 
@@ -2978,13 +3154,19 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
       <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Rapports</h2>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
-        <button onClick={() => setVue("hebdomadaire")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "hebdomadaire" ? GOLD : TEAL_900, color: vue === "hebdomadaire" ? TEAL_950 : "#cdeae4" }}>
+        <button
+ className="btn-app"
+ onClick={() => setVue("hebdomadaire")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "hebdomadaire" ? GOLD : TEAL_900, color: vue === "hebdomadaire" ? TEAL_950 : "#cdeae4" }}>
           Vue hebdomadaire
         </button>
-        <button onClick={() => setVue("mensuelle")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "mensuelle" ? GOLD : TEAL_900, color: vue === "mensuelle" ? TEAL_950 : "#cdeae4" }}>
+        <button
+ className="btn-app"
+ onClick={() => setVue("mensuelle")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "mensuelle" ? GOLD : TEAL_900, color: vue === "mensuelle" ? TEAL_950 : "#cdeae4" }}>
           Vue mensuelle
         </button>
-        <button onClick={() => setVue("annuelle")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "annuelle" ? GOLD : TEAL_900, color: vue === "annuelle" ? TEAL_950 : "#cdeae4" }}>
+        <button
+ className="btn-app"
+ onClick={() => setVue("annuelle")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "annuelle" ? GOLD : TEAL_900, color: vue === "annuelle" ? TEAL_950 : "#cdeae4" }}>
           Vue annuelle
         </button>
       </div>
@@ -3015,9 +3197,15 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
                 <p style={{ fontSize: 13, color: "#a9d6cf", margin: 0 }}>Rapport du dimanche {dateFormatee}</p>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button onClick={exporterCSVHebdomadaire} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>📊 Exporter CSV (Excel)</button>
-                  <button onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
-                  <button onClick={partagerRapportHebdomadaire} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>📤 Partager</button>
+                  <button
+ className="btn-app"
+ onClick={exporterCSVHebdomadaire} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>📊 Exporter CSV (Excel)</button>
+                  <button
+ className="btn-app"
+ onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
+                  <button
+ className="btn-app"
+ onClick={partagerRapportHebdomadaire} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>📤 Partager</button>
                 </div>
               </div>
 
@@ -3109,8 +3297,12 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
                 <p style={{ fontSize: 13, color: "#a9d6cf", margin: 0, textTransform: "capitalize" }}>Rapport de {libelleMois(moisChoisi)} — {dimanchesDuMois.length} dimanche(s) enregistré(s)</p>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={exporterCSVMensuel} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>📊 Exporter CSV (Excel)</button>
-                  <button onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
+                  <button
+ className="btn-app"
+ onClick={exporterCSVMensuel} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>📊 Exporter CSV (Excel)</button>
+                  <button
+ className="btn-app"
+ onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
                 </div>
               </div>
 
@@ -3173,8 +3365,12 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
                 <p style={{ fontSize: 13, color: "#a9d6cf", margin: 0 }}>Rapport annuel {anneeChoisie} — {dimanchesAnnee.length} dimanche(s) enregistré(s)</p>
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={exporterCSVAnnuel} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>📊 Exporter CSV (Excel)</button>
-                  <button onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
+                  <button
+ className="btn-app"
+ onClick={exporterCSVAnnuel} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>📊 Exporter CSV (Excel)</button>
+                  <button
+ className="btn-app"
+ onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
                 </div>
               </div>
 
@@ -3286,10 +3482,14 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
       <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Messagerie</h2>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-        <button onClick={() => setOnglet("diffusion")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "diffusion" ? GOLD : TEAL_900, color: onglet === "diffusion" ? TEAL_950 : "#cdeae4" }}>
+        <button
+ className="btn-app"
+ onClick={() => setOnglet("diffusion")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "diffusion" ? GOLD : TEAL_900, color: onglet === "diffusion" ? TEAL_950 : "#cdeae4" }}>
           Messages du pasteur
         </button>
-        <button onClick={() => setOnglet("direct")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "direct" ? GOLD : TEAL_900, color: onglet === "direct" ? TEAL_950 : "#cdeae4" }}>
+        <button
+ className="btn-app"
+ onClick={() => setOnglet("direct")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "direct" ? GOLD : TEAL_900, color: onglet === "direct" ? TEAL_950 : "#cdeae4" }}>
           {estPasteur ? "Boîte de réception" : "Écrire au pasteur"}{estPasteur && nonLus > 0 ? ` (${nonLus})` : ""}
         </button>
       </div>
@@ -3302,7 +3502,9 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
             <div style={{ ...cardStyle, marginBottom: 16 }}>
               <p style={{ fontWeight: 600, marginBottom: 8, fontSize: 14 }}>Envoyer un message à tous</p>
               <textarea value={texte} onChange={e => setTexte(e.target.value)} rows={3} placeholder="Écris ton message ici..." style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, resize: "vertical" }} />
-              <button onClick={envoyerDiffusion} style={{ marginTop: 8, padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>Envoyer</button>
+              <button
+ className="btn-app"
+ onClick={envoyerDiffusion} style={{ marginTop: 8, padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>Envoyer</button>
             </div>
           )}
           {messages.length === 0 ? (
@@ -3324,7 +3526,9 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
             <div style={{ ...cardStyle, marginBottom: 16 }}>
               <p style={{ fontWeight: 600, marginBottom: 8, fontSize: 14 }}>Écrire au pasteur</p>
               <textarea value={texte} onChange={e => setTexte(e.target.value)} rows={3} placeholder="Ton message..." style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, resize: "vertical" }} />
-              <button onClick={envoyerDirect} style={{ marginTop: 8, padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>Envoyer</button>
+              <button
+ className="btn-app"
+ onClick={envoyerDirect} style={{ marginTop: 8, padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>Envoyer</button>
             </div>
           )}
           {messagesDirects.length === 0 ? (
@@ -3338,7 +3542,9 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
                     <p style={{ fontSize: 11, color: "#a9d6cf" }}>{formaterDate(m.date)}</p>
                     {estPasteur && !m.lu && (
-                      <button onClick={() => marquerLu(m.id)} style={{ fontSize: 11, color: GOLD_LIGHT, background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>Marquer comme lu</button>
+                      <button
+ className="btn-app"
+ onClick={() => marquerLu(m.id)} style={{ fontSize: 11, color: GOLD_LIGHT, background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>Marquer comme lu</button>
                     )}
                   </div>
                 </div>
@@ -3425,9 +3631,13 @@ function PageCalendrier({ estPasteur, compte, onOuverture, cardStyle }) {
             {e.description && <p style={{ fontSize: 13, marginTop: 6 }}>{e.description}</p>}
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
-            <button onClick={() => telechargerICS(e)} style={{ fontSize: 11, color: GOLD_LIGHT, background: "none", border: `1px solid ${TEAL_600}`, borderRadius: 6, padding: "4px 8px", cursor: "pointer" }}>Ajouter au calendrier</button>
+            <button
+ className="btn-app"
+ onClick={() => telechargerICS(e)} style={{ fontSize: 11, color: GOLD_LIGHT, background: "none", border: `1px solid ${TEAL_600}`, borderRadius: 6, padding: "4px 8px", cursor: "pointer" }}>Ajouter au calendrier</button>
             {estPasteur && (
-              <button onClick={() => supprimerEvenement(e.id)} style={{ fontSize: 11, color: RED_LIGHT, background: "none", border: `1px solid ${RED_LIGHT}`, borderRadius: 6, padding: "4px 8px", cursor: "pointer" }}>Supprimer</button>
+              <button
+ className="btn-app"
+ onClick={() => supprimerEvenement(e.id)} style={{ fontSize: 11, color: RED_LIGHT, background: "none", border: `1px solid ${RED_LIGHT}`, borderRadius: 6, padding: "4px 8px", cursor: "pointer" }}>Supprimer</button>
             )}
           </div>
         </div>
@@ -3451,13 +3661,19 @@ function PageCalendrier({ estPasteur, compte, onOuverture, cardStyle }) {
                 <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Description (optionnelle)" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, resize: "vertical" }} />
                 {erreur && <p style={{ color: RED_LIGHT, fontSize: 12 }}>{erreur}</p>}
                 <div style={{ display: "flex", gap: 8 }}>
-                  <button onClick={creerEvenement} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>Créer</button>
-                  <button onClick={() => setFormOuvert(false)} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: "transparent", color: "#a9d6cf", border: `1px solid ${TEAL_600}`, cursor: "pointer" }}>Annuler</button>
+                  <button
+ className="btn-app"
+ onClick={creerEvenement} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>Créer</button>
+                  <button
+ className="btn-app"
+ onClick={() => setFormOuvert(false)} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: "transparent", color: "#a9d6cf", border: `1px solid ${TEAL_600}`, cursor: "pointer" }}>Annuler</button>
                 </div>
               </div>
             </div>
           ) : (
-            <button onClick={() => setFormOuvert(true)} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>+ Nouvel événement</button>
+            <button
+ className="btn-app"
+ onClick={() => setFormOuvert(true)} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>+ Nouvel événement</button>
           )}
         </div>
       )}
@@ -3490,6 +3706,32 @@ function PageCalendrier({ estPasteur, compte, onOuverture, cardStyle }) {
 }
 
 /* ------------------------------- Historique ------------------------------- */
+
+// Graphique en barres réutilisable, avec grille de fond et info-bulle au survol.
+function GraphiqueBarres({ donnees, hauteur = 140 }) {
+  // donnees: [{ libelle, valeur, texteAffiche, couleur, infoBulle }]
+  if (!donnees || donnees.length === 0) return null;
+  const max = Math.max(1, ...donnees.map(d => d.valeur));
+  const lignesGrille = [0.25, 0.5, 0.75, 1];
+  return (
+    <div style={{ position: "relative" }}>
+      <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: hauteur, display: "flex", flexDirection: "column-reverse", justifyContent: "space-between", pointerEvents: "none" }}>
+        {lignesGrille.map((l, i) => (
+          <div key={i} style={{ borderTop: "1px dashed rgba(255,255,255,0.10)", width: "100%" }} />
+        ))}
+      </div>
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: hauteur, overflowX: "auto", paddingBottom: 4, position: "relative" }}>
+        {donnees.map((d, i) => (
+          <div key={i} title={d.infoBulle || `${d.libelle} : ${d.texteAffiche}`} className="barre-graphique" style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 34, cursor: "default" }}>
+            <span style={{ fontSize: 10, color: d.couleur || GOLD_LIGHT, fontWeight: 700, marginBottom: 3 }}>{d.texteAffiche}</span>
+            <div style={{ width: 20, height: Math.max(4, (d.valeur / max) * (hauteur - 50)), backgroundColor: d.couleur || GOLD, borderRadius: 4, transition: "height 0.4s ease" }} />
+            <span style={{ fontSize: 9, color: "#a9d6cf", marginTop: 4, whiteSpace: "nowrap" }}>{d.libelle}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function PageHistorique({ cardStyle }) {
   const [chargement, setChargement] = useState(true);
@@ -3574,17 +3816,14 @@ function PageHistorique({ cardStyle }) {
             {presenceParDimanche.length === 0 ? (
               <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun pointage de présence pour l'instant.</p>
             ) : (
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 140, overflowX: "auto", paddingBottom: 4 }}>
-                {presenceParDimanche.map((p, i) => (
-                  <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 34 }}>
-                    <span style={{ fontSize: 10, color: GOLD_LIGHT, fontWeight: 700, marginBottom: 3 }}>{p.presents}</span>
-                    <div style={{ width: 20, height: Math.max(4, (p.presents / maxPresents) * 90), backgroundColor: GOLD, borderRadius: 4 }} />
-                    <span style={{ fontSize: 9, color: "#a9d6cf", marginTop: 4, whiteSpace: "nowrap" }}>
-                      {new Date(p.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}
-                    </span>
-                  </div>
-                ))}
-              </div>
+              <GraphiqueBarres
+                donnees={presenceParDimanche.map(p => ({
+                  libelle: new Date(p.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }),
+                  valeur: p.presents,
+                  texteAffiche: p.presents,
+                  infoBulle: `${new Date(p.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })} : ${p.presents} présent(s)`,
+                }))}
+              />
             )}
           </div>
 
@@ -3593,15 +3832,14 @@ function PageHistorique({ cardStyle }) {
             {presenceParMois.length === 0 ? (
               <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucune donnée mensuelle pour l'instant.</p>
             ) : (
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 140, overflowX: "auto", paddingBottom: 4 }}>
-                {presenceParMois.map((m, i) => (
-                  <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 34 }}>
-                    <span style={{ fontSize: 10, color: GOLD_LIGHT, fontWeight: 700, marginBottom: 3 }}>{m.taux}%</span>
-                    <div style={{ width: 20, height: Math.max(4, (m.taux / 100) * 90), backgroundColor: GOLD, borderRadius: 4 }} />
-                    <span style={{ fontSize: 9, color: "#a9d6cf", marginTop: 4, whiteSpace: "nowrap" }}>{libelleMois(m.mois)}</span>
-                  </div>
-                ))}
-              </div>
+              <GraphiqueBarres
+                donnees={presenceParMois.map(m => ({
+                  libelle: libelleMois(m.mois),
+                  valeur: m.taux,
+                  texteAffiche: `${m.taux}%`,
+                  infoBulle: `${libelleMois(m.mois)} : ${m.taux}% de présence`,
+                }))}
+              />
             )}
           </div>
 
@@ -3610,15 +3848,15 @@ function PageHistorique({ cardStyle }) {
             {santeParMois.length === 0 ? (
               <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucune évaluation enregistrée pour l'instant.</p>
             ) : (
-              <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 140, overflowX: "auto", paddingBottom: 4 }}>
-                {santeParMois.map((s, i) => (
-                  <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 34 }}>
-                    <span style={{ fontSize: 10, color: couleurScore(s.moyenne), fontWeight: 700, marginBottom: 3 }}>{s.moyenne}</span>
-                    <div style={{ width: 20, height: Math.max(4, (s.moyenne / 10) * 90), backgroundColor: couleurScore(s.moyenne), borderRadius: 4 }} />
-                    <span style={{ fontSize: 9, color: "#a9d6cf", marginTop: 4, whiteSpace: "nowrap" }}>{libelleMois(s.mois)}</span>
-                  </div>
-                ))}
-              </div>
+              <GraphiqueBarres
+                donnees={santeParMois.map(s => ({
+                  libelle: libelleMois(s.mois),
+                  valeur: s.moyenne,
+                  texteAffiche: s.moyenne,
+                  couleur: couleurScore(s.moyenne),
+                  infoBulle: `${libelleMois(s.mois)} : santé spirituelle moyenne ${s.moyenne}/10`,
+                }))}
+              />
             )}
           </div>
         </>
