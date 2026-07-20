@@ -160,6 +160,70 @@ class LimiteErreurs extends React.Component {
   }
 }
 
+// Écran de verrouillage : redemande le mot de passe sans déconnecter réellement,
+// pour protéger l'accès si le téléphone est repris par quelqu'un d'autre.
+function EcranVerrouillage({ compte, onDeverrouille }) {
+  const [motDePasse, setMotDePasse] = useState("");
+  const [motDePasseVisible, setMotDePasseVisible] = useState(false);
+  const [erreur, setErreur] = useState("");
+  const [chargement, setChargement] = useState(false);
+
+  function emailTechnique(tel) {
+    return `${(tel || "").replace(/[^\d]/g, "")}@gestiongem.com`;
+  }
+
+  async function deverrouiller() {
+    if (!motDePasse) { setErreur("Merci de saisir ton mot de passe."); return; }
+    setErreur(""); setChargement(true);
+    const { error } = await supabase.auth.signInWithPassword({ email: emailTechnique(compte.telephone), password: motDePasse });
+    setChargement(false);
+    if (error) { setErreur("Mot de passe incorrect."); return; }
+    onDeverrouille();
+  }
+
+  async function seDeconnecter() {
+    await supabase.auth.signOut();
+  }
+
+  return (
+    <div
+      style={{
+        minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
+        backgroundImage: `linear-gradient(180deg, rgba(13,92,82,0.55) 0%, rgba(13,92,82,0.92) 100%), url(${BERGER_IMG})`,
+        backgroundSize: "cover", backgroundPosition: "center",
+      }}
+    >
+      <div style={{ width: "100%", maxWidth: 360, backgroundColor: "rgba(17,106,95,0.92)", backdropFilter: "blur(6px)", border: `1px solid ${TEAL_700}`, borderRadius: 16, padding: 24, textAlign: "center" }}>
+        <p style={{ fontSize: 32, marginBottom: 8 }}>🔒</p>
+        <h1 style={{ color: CREAM, fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Application verrouillée</h1>
+        <p style={{ color: "#cdeae4", fontSize: 13, marginBottom: 20 }}>Bienvenue {compte.nom}, ressaisis ton mot de passe pour continuer.</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, textAlign: "left" }}>
+          <input
+            value={motDePasse}
+            onChange={e => setMotDePasse(e.target.value)}
+            onKeyDown={e => e.key === "Enter" && deverrouiller()}
+            type={motDePasseVisible ? "text" : "password"}
+            placeholder="Mot de passe"
+            autoFocus
+            style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_850, color: CREAM, border: `1px solid ${TEAL_700}` }}
+          />
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#cdeae4", cursor: "pointer" }}>
+            <input type="checkbox" checked={motDePasseVisible} onChange={e => setMotDePasseVisible(e.target.checked)} />
+            Afficher le mot de passe
+          </label>
+          {erreur && <p style={{ color: "#e2626d", fontSize: 12 }}>{erreur}</p>}
+          <button className="btn-app" disabled={chargement} onClick={deverrouiller} style={{ padding: "12px 0", borderRadius: 8, fontWeight: 700, fontSize: 14, backgroundColor: GOLD, color: TEAL_950, border: "none", cursor: "pointer" }}>
+            {chargement ? "…" : "Déverrouiller"}
+          </button>
+          <button className="btn-app" onClick={seDeconnecter} style={{ padding: "8px 0", borderRadius: 8, fontWeight: 600, fontSize: 12, backgroundColor: "transparent", color: "#a9d6cf", border: "none", cursor: "pointer" }}>
+            Ce n'est pas moi — Se déconnecter
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function App() {
   const [session, setSession] = useState(null);
   const [compte, setCompte] = useState(null);
@@ -205,6 +269,41 @@ function App() {
     };
   }, [session]);
 
+  // Verrouillage de l'application : si l'appli a été fermée/mise en arrière-plan plus de 5 minutes,
+  // on redemande le mot de passe avant de laisser accéder aux données — même si la session technique
+  // reste valide. Essentiel sur téléphone, où l'appli reste "connectée" en permanence sinon.
+  const [verrouille, setVerrouille] = useState(false);
+  const DELAI_VERROUILLAGE_MS = 5 * 60 * 1000;
+
+  function enregistrerDerniereActivite() {
+    try { localStorage.setItem("gem_derniere_activite", String(Date.now())); } catch {}
+  }
+
+  function verifierVerrouillage() {
+    try {
+      const derniere = Number(localStorage.getItem("gem_derniere_activite") || 0);
+      if (derniere && Date.now() - derniere > DELAI_VERROUILLAGE_MS) setVerrouille(true);
+    } catch {}
+  }
+
+  useEffect(() => {
+    if (!session) return;
+    verifierVerrouillage();
+    enregistrerDerniereActivite();
+    const intervalle = setInterval(enregistrerDerniereActivite, 15000);
+    function surVisibilite() {
+      if (document.visibilityState === "visible") verifierVerrouillage();
+      else enregistrerDerniereActivite();
+    }
+    document.addEventListener("visibilitychange", surVisibilite);
+    window.addEventListener("pagehide", enregistrerDerniereActivite);
+    return () => {
+      clearInterval(intervalle);
+      document.removeEventListener("visibilitychange", surVisibilite);
+      window.removeEventListener("pagehide", enregistrerDerniereActivite);
+    };
+  }, [session]);
+
   if (chargement) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: TEAL_950, color: CREAM }}>
@@ -214,6 +313,8 @@ function App() {
   }
 
   if (!session || !compte) return <EcranConnexion />;
+
+  if (verrouille) return <EcranVerrouillage compte={compte} onDeverrouille={() => { setVerrouille(false); enregistrerDerniereActivite(); }} />;
 
   return <TableauDeBord compte={compte} />;
 }
