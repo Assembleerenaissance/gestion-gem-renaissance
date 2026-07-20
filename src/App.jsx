@@ -30,6 +30,16 @@ function StylesGlobaux() {
       @keyframes fadeInApp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
       input, select, textarea { transition: border-color 0.15s ease, box-shadow 0.15s ease; }
       input:focus, select:focus, textarea:focus { outline: none; box-shadow: 0 0 0 2px rgba(208,175,28,0.4); }
+
+      @media print {
+        body, #root { background: #fff !important; }
+        * { color: #111 !important; background-color: #fff !important; box-shadow: none !important; text-shadow: none !important; }
+        nav, .no-print, button, input[type="file"], .btn-app { display: none !important; }
+        [style*="position: fixed"] { display: none !important; }
+        div, section, article { border-color: #ccc !important; page-break-inside: avoid; }
+        h1, h2, p, span, td, th { color: #111 !important; }
+        a { color: #111 !important; text-decoration: none !important; }
+      }
     `}</style>
   );
 }
@@ -2699,9 +2709,33 @@ function PageCorbeille({ compte, gems, cardStyle, onTraite }) {
     chargerCorbeille();
   }
 
+  function exporterJournal() {
+    const entetes = ["Nom", "Telephone", "GEM", "Motif", "Supprime_le"];
+    const lignes = entrees.map(e => ({
+      Nom: e.nom, Telephone: e.telephone || "", GEM: nomGem(e.gem_id),
+      Motif: e.motif || "", Supprime_le: new Date(e.supprime_le).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" }),
+    }));
+    const ligneEntete = entetes.join(",");
+    const corps = lignes.map(l => entetes.map(e => `"${String(l[e] ?? "").replace(/"/g, '""')}"`).join(",")).join("\n");
+    const blob = new Blob(["\uFEFF" + ligneEntete + "\n" + corps], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `journal-corbeille-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <div>
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>🗑️ Corbeille ({entrees.length})</h2>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 4 }}>
+        <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>🗑️ Corbeille ({entrees.length})</h2>
+        {entrees.length > 0 && (
+          <button className="btn-app" onClick={exporterJournal} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
+            📊 Exporter le journal (CSV)
+          </button>
+        )}
+      </div>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>
         Les membres supprimés restent récupérables ici pendant 30 jours avant d'être effacés définitivement.
       </p>
