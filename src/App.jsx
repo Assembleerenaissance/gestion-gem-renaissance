@@ -4559,6 +4559,46 @@ function PageCalendrier({ estPasteur, compte, onOuverture, cardStyle }) {
 /* ------------------------------- Historique ------------------------------- */
 
 // Graphique en barres réutilisable, avec grille de fond et info-bulle au survol.
+// Graphique à axe zéro central — pour des valeurs qui peuvent être positives (croissance)
+// ou négatives (décroissance), comme la croissance numérique de l'église.
+function GraphiqueCroissance({ donnees, hauteur = 160 }) {
+  if (!donnees || donnees.length === 0) return null;
+  const maxAbs = Math.max(1, ...donnees.map(d => Math.abs(d.valeur)));
+  const demiHauteur = (hauteur - 40) / 2;
+  return (
+    <div style={{ position: "relative" }}>
+      <div style={{ position: "absolute", left: 0, right: 0, top: hauteur / 2, borderTop: "1px solid rgba(255,255,255,0.25)", width: "100%" }} />
+      <div style={{ display: "flex", alignItems: "center", gap: 12, height: hauteur, overflowX: "auto", paddingBottom: 4 }}>
+        {donnees.map((d, i) => {
+          const positif = d.valeur >= 0;
+          const tailleBarre = Math.max(3, (Math.abs(d.valeur) / maxAbs) * demiHauteur);
+          return (
+            <div key={i} title={d.infoBulle || `${d.libelle} : ${d.valeur > 0 ? "+" : ""}${d.valeur}`} className="barre-graphique" style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 40, height: "100%", justifyContent: "center", cursor: "default" }}>
+              <div style={{ height: demiHauteur, display: "flex", flexDirection: "column-reverse", alignItems: "center", justifyContent: "flex-start" }}>
+                {positif && (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                    <span style={{ fontSize: 10, color: "#6fcf97", fontWeight: 700, marginBottom: 2 }}>+{d.valeur}</span>
+                    <div style={{ width: 22, height: tailleBarre, backgroundColor: "#6fcf97", borderRadius: "4px 4px 0 0", transition: "height 0.4s ease" }} />
+                  </div>
+                )}
+              </div>
+              <div style={{ height: demiHauteur, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start" }}>
+                {!positif && (
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
+                    <div style={{ width: 22, height: tailleBarre, backgroundColor: RED_LIGHT, borderRadius: "0 0 4px 4px", transition: "height 0.4s ease" }} />
+                    <span style={{ fontSize: 10, color: RED_LIGHT, fontWeight: 700, marginTop: 2 }}>{d.valeur}</span>
+                  </div>
+                )}
+              </div>
+              <span style={{ fontSize: 9, color: "#a9d6cf", marginTop: 6, whiteSpace: "nowrap" }}>{d.libelle}</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function GraphiqueBarres({ donnees, hauteur = 140 }) {
   // donnees: [{ libelle, valeur, texteAffiche, couleur, infoBulle }]
   if (!donnees || donnees.length === 0) return null;
@@ -4590,6 +4630,7 @@ function PageHistorique({ cardStyle }) {
   const [presenceParMois, setPresenceParMois] = useState([]); // [{ mois, taux }]
   const [santeParMois, setSanteParMois] = useState([]); // [{ mois, moyenne }]
   const [activiteParMois, setActiviteParMois] = useState([]); // [{ mois, taux }]
+  const [croissanceParMois, setCroissanceParMois] = useState([]); // [{ mois, nouveaux, partis, net }]
   const [totalMembres, setTotalMembres] = useState(0);
   const [totalGems, setTotalGems] = useState(0);
 
@@ -4597,12 +4638,14 @@ function PageHistorique({ cardStyle }) {
 
   async function chargerHistorique() {
     setChargement(true);
-    const [{ data: dimanchesRecents }, { data: dimanchesTous }, { data: presences }, { data: sante }, { data: activites }, { count: nbMembres }, { count: nbGems }] = await Promise.all([
+    const [{ data: dimanchesRecents }, { data: dimanchesTous }, { data: presences }, { data: sante }, { data: activites }, { data: membresTous }, { data: departsApprouves }, { count: nbMembres }, { count: nbGems }] = await Promise.all([
       supabase.from("dimanches").select("*").order("date", { ascending: true }).limit(16),
       supabase.from("dimanches").select("*").order("date", { ascending: true }).limit(200),
       supabase.from("presences").select("*"),
       supabase.from("sante_spirituelle").select("*"),
       supabase.from("activites_semaine").select("*").eq("valide", true),
+      supabase.from("membres").select("id, created_at"),
+      supabase.from("demandes_suppression_membre").select("*").eq("statut", "approuvee"),
       supabase.from("membres").select("*", { count: "exact", head: true }),
       supabase.from("gems").select("*", { count: "exact", head: true }),
     ]);
@@ -4646,6 +4689,18 @@ function PageHistorique({ cardStyle }) {
       });
     setActiviteParMois(evolutionActiviteMois);
 
+    // Croissance numérique de l'église : nouveaux membres vs départs approuvés, mois par mois
+    const moisAvecDonnees = new Set();
+    (membresTous || []).forEach(m => { if (m.created_at) moisAvecDonnees.add(m.created_at.slice(0, 7)); });
+    (departsApprouves || []).forEach(d => { if (d.date_traitement) moisAvecDonnees.add(d.date_traitement.slice(0, 7)); });
+    const douzeDerniersMois = [...moisAvecDonnees].sort().slice(-12);
+    const evolutionCroissance = douzeDerniersMois.map(mois => {
+      const nouveaux = (membresTous || []).filter(m => m.created_at && m.created_at.slice(0, 7) === mois).length;
+      const partis = (departsApprouves || []).filter(d => d.date_traitement && d.date_traitement.slice(0, 7) === mois).length;
+      return { mois, nouveaux, partis, net: nouveaux - partis };
+    });
+    setCroissanceParMois(evolutionCroissance);
+
     const parMois = {};
     (sante || []).forEach(s => {
       const cle = s.date_maj.slice(0, 7); // YYYY-MM
@@ -4679,6 +4734,22 @@ function PageHistorique({ cardStyle }) {
         <p style={{ color: "#a9d6cf" }}>Chargement…</p>
       ) : (
         <>
+          <div style={{ ...cardStyle, marginBottom: 24 }}>
+            <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>📈 Croissance numérique de l'église — {totalMembres} membres actuellement</p>
+            <p style={{ fontSize: 11, color: "#a9d6cf", marginBottom: 16 }}>Nouveaux membres (vert) contre départs approuvés (rouge), mois par mois. Solde net affiché sur chaque barre.</p>
+            {croissanceParMois.length === 0 ? (
+              <p style={{ color: "#a9d6cf", fontSize: 13 }}>Pas encore assez de données pour tracer cette courbe — elle se remplira au fil des ajouts de membres.</p>
+            ) : (
+              <GraphiqueCroissance
+                donnees={croissanceParMois.map(c => ({
+                  libelle: libelleMois(c.mois),
+                  valeur: c.net,
+                  infoBulle: `${libelleMois(c.mois)} : ${c.nouveaux} nouveau(x), ${c.partis} parti(s) — solde ${c.net > 0 ? "+" : ""}${c.net}`,
+                }))}
+              />
+            )}
+          </div>
+
           <div style={{ ...cardStyle, marginBottom: 24 }}>
             <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>Présence par dimanche</p>
             {presenceParDimanche.length === 0 ? (
