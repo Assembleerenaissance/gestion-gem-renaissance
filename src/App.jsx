@@ -1311,6 +1311,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
   const [telephone, setTelephone] = useState("+225 ");
   const [photo, setPhoto] = useState(null);
   const [dateNaissance, setDateNaissance] = useState("");
+  const [quartier, setQuartier] = useState("");
   const [nouveauConverti, setNouveauConverti] = useState(false);
   const [erreur, setErreur] = useState("");
   const [dimancheId, setDimancheId] = useState(null);
@@ -1384,9 +1385,9 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
   async function ajouterMembre() {
     setErreur("");
     if (!nom.trim() || !telephone.trim()) { setErreur("Nom et téléphone requis."); return; }
-    const { error } = await supabase.from("membres").insert({ gem_id: gem.id, nom: nom.trim(), telephone: telephone.trim(), nouveau_converti: nouveauConverti, etape_conversion: "accueil", photo: photo || null, date_naissance: dateNaissance || null });
+    const { error } = await supabase.from("membres").insert({ gem_id: gem.id, nom: nom.trim(), telephone: telephone.trim(), nouveau_converti: nouveauConverti, etape_conversion: "accueil", photo: photo || null, date_naissance: dateNaissance || null, quartier: quartier.trim() || null });
     if (error) { setErreur(error.message); return; }
-    setNom(""); setTelephone("+225 "); setNouveauConverti(false); setPhoto(null); setDateNaissance("");
+    setNom(""); setTelephone("+225 "); setNouveauConverti(false); setPhoto(null); setDateNaissance(""); setQuartier("");
     onMembreAjoute();
   }
 
@@ -1435,6 +1436,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
           <input value={nom} onChange={e => setNom(e.target.value)} placeholder="Nom complet" style={{ flex: 1, minWidth: 160, padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
           <input value={telephone} onChange={e => setTelephone(e.target.value)} placeholder="Téléphone" style={{ flex: 1, minWidth: 160, padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
           <input value={dateNaissance} onChange={e => setDateNaissance(e.target.value)} type="date" title="Date de naissance (optionnel)" style={{ padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+          <input value={quartier} onChange={e => setQuartier(e.target.value)} placeholder="Quartier" style={{ flex: 1, minWidth: 140, padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
           <button
  className="btn-app"
  onClick={ajouterMembre} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>Ajouter</button>
@@ -1859,6 +1861,13 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
     if (onMisAJour) onMisAJour();
   }
 
+  async function enregistrerChamp(champ, valeur, obligatoire) {
+    if (obligatoire && !valeur.trim()) { toast("Ce champ ne peut pas être vide.", "erreur"); return; }
+    const { error } = await supabase.from("membres").update({ [champ]: valeur.trim() || null }).eq("id", membre.id);
+    if (error) { toast("Impossible d'enregistrer : " + error.message, "erreur"); return; }
+    if (onMisAJour) onMisAJour();
+  }
+
   function estAnniversaireProche(dateNaissance) {
     if (!dateNaissance) return false;
     const aujourdHui = new Date();
@@ -1922,28 +1931,65 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
 
       {ouvert && (
         <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${TEAL_700}` }}>
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 14 }}>
-            <label style={{ display: "inline-block", fontSize: 11, color: GOLD_LIGHT, cursor: "pointer", border: `1px solid ${TEAL_600}`, borderRadius: 8, padding: "6px 10px" }}>
-              📷 {membre.photo ? "Changer la photo" : "Ajouter une photo"}
-              <input type="file" accept="image/*" onChange={surChangerPhoto} style={{ display: "none" }} />
-            </label>
-            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: GOLD_LIGHT }}>
-              🎂 Date de naissance :
-              <input
-                type="date"
-                defaultValue={membre.date_naissance || ""}
-                onBlur={e => enregistrerDateNaissance(e.target.value)}
-                onClick={e => e.stopPropagation()}
-                style={{ padding: 6, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 11 }}
-              />
-            </label>
-            <button
-              className="btn-app"
-              onClick={e => { e.stopPropagation(); setDemandeSuppressionOuverte(true); }}
-              style={{ fontSize: 11, fontWeight: 700, color: RED_LIGHT, background: "none", border: `1px solid ${RED_LIGHT}`, borderRadius: 8, padding: "6px 10px", cursor: "pointer" }}
-            >
-              🗑️ Demander la suppression
-            </button>
+          <div style={{ ...cardStyle, marginBottom: 14, padding: 14 }}>
+            <p style={{ fontWeight: 600, fontSize: 12, color: GOLD_LIGHT, marginBottom: 10 }}>✏️ Informations du membre</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <div style={{ flex: 1, minWidth: 140 }}>
+                  <label style={{ fontSize: 10, color: "#a9d6cf", display: "block", marginBottom: 2 }}>Nom complet</label>
+                  <input
+                    defaultValue={membre.nom}
+                    onBlur={e => enregistrerChamp("nom", e.target.value, true)}
+                    onClick={e => e.stopPropagation()}
+                    style={{ width: "100%", padding: 8, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }}
+                  />
+                </div>
+                <div style={{ flex: 1, minWidth: 140 }}>
+                  <label style={{ fontSize: 10, color: "#a9d6cf", display: "block", marginBottom: 2 }}>Téléphone</label>
+                  <input
+                    defaultValue={membre.telephone}
+                    onBlur={e => enregistrerChamp("telephone", e.target.value, true)}
+                    onClick={e => e.stopPropagation()}
+                    style={{ width: "100%", padding: 8, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <div style={{ flex: 1, minWidth: 140 }}>
+                  <label style={{ fontSize: 10, color: "#a9d6cf", display: "block", marginBottom: 2 }}>Quartier</label>
+                  <input
+                    defaultValue={membre.quartier || ""}
+                    onBlur={e => enregistrerChamp("quartier", e.target.value, false)}
+                    onClick={e => e.stopPropagation()}
+                    placeholder="Non renseigné"
+                    style={{ width: "100%", padding: 8, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }}
+                  />
+                </div>
+                <div style={{ flex: 1, minWidth: 140 }}>
+                  <label style={{ fontSize: 10, color: "#a9d6cf", display: "block", marginBottom: 2 }}>🎂 Date de naissance</label>
+                  <input
+                    type="date"
+                    defaultValue={membre.date_naissance || ""}
+                    onBlur={e => enregistrerDateNaissance(e.target.value)}
+                    onClick={e => e.stopPropagation()}
+                    style={{ width: "100%", padding: 8, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }}
+                  />
+                </div>
+              </div>
+              <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginTop: 4 }}>
+                <label style={{ display: "inline-block", fontSize: 11, color: GOLD_LIGHT, cursor: "pointer", border: `1px solid ${TEAL_600}`, borderRadius: 8, padding: "6px 10px" }}>
+                  📷 {membre.photo ? "Changer la photo" : "Ajouter une photo"}
+                  <input type="file" accept="image/*" onChange={surChangerPhoto} style={{ display: "none" }} />
+                </label>
+                <button
+                  className="btn-app"
+                  onClick={e => { e.stopPropagation(); setDemandeSuppressionOuverte(true); }}
+                  style={{ fontSize: 11, fontWeight: 700, color: RED_LIGHT, background: "none", border: `1px solid ${RED_LIGHT}`, borderRadius: 8, padding: "6px 10px", cursor: "pointer" }}
+                >
+                  🗑️ Demander la suppression
+                </button>
+              </div>
+            </div>
           </div>
           <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
             <button
