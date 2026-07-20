@@ -457,7 +457,7 @@ function TableauDeBord({ compte }) {
   }
 
   const cardStyle = { backgroundColor: TEAL_850, border: `1px solid ${TEAL_700}`, borderRadius: 16, padding: 20 };
-  const btnStyle = { padding: "8px 14px", borderRadius: 8, fontWeight: 600, fontSize: 13, cursor: "pointer", border: "none" };
+  const btnStyle = { padding: "10px 16px", borderRadius: 8, fontWeight: 600, fontSize: 15, cursor: "pointer", border: "none" };
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: TEAL_950, color: CREAM, fontFamily: "system-ui, sans-serif" }}>
