@@ -765,14 +765,14 @@ function PrioritesPastorales({ membres, gems, regulariteParMembre, cardStyle }) 
                 <span style={{ fontSize: 12, fontWeight: 700, color: RED_LIGHT }}>{regularite.absencesConsecutives} absences consécutives</span>
                 {membre.telephone && (
                   <>
-                    <a href={`tel:${membre.telephone}`} style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, textDecoration: "none", border: `1px solid ${GOLD_LIGHT}`, borderRadius: 6, padding: "6px 10px" }}>
+                    <a href={`tel:${membre.telephone}`} style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 6, padding: "6px 12px" }}>
                       📞 Appeler
                     </a>
                     <a
                       href={`https://wa.me/${membre.telephone.replace(/[^\d]/g, "")}?text=${encodeURIComponent(`Bonjour ${membre.nom}, tu nous manques beaucoup ces derniers temps. Est-ce que tout va bien ? Nous t'aimons et espérons te revoir bientôt au culte. 🙏`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      style={{ fontSize: 12, fontWeight: 700, color: "#25D366", textDecoration: "none", border: "1px solid #25D366", borderRadius: 6, padding: "6px 10px" }}
+                      style={{ fontSize: 12, fontWeight: 700, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 6, padding: "6px 12px" }}
                     >
                       💬 WhatsApp
                     </a>
@@ -1021,10 +1021,10 @@ function DetailParent({ parent, type, gems, membres, regulariteParMembre, onBack
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     {m.telephone && (
                       <>
-                        <a href={`tel:${m.telephone}`} className="btn-app" style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, textDecoration: "none", border: `1px solid ${GOLD_LIGHT}`, borderRadius: 6, padding: "8px 10px", whiteSpace: "nowrap" }}>
+                        <a href={`tel:${m.telephone}`} className="btn-app" style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
                           📞 Appeler
                         </a>
-                        <a href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" className="btn-app" style={{ fontSize: 12, fontWeight: 700, color: "#25D366", textDecoration: "none", border: "1px solid #25D366", borderRadius: 6, padding: "8px 10px", whiteSpace: "nowrap" }}>
+                        <a href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" className="btn-app" style={{ fontSize: 12, fontWeight: 700, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
                           💬 WhatsApp
                         </a>
                       </>
@@ -1034,7 +1034,7 @@ function DetailParent({ parent, type, gems, membres, regulariteParMembre, onBack
                       onClick={() => setMembreAConfirmer(m)}
                       disabled={suppressionEnCours === m.id}
                       className="btn-app"
-                      style={{ fontSize: 12, fontWeight: 700, color: RED_LIGHT, background: "none", border: `1px solid ${RED_LIGHT}`, borderRadius: 6, padding: "8px 10px", cursor: "pointer", whiteSpace: "nowrap" }}
+                      style={{ fontSize: 12, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, border: "none", borderRadius: 6, padding: "8px 12px", cursor: "pointer", whiteSpace: "nowrap" }}
                     >
                       {suppressionEnCours === m.id ? "…" : "🗑️ Supprimer"}
                     </button>
@@ -2128,10 +2128,10 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
                         </div>
                         {m.telephone && (
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            <a href={`tel:${m.telephone}`} style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, textDecoration: "none", border: `1px solid ${GOLD_LIGHT}`, borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
+                            <a href={`tel:${m.telephone}`} style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
                               📞 Appeler
                             </a>
-                            <a href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "#25D366", textDecoration: "none", border: "1px solid #25D366", borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
+                            <a href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
                               💬 WhatsApp
                             </a>
                           </div>
@@ -2181,10 +2181,10 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
                         </div>
                         {m.telephone && (
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            <a href={`tel:${m.telephone}`} style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, textDecoration: "none", border: `1px solid ${GOLD_LIGHT}`, borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
+                            <a href={`tel:${m.telephone}`} style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
                               📞 Appeler
                             </a>
-                            <a href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "#25D366", textDecoration: "none", border: "1px solid #25D366", borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
+                            <a href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
                               💬 WhatsApp
                             </a>
                           </div>
@@ -3259,10 +3259,10 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
                         </div>
                         {m.telephone && (
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            <a href={`tel:${m.telephone}`} style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, textDecoration: "none", border: `1px solid ${GOLD_LIGHT}`, borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
+                            <a href={`tel:${m.telephone}`} style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
                               📞 Appeler
                             </a>
-                            <a href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "#25D366", textDecoration: "none", border: "1px solid #25D366", borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
+                            <a href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 6, padding: "8px 12px", whiteSpace: "nowrap" }}>
                               💬 WhatsApp
                             </a>
                           </div>
@@ -3317,15 +3317,15 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
                 <p style={{ color: "#a9d6cf", fontSize: 13, marginBottom: 24 }}>Aucun dimanche pointé pour ce mois.</p>
               ) : (
                 <div style={{ ...cardStyle, marginBottom: 28 }}>
-                  <div style={{ display: "flex", alignItems: "flex-end", gap: 14, height: 130, overflowX: "auto", paddingBottom: 4 }}>
-                    {evolutionHebdoDuMois.map((d, i) => (
-                      <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 40 }}>
-                        <span style={{ fontSize: 10, color: GOLD_LIGHT, fontWeight: 700, marginBottom: 3 }}>{d.taux}%</span>
-                        <div style={{ width: 22, height: Math.max(4, (d.taux / 100) * 80), backgroundColor: GOLD, borderRadius: 4 }} />
-                        <span style={{ fontSize: 9, color: "#a9d6cf", marginTop: 4 }}>{new Date(d.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <GraphiqueBarres
+                    donnees={evolutionHebdoDuMois.map(d => ({
+                      libelle: new Date(d.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }),
+                      valeur: d.taux,
+                      texteAffiche: `${d.taux}%`,
+                      infoBulle: `${new Date(d.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })} : ${d.taux}% de présence`,
+                    }))}
+                    hauteur={130}
+                  />
                 </div>
               )}
 
@@ -3385,15 +3385,15 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
                 <p style={{ color: "#a9d6cf", fontSize: 13, marginBottom: 24 }}>Pas encore de données pour cette année.</p>
               ) : (
                 <div style={{ ...cardStyle, marginBottom: 28 }}>
-                  <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 130, overflowX: "auto", paddingBottom: 4 }}>
-                    {evolutionMensuelleAnnee.map((m, i) => (
-                      <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 34 }}>
-                        <span style={{ fontSize: 10, color: GOLD_LIGHT, fontWeight: 700, marginBottom: 3 }}>{m.taux}%</span>
-                        <div style={{ width: 20, height: Math.max(4, (m.taux / 100) * 80), backgroundColor: GOLD, borderRadius: 4 }} />
-                        <span style={{ fontSize: 9, color: "#a9d6cf", marginTop: 4, textTransform: "capitalize" }}>{libelleMoisCourt(m.mois)}</span>
-                      </div>
-                    ))}
-                  </div>
+                  <GraphiqueBarres
+                    donnees={evolutionMensuelleAnnee.map(m => ({
+                      libelle: libelleMoisCourt(m.mois),
+                      valeur: m.taux,
+                      texteAffiche: `${m.taux}%`,
+                      infoBulle: `${libelleMoisCourt(m.mois)} ${anneeChoisie} : ${m.taux}% de présence`,
+                    }))}
+                    hauteur={130}
+                  />
                 </div>
               )}
 
@@ -3637,7 +3637,7 @@ function PageCalendrier({ estPasteur, compte, onOuverture, cardStyle }) {
             {estPasteur && (
               <button
  className="btn-app"
- onClick={() => supprimerEvenement(e.id)} style={{ fontSize: 11, color: RED_LIGHT, background: "none", border: `1px solid ${RED_LIGHT}`, borderRadius: 6, padding: "4px 8px", cursor: "pointer" }}>Supprimer</button>
+ onClick={() => supprimerEvenement(e.id)} style={{ fontSize: 11, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}>Supprimer</button>
             )}
           </div>
         </div>
@@ -3717,7 +3717,7 @@ function GraphiqueBarres({ donnees, hauteur = 140 }) {
     <div style={{ position: "relative" }}>
       <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: hauteur, display: "flex", flexDirection: "column-reverse", justifyContent: "space-between", pointerEvents: "none" }}>
         {lignesGrille.map((l, i) => (
-          <div key={i} style={{ borderTop: "1px dashed rgba(255,255,255,0.10)", width: "100%" }} />
+          <div key={i} style={{ borderTop: "1px dashed rgba(255,255,255,0.18)", width: "100%" }} />
         ))}
       </div>
       <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: hauteur, overflowX: "auto", paddingBottom: 4, position: "relative" }}>
