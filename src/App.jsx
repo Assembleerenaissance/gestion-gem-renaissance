@@ -185,6 +185,26 @@ function App() {
     setChargement(false);
   }
 
+  // Déconnexion automatique après 30 minutes d'inactivité — utile sur un ordinateur partagé.
+  useEffect(() => {
+    if (!session) return;
+    const DELAI_MS = 30 * 60 * 1000;
+    let dernierMouvement = Date.now();
+    const surActivite = () => { dernierMouvement = Date.now(); };
+    const evenements = ["mousemove", "keydown", "click", "touchstart", "scroll"];
+    evenements.forEach(ev => window.addEventListener(ev, surActivite));
+    const intervalle = setInterval(() => {
+      if (Date.now() - dernierMouvement > DELAI_MS) {
+        toast("Tu as été déconnecté(e) après 30 minutes d'inactivité, pour protéger ton compte.", "info");
+        supabase.auth.signOut();
+      }
+    }, 60 * 1000);
+    return () => {
+      evenements.forEach(ev => window.removeEventListener(ev, surActivite));
+      clearInterval(intervalle);
+    };
+  }, [session]);
+
   if (chargement) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: TEAL_950, color: CREAM }}>
@@ -1321,6 +1341,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
   const [photo, setPhoto] = useState(null);
   const [dateNaissance, setDateNaissance] = useState("");
   const [quartier, setQuartier] = useState("");
+  const [doublonDetecte, setDoublonDetecte] = useState(null);
   const [nouveauConverti, setNouveauConverti] = useState(false);
   const [erreur, setErreur] = useState("");
   const [dimancheId, setDimancheId] = useState(null);
@@ -1394,6 +1415,18 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
   async function ajouterMembre() {
     setErreur("");
     if (!nom.trim() || !telephone.trim()) { setErreur("Nom et téléphone requis."); return; }
+    const chiffresTel = telephone.replace(/[^\d]/g, "");
+    const { data: existants } = await supabase.from("membres").select("id, nom, gem_id").not("telephone", "is", null);
+    const doublon = (existants || []).find(m => m.telephone && m.telephone.replace(/[^\d]/g, "").endsWith(chiffresTel.slice(-8)));
+    if (doublon) {
+      setDoublonDetecte(doublon);
+      return;
+    }
+    await creerMembre();
+  }
+
+  async function creerMembre() {
+    setDoublonDetecte(null);
     const { error } = await supabase.from("membres").insert({ gem_id: gem.id, nom: nom.trim(), telephone: telephone.trim(), nouveau_converti: nouveauConverti, etape_conversion: "accueil", photo: photo || null, date_naissance: dateNaissance || null, quartier: quartier.trim() || null });
     if (error) { setErreur(error.message); return; }
     setNom(""); setTelephone("+225 "); setNouveauConverti(false); setPhoto(null); setDateNaissance(""); setQuartier("");
@@ -1538,6 +1571,15 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
         )}
       </div>
         </>
+      )}
+      {doublonDetecte && (
+        <BoiteConfirmation
+          titre="Doublon possible détecté"
+          message={`Un membre nommé "${doublonDetecte.nom}" existe déjà avec un numéro de téléphone très proche. Veux-tu quand même ajouter ce nouveau membre ?`}
+          texteConfirmer="Ajouter quand même"
+          onConfirmer={creerMembre}
+          onAnnuler={() => setDoublonDetecte(null)}
+        />
       )}
     </div>
   );
