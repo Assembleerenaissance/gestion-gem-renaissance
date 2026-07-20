@@ -58,6 +58,47 @@ function BoiteConfirmation({ titre, message, texteConfirmer, dangereux, onConfir
   );
 }
 
+// Système de notifications discrètes (toasts), pour remplacer les alertes natives du navigateur.
+// Utilisable depuis n'importe quel composant via toast("message", "succes"|"erreur"|"info").
+function toast(message, type = "info") {
+  window.dispatchEvent(new CustomEvent("app-toast", { detail: { message, type } }));
+}
+
+function ConteneurToasts() {
+  const [toasts, setToasts] = useState([]);
+
+  useEffect(() => {
+    function surToast(e) {
+      const id = Date.now() + Math.random();
+      setToasts(t => [...t, { id, ...e.detail }]);
+      setTimeout(() => setToasts(t => t.filter(x => x.id !== id)), 4500);
+    }
+    window.addEventListener("app-toast", surToast);
+    return () => window.removeEventListener("app-toast", surToast);
+  }, []);
+
+  if (toasts.length === 0) return null;
+
+  return (
+    <div style={{ position: "fixed", bottom: 20, right: 20, left: 20, zIndex: 2000, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, pointerEvents: "none" }}>
+      {toasts.map(t => (
+        <div
+          key={t.id}
+          className="fade-in"
+          style={{
+            padding: "14px 18px", borderRadius: 10, color: "#fff", fontWeight: 600, fontSize: 13, lineHeight: 1.4,
+            maxWidth: 360, boxShadow: "0 10px 25px rgba(0,0,0,0.35)", pointerEvents: "auto",
+            backgroundColor: t.type === "erreur" ? "#e2626d" : t.type === "succes" ? "#1F9C8D" : "#116A5F",
+            border: `1px solid ${t.type === "erreur" ? "#e2626d" : "#27B3A1"}`,
+          }}
+        >
+          {t.type === "erreur" ? "⚠️ " : t.type === "succes" ? "✓ " : ""}{t.message}
+        </div>
+      ))}
+    </div>
+  );
+}
+
 class LimiteErreurs extends React.Component {
   constructor(props) { super(props); this.state = { erreur: null }; }
   static getDerivedStateFromError(erreur) { return { erreur }; }
@@ -122,6 +163,7 @@ export default function AppAvecProtection() {
   return (
     <LimiteErreurs>
       <StylesGlobaux />
+      <ConteneurToasts />
       <App />
     </LimiteErreurs>
   );
@@ -686,6 +728,7 @@ function TableauDeBord({ compte }) {
               <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Tribus</p><p style={{ fontSize: 28, fontWeight: 700 }}>{tribus.length}</p></div>
               <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Départements</p><p style={{ fontSize: 28, fontWeight: 700 }}>{departements.length}</p></div>
             </div>
+            <AnniversairesAVenir membres={membres} gems={gems} cardStyle={cardStyle} />
             <PrioritesPastorales membres={membres} gems={gems} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
             <div style={{ marginTop: 24 }}>
               <button
@@ -737,6 +780,50 @@ function TableauDeBord({ compte }) {
 }
 
 /* ------------------------- Priorités pastorales ------------------------- */
+
+/* ------------------------- Anniversaires à venir ------------------------- */
+
+function AnniversairesAVenir({ membres, gems, cardStyle }) {
+  function nomGem(gemId) {
+    return gems.find(g => g.id === gemId)?.nom || "GEM inconnu";
+  }
+
+  function prochainAnniversaire(dateNaissance) {
+    const aujourdHui = new Date(new Date().toDateString());
+    const anniv = new Date(dateNaissance);
+    anniv.setFullYear(aujourdHui.getFullYear());
+    if (anniv < aujourdHui) anniv.setFullYear(aujourdHui.getFullYear() + 1);
+    const diffJours = Math.round((anniv - aujourdHui) / 86400000);
+    return { date: anniv, diffJours };
+  }
+
+  const anniversaires = membres
+    .filter(m => m.date_naissance)
+    .map(m => ({ membre: m, ...prochainAnniversaire(m.date_naissance) }))
+    .filter(x => x.diffJours >= 0 && x.diffJours <= 14)
+    .sort((a, b) => a.diffJours - b.diffJours);
+
+  if (anniversaires.length === 0) return null;
+
+  return (
+    <div style={{ marginBottom: 28 }}>
+      <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>🎂 Anniversaires à venir (14 prochains jours)</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {anniversaires.map(({ membre, date, diffJours }) => (
+          <div key={membre.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+            <div>
+              <p style={{ fontWeight: 700, marginBottom: 2 }}>{membre.nom}</p>
+              <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomGem(membre.gem_id)}</p>
+            </div>
+            <span style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, backgroundColor: "#E8CA4A", borderRadius: 999, padding: "6px 12px" }}>
+              {diffJours === 0 ? "🎉 Aujourd'hui !" : diffJours === 1 ? "Demain" : `Dans ${diffJours} jours`} — {date.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 function PrioritesPastorales({ membres, gems, regulariteParMembre, cardStyle }) {
   function nomGem(gemId) {
@@ -946,7 +1033,7 @@ function DetailParent({ parent, type, gems, membres, regulariteParMembre, onBack
     await supabase.from("visites").delete().eq("membre_id", membre.id);
     const { error } = await supabase.from("membres").delete().eq("id", membre.id);
     setSuppressionEnCours(null);
-    if (error) { alert("Suppression impossible : " + error.message); return; }
+    if (error) { toast("Suppression impossible : " + error.message, "erreur"); return; }
     if (onChange) onChange();
   }
 
@@ -1140,6 +1227,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
   const [nom, setNom] = useState("");
   const [telephone, setTelephone] = useState("+225 ");
   const [photo, setPhoto] = useState(null);
+  const [dateNaissance, setDateNaissance] = useState("");
   const [nouveauConverti, setNouveauConverti] = useState(false);
   const [erreur, setErreur] = useState("");
   const [dimancheId, setDimancheId] = useState(null);
@@ -1212,9 +1300,9 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
   async function ajouterMembre() {
     setErreur("");
     if (!nom.trim() || !telephone.trim()) { setErreur("Nom et téléphone requis."); return; }
-    const { error } = await supabase.from("membres").insert({ gem_id: gem.id, nom: nom.trim(), telephone: telephone.trim(), nouveau_converti: nouveauConverti, etape_conversion: "accueil", photo: photo || null });
+    const { error } = await supabase.from("membres").insert({ gem_id: gem.id, nom: nom.trim(), telephone: telephone.trim(), nouveau_converti: nouveauConverti, etape_conversion: "accueil", photo: photo || null, date_naissance: dateNaissance || null });
     if (error) { setErreur(error.message); return; }
-    setNom(""); setTelephone("+225 "); setNouveauConverti(false); setPhoto(null);
+    setNom(""); setTelephone("+225 "); setNouveauConverti(false); setPhoto(null); setDateNaissance("");
     onMembreAjoute();
   }
 
@@ -1241,6 +1329,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
           </label>
           <input value={nom} onChange={e => setNom(e.target.value)} placeholder="Nom complet" style={{ flex: 1, minWidth: 160, padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
           <input value={telephone} onChange={e => setTelephone(e.target.value)} placeholder="Téléphone" style={{ flex: 1, minWidth: 160, padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+          <input value={dateNaissance} onChange={e => setDateNaissance(e.target.value)} type="date" title="Date de naissance (optionnel)" style={{ padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
           <button
  className="btn-app"
  onClick={ajouterMembre} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>Ajouter</button>
@@ -1429,13 +1518,28 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
       const dataUrl = await redimensionnerPhoto(fichier);
       const { error } = await supabase.from("membres").update({ photo: dataUrl }).eq("id", membre.id);
       if (error) {
-        alert("La photo n'a pas pu être enregistrée : " + error.message + "\n\nVérifie que la colonne 'photo' a bien été ajoutée à la table membres dans Supabase.");
+        toast("La photo n'a pas pu être enregistrée : " + error.message, "erreur");
         return;
       }
       if (onMisAJour) onMisAJour();
     } catch (err) {
-      alert("Impossible de traiter cette photo : " + err.message);
+      toast("Impossible de traiter cette photo : " + err.message, "erreur");
     }
+  }
+
+  async function enregistrerDateNaissance(valeur) {
+    const { error } = await supabase.from("membres").update({ date_naissance: valeur || null }).eq("id", membre.id);
+    if (error) { toast("Impossible d'enregistrer la date de naissance : " + error.message, "erreur"); return; }
+    if (onMisAJour) onMisAJour();
+  }
+
+  function estAnniversaireProche(dateNaissance) {
+    if (!dateNaissance) return false;
+    const aujourdHui = new Date();
+    const anniv = new Date(dateNaissance);
+    anniv.setFullYear(aujourdHui.getFullYear());
+    const diffJours = Math.round((anniv - new Date(aujourdHui.toDateString())) / 86400000);
+    return diffJours >= 0 && diffJours <= 7;
   }
 
   return (
@@ -1474,6 +1578,11 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
                 ⭐ Régulier ({regularite.presencesConsecutives})
               </span>
             )}
+            {estAnniversaireProche(membre.date_naissance) && (
+              <span style={{ fontSize: 10, fontWeight: 700, color: TEAL_950, backgroundColor: "#E8CA4A", borderRadius: 999, padding: "2px 8px", display: "inline-block" }}>
+                🎂 Anniversaire bientôt
+              </span>
+            )}
           </div>
         </div>
         </div>
@@ -1487,10 +1596,22 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
 
       {ouvert && (
         <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${TEAL_700}` }}>
-          <label style={{ display: "inline-block", fontSize: 11, color: GOLD_LIGHT, cursor: "pointer", border: `1px solid ${TEAL_600}`, borderRadius: 8, padding: "6px 10px", marginBottom: 14 }}>
-            📷 {membre.photo ? "Changer la photo" : "Ajouter une photo"}
-            <input type="file" accept="image/*" onChange={surChangerPhoto} style={{ display: "none" }} />
-          </label>
+          <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", marginBottom: 14 }}>
+            <label style={{ display: "inline-block", fontSize: 11, color: GOLD_LIGHT, cursor: "pointer", border: `1px solid ${TEAL_600}`, borderRadius: 8, padding: "6px 10px" }}>
+              📷 {membre.photo ? "Changer la photo" : "Ajouter une photo"}
+              <input type="file" accept="image/*" onChange={surChangerPhoto} style={{ display: "none" }} />
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: GOLD_LIGHT }}>
+              🎂 Date de naissance :
+              <input
+                type="date"
+                defaultValue={membre.date_naissance || ""}
+                onBlur={e => enregistrerDateNaissance(e.target.value)}
+                onClick={e => e.stopPropagation()}
+                style={{ padding: 6, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 11 }}
+              />
+            </label>
+          </div>
           <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
             <button
  className="btn-app"
@@ -1795,11 +1916,11 @@ function PageDemandes({ tribus, departements, compte, onTraite, cardStyle }) {
         tribu_id: d.tribu_id,
         departement_id: d.departement_id,
       }).select().single();
-      if (error) { alert(error.message); return; }
+      if (error) { toast(error.message, "erreur"); return; }
       gemId = nouveauGem.id;
     }
     const { error: err2 } = await supabase.from("assignations").update({ statut: "actif", gem_id: gemId, valide_par: compte.id }).eq("id", d.id);
-    if (err2) { alert(err2.message); return; }
+    if (err2) { toast(err2.message, "erreur"); return; }
     chargerDemandes();
     onTraite();
   }
@@ -3062,7 +3183,7 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
       } catch (e) { /* partage annulé par l'utilisateur */ }
     } else {
       await navigator.clipboard.writeText(texte);
-      alert("Le rapport a été copié — tu peux maintenant le coller où tu veux (WhatsApp, message, etc.).");
+      toast("Le rapport a été copié — tu peux le coller où tu veux.", "succes");
     }
   }
 
