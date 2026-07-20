@@ -28,6 +28,8 @@ function StylesGlobaux() {
       .barre-graphique { transition: opacity 0.15s ease; }
       .barre-graphique:hover { opacity: 0.75; }
       @keyframes fadeInApp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes tourner { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      .spinner-app { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(232,202,74,0.3); border-top-color: #E8CA4A; border-radius: 50%; animation: tourner 0.7s linear infinite; margin-right: 8px; vertical-align: middle; }
       input, select, textarea { transition: border-color 0.15s ease, box-shadow 0.15s ease; }
       input:focus, select:focus, textarea:focus { outline: none; box-shadow: 0 0 0 2px rgba(208,175,28,0.4); }
 
@@ -41,6 +43,16 @@ function StylesGlobaux() {
         a { color: #111 !important; text-decoration: none !important; }
       }
     `}</style>
+  );
+}
+
+// Indicateur de chargement animé, réutilisé partout dans l'application.
+function Chargement({ texte = "Chargement…" }) {
+  return (
+    <p style={{ color: "#a9d6cf", display: "flex", alignItems: "center" }}>
+      <span className="spinner-app" />
+      {texte}
+    </p>
   );
 }
 
@@ -681,9 +693,12 @@ function TableauDeBord({ compte }) {
   return (
     <div style={{ minHeight: "100vh", backgroundColor: TEAL_950, color: CREAM, fontFamily: "system-ui, sans-serif" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 24px", borderBottom: `1px solid ${TEAL_800}`, flexWrap: "wrap", gap: 10 }}>
-        <div>
-          <p style={{ fontSize: 13, color: "#cdeae4", margin: 0 }}>Bienvenue, <b style={{ color: CREAM }}>{compte.nom}</b></p>
-          <p style={{ fontSize: 11, color: "#a9d6cf", margin: 0 }}>{compte.role === "pasteur" ? "Pasteur" : compte.assistant ? "Assistant désigné" : "Responsable"}</p>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <img src={LOGO_VH} alt="Vases d'Honneur" style={{ height: 36, width: "auto" }} />
+          <div>
+            <p style={{ fontSize: 13, color: "#cdeae4", margin: 0 }}>Bienvenue, <b style={{ color: CREAM }}>{compte.nom}</b></p>
+            <p style={{ fontSize: 11, color: "#a9d6cf", margin: 0 }}>{compte.role === "pasteur" ? "Pasteur" : compte.assistant ? "Assistant désigné" : "Responsable"}</p>
+          </div>
         </div>
         <div style={{ position: "relative", flex: "1 1 220px", maxWidth: 320 }}>
           <input
@@ -916,10 +931,22 @@ function TableauDeBord({ compte }) {
             <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>Tableau de bord</h2>
             <BanniereRappelPointage rappel={rappelPointageGlobal} />
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 24 }}>
-              <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}>{membres.length}</p></div>
-              <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>GEM actifs</p><p style={{ fontSize: 28, fontWeight: 700 }}>{gems.length}</p></div>
-              <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Tribus</p><p style={{ fontSize: 28, fontWeight: 700 }}>{tribus.length}</p></div>
-              <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Départements</p><p style={{ fontSize: 28, fontWeight: 700 }}>{departements.length}</p></div>
+              <div className="card-app" style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 14 }}>
+                <span style={{ fontSize: 28 }}>👥</span>
+                <div><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}>{membres.length}</p></div>
+              </div>
+              <div className="card-app" style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 14 }}>
+                <span style={{ fontSize: 28 }}>🏠</span>
+                <div><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>GEM actifs</p><p style={{ fontSize: 28, fontWeight: 700 }}>{gems.length}</p></div>
+              </div>
+              <div className="card-app" style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 14 }}>
+                <span style={{ fontSize: 28 }}>🏛️</span>
+                <div><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Tribus</p><p style={{ fontSize: 28, fontWeight: 700 }}>{tribus.length}</p></div>
+              </div>
+              <div className="card-app" style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 14 }}>
+                <span style={{ fontSize: 28 }}>🏢</span>
+                <div><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Départements</p><p style={{ fontSize: 28, fontWeight: 700 }}>{departements.length}</p></div>
+              </div>
             </div>
             <AnniversairesAVenir membres={membres} gems={gems} cardStyle={cardStyle} />
             <PrioritesPastorales membres={membres} gems={gems} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
@@ -1082,13 +1109,13 @@ function PrioritesPastorales({ membres, gems, regulariteParMembre, cardStyle }) 
                 <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "6px 12px" }}>⚠️ {regularite.absencesConsecutives} absences consécutives</span>
                 {membre.telephone && (
                   <>
-                    <a title="Appeler" href={`tel:${membre.telephone}`} style={{ fontSize: 12, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
+                    <a title="Appeler" href={`tel:${membre.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
                       📞</a>
                     <a
                       href={`https://wa.me/${numeroPourWhatsApp(membre.telephone)}?text=${encodeURIComponent(`Bonjour ${membre.nom}, tu nous manques beaucoup ces derniers temps. Est-ce que tout va bien ? Nous t'aimons et espérons te revoir bientôt au culte. 🙏`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      style={{ fontSize: 12, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 999, width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}
+                      style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}
                     >
                       💬</a>
                   </>
@@ -1292,7 +1319,7 @@ function DetailParent({ compte, parent, type, gems, membres, regulariteParMembre
       />
 
       {chargement ? (
-        <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+        <Chargement />
       ) : membresFiltres.length === 0 ? (
         <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun membre trouvé.</p>
       ) : (
@@ -1347,9 +1374,9 @@ function DetailParent({ compte, parent, type, gems, membres, regulariteParMembre
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     {m.telephone && (
                       <>
-                        <a title="Appeler" href={`tel:${m.telephone}`} className="btn-app" style={{ fontSize: 12, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
+                        <a title="Appeler" href={`tel:${m.telephone}`} className="btn-app" style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
                           📞</a>
-                        <a title="Envoyer un message WhatsApp" href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" className="btn-app" style={{ fontSize: 12, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 999, width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
+                        <a title="Envoyer un message WhatsApp" href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" className="btn-app" style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
                           💬</a>
                       </>
                     )}
@@ -1358,7 +1385,7 @@ function DetailParent({ compte, parent, type, gems, membres, regulariteParMembre
                       className="btn-app"
                       onClick={() => setMembreAConfirmer(m)}
                       disabled={suppressionEnCours === m.id}
-                      style={{ fontSize: 12, color: "#fff", backgroundColor: RED_LIGHT, border: "none", borderRadius: 999, width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", flexShrink: 0 }}
+                      style={{ fontSize: 15, color: "#fff", backgroundColor: RED_LIGHT, border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", flexShrink: 0 }}
                     >
                       {suppressionEnCours === m.id ? "…" : "🗑️"}
                     </button>
@@ -1887,7 +1914,7 @@ function ActivitesSemaine({ gem, membres, compte, cardStyle }) {
     toast("✓ Rapport envoyé — Tu es béni pour ton engagement dans l'œuvre de Dieu 🙏", "succes");
   }
 
-  if (chargement || !activite) return <p style={{ color: "#a9d6cf" }}>Chargement…</p>;
+  if (chargement || !activite) return <Chargement />;
 
   return (
     <div>
@@ -2624,7 +2651,7 @@ function PageDemandes({ tribus, departements, compte, onTraite, cardStyle }) {
     <div>
       <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>Demandes en attente ({demandes.length})</h2>
       {chargement ? (
-        <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+        <Chargement />
       ) : demandes.length === 0 ? (
         <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucune demande en attente pour le moment.</p>
       ) : (
@@ -2740,7 +2767,7 @@ function PageCorbeille({ compte, gems, cardStyle, onTraite }) {
         Les membres supprimés restent récupérables ici pendant 30 jours avant d'être effacés définitivement.
       </p>
       {chargement ? (
-        <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+        <Chargement />
       ) : entrees.length === 0 ? (
         <p style={{ color: "#a9d6cf", fontSize: 13 }}>La corbeille est vide.</p>
       ) : (
@@ -2855,7 +2882,7 @@ function PageSuppressions({ compte, cardStyle, onTraite }) {
         Chaque suppression de membre doit être validée ici avant d'être effective.
       </p>
       {chargement ? (
-        <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+        <Chargement />
       ) : demandes.length === 0 ? (
         <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucune demande en attente pour le moment.</p>
       ) : (
@@ -2974,7 +3001,7 @@ function PageMotsDePasse({ cardStyle, onTraite }) {
       </p>
 
       {chargement ? (
-        <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+        <Chargement />
       ) : demandes.length === 0 ? (
         <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucune demande en attente pour le moment.</p>
       ) : (
@@ -3150,7 +3177,7 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
           <select value={dimancheChoisi || ""} onChange={e => setDimancheChoisi(e.target.value)} style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, marginBottom: 16 }}>
             {dimanches.map(d => <option key={d.id} value={d.id}>{new Date(d.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</option>)}
           </select>
-          {chargement ? <p style={{ color: "#a9d6cf" }}>Chargement…</p> : (
+          {chargement ? <Chargement /> : (
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
                 <p style={{ fontSize: 13, color: "#a9d6cf", margin: 0 }}>Rapport du dimanche {dateFormatee}</p>
@@ -3182,9 +3209,9 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
                         </div>
                         {m.telephone && (
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            <a title="Appeler" href={`tel:${m.telephone}`} style={{ fontSize: 12, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
+                            <a title="Appeler" href={`tel:${m.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
                               📞</a>
-                            <a title="Envoyer un message WhatsApp" href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 999, width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
+                            <a title="Envoyer un message WhatsApp" href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
                               💬</a>
                           </div>
                         )}
@@ -3201,7 +3228,7 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
           <select value={moisChoisi || ""} onChange={e => setMoisChoisi(e.target.value)} style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, marginBottom: 16, textTransform: "capitalize" }}>
             {moisDisponibles.map(m => <option key={m} value={m}>{libelleMois(m)}</option>)}
           </select>
-          {chargement ? <p style={{ color: "#a9d6cf" }}>Chargement…</p> : (
+          {chargement ? <Chargement /> : (
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
                 <p style={{ fontSize: 13, color: "#a9d6cf", margin: 0, textTransform: "capitalize" }}>Rapport de {libelleMois(moisChoisi)} — {dimanchesDuMois.length} dimanche(s)</p>
@@ -3233,9 +3260,9 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
                         </div>
                         {m.telephone && (
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            <a title="Appeler" href={`tel:${m.telephone}`} style={{ fontSize: 12, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
+                            <a title="Appeler" href={`tel:${m.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
                               📞</a>
-                            <a title="Envoyer un message WhatsApp" href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 999, width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
+                            <a title="Envoyer un message WhatsApp" href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
                               💬</a>
                           </div>
                         )}
@@ -3354,7 +3381,7 @@ function ActivitesSemainePerimetre({ gems, membres, tribus, departements, cardSt
           )}
 
           {chargement ? (
-            <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+            <Chargement />
           ) : (
             <>
               {vue === "semaine" && <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>Semaine du {dateFormatee}</p>}
@@ -3481,7 +3508,7 @@ function EvolutionPerimetre({ membres, cardStyle }) {
 
   const maxPresents = Math.max(1, ...presenceParDimanche.map(p => p.presents));
 
-  if (chargement) return <p style={{ color: "#a9d6cf" }}>Chargement…</p>;
+  if (chargement) return <Chargement />;
 
   return (
     <div>
@@ -3720,7 +3747,7 @@ function SousPageAssistantsDesignes({ compte, cardStyle }) {
       </p>
 
       {chargement ? (
-        <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+        <Chargement />
       ) : comptes.length === 0 ? (
         <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun autre compte pour le moment.</p>
       ) : (
@@ -3742,7 +3769,7 @@ function SousPageAssistantsDesignes({ compte, cardStyle }) {
                 className="btn-app"
                 onClick={() => basculerAssistant(c)}
                 style={{
-                  width: 26, height: 26, borderRadius: 999, border: "none", cursor: "pointer", fontSize: 12,
+                  width: 36, height: 36, borderRadius: 999, border: "none", cursor: "pointer", fontSize: 16,
                   display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
                   backgroundColor: c.assistant ? RED_LIGHT : GOLD,
                   color: c.assistant ? "#fff" : TEAL_950,
@@ -3874,7 +3901,7 @@ function SousPageAttribuerRole({ compte, tribus, departements, onChange, cardSty
         style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_850, color: CREAM, border: `1px solid ${TEAL_700}`, marginBottom: 16, width: "100%", maxWidth: 320 }}
       />
       {chargement ? (
-        <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+        <Chargement />
       ) : comptesFiltres.length === 0 ? (
         <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun compte disponible (tous les comptes inscrits ont déjà un rôle actif).</p>
       ) : (
@@ -4536,7 +4563,7 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
           </div>
 
           {chargement ? (
-            <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+            <Chargement />
           ) : (
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
@@ -4604,9 +4631,9 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
                         </div>
                         {m.telephone && (
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            <a title="Appeler" href={`tel:${m.telephone}`} style={{ fontSize: 12, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
+                            <a title="Appeler" href={`tel:${m.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
                               📞</a>
-                            <a title="Envoyer un message WhatsApp" href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 999, width: 26, height: 26, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
+                            <a title="Envoyer un message WhatsApp" href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
                               💬</a>
                           </div>
                         )}
@@ -4634,7 +4661,7 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
           </div>
 
           {chargement ? (
-            <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+            <Chargement />
           ) : (
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
@@ -4709,7 +4736,7 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
           </div>
 
           {chargement ? (
-            <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+            <Chargement />
           ) : (
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
@@ -4852,7 +4879,7 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
       </div>
 
       {chargement ? (
-        <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+        <Chargement />
       ) : onglet === "diffusion" ? (
         <div>
           {estPasteur && (
@@ -5036,7 +5063,7 @@ function PageCalendrier({ estPasteur, compte, onOuverture, cardStyle }) {
       )}
 
       {chargement ? (
-        <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+        <Chargement />
       ) : (
         <>
           <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>À venir</p>
@@ -5237,7 +5264,7 @@ function PageHistorique({ cardStyle }) {
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>Évolution de l'assemblée dans le temps — {totalMembres} membres suivis au total.</p>
 
       {chargement ? (
-        <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+        <Chargement />
       ) : (
         <>
           <div style={{ ...cardStyle, marginBottom: 24 }}>
