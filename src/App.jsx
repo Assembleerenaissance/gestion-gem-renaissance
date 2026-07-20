@@ -2443,18 +2443,22 @@ function MonEspace({ compte, assignation, gems, membres, tribus, departements, g
   if (assignation.role_demande === "gem") {
     const monGem = gems.find(g => g.id === assignation.gem_id);
     if (!monGem) return <p style={{ color: "#a9d6cf" }}>Ton GEM est en cours de préparation...</p>;
+    const membresGem = membres.filter(m => m.gem_id === monGem.id);
     return (
-      <DetailGem
-        compte={compte}
-        gem={monGem}
-        membres={membres.filter(m => m.gem_id === monGem.id)}
-        onBack={null}
-        onMembreAjoute={onMembreAjoute}
-        regulariteParMembre={regulariteParMembre}
-        membreCible={membreCible}
-        onMembreCibleConsomme={onMembreCibleConsomme}
-        cardStyle={cardStyle}
-      />
+      <div>
+        <AnniversairesAVenir membres={membresGem} gems={gems} cardStyle={cardStyle} />
+        <DetailGem
+          compte={compte}
+          gem={monGem}
+          membres={membresGem}
+          onBack={null}
+          onMembreAjoute={onMembreAjoute}
+          regulariteParMembre={regulariteParMembre}
+          membreCible={membreCible}
+          onMembreCibleConsomme={onMembreCibleConsomme}
+          cardStyle={cardStyle}
+        />
+      </div>
     );
   }
 
@@ -2503,6 +2507,7 @@ function MonEspace({ compte, assignation, gems, membres, tribus, departements, g
         <EvolutionPerimetre membres={membresDuPerimetre} cardStyle={cardStyle} />
       ) : (
         <>
+          <AnniversairesAVenir membres={membresDuPerimetre} gems={gems} cardStyle={cardStyle} />
           <div style={{ ...cardStyle, marginBottom: 20 }}>
             {creationOuverte ? (
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
