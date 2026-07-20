@@ -855,7 +855,7 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
                 <p style={{ fontWeight: 700, marginBottom: 4 }}>{it.nom}</p>
                 <button
  className="btn-app"
- onClick={() => onOpenParent(it)} style={{ fontSize: 11, fontWeight: 700, color: GOLD_LIGHT, background: "none", border: `1px solid ${GOLD_LIGHT}`, borderRadius: 6, padding: "4px 8px", cursor: "pointer", whiteSpace: "nowrap" }}>
+ onClick={() => onOpenParent(it)} style={{ fontSize: 11, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 6, padding: "6px 10px", cursor: "pointer", whiteSpace: "nowrap" }}>
                   👥 Tous les membres
                 </button>
               </div>
@@ -1033,7 +1033,6 @@ function DetailParent({ parent, type, gems, membres, regulariteParMembre, onBack
                       className="btn-app"
                       onClick={() => setMembreAConfirmer(m)}
                       disabled={suppressionEnCours === m.id}
-                      className="btn-app"
                       style={{ fontSize: 12, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, border: "none", borderRadius: 6, padding: "8px 12px", cursor: "pointer", whiteSpace: "nowrap" }}
                     >
                       {suppressionEnCours === m.id ? "…" : "🗑️ Supprimer"}
