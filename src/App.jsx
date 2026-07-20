@@ -1034,6 +1034,7 @@ function DetailParent({ parent, type, gems, membres, regulariteParMembre, onBack
     const { error } = await supabase.from("membres").delete().eq("id", membre.id);
     setSuppressionEnCours(null);
     if (error) { toast("Suppression impossible : " + error.message, "erreur"); return; }
+    toast(`${membre.nom} a bien été supprimé.`, "succes");
     if (onChange) onChange();
   }
 
