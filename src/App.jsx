@@ -1602,9 +1602,22 @@ function ActivitesSemaine({ gem, membres, compte, cardStyle }) {
 
   async function valider() {
     setEnregistrement(true);
-    const { error } = await supabase.from("activites_semaine")
-      .update({ valide: true, date_validation: new Date().toISOString(), valide_par: compte?.id || null })
-      .eq("gem_id", gem.id).eq("dimanche_id", dimancheId);
+    const payload = {
+      gem_id: gem.id, dimanche_id: dimancheId,
+      visites_membres: activite.visites_membres || [],
+      appels_membres: activite.appels_membres || [],
+      priere_jour: activite.priere_jour || null,
+      priere_heures: activite.priere_heures || null,
+      jeune: activite.jeune || null,
+      agape: activite.agape || null,
+      evangelisation: activite.evangelisation || null,
+      autres: activite.autres || null,
+      cree_par: compte?.id || null,
+      valide: true,
+      date_validation: new Date().toISOString(),
+      valide_par: compte?.id || null,
+    };
+    const { error } = await supabase.from("activites_semaine").upsert(payload, { onConflict: "gem_id,dimanche_id" });
     setEnregistrement(false);
     if (error) { toast("Impossible de valider le rapport : " + error.message, "erreur"); return; }
     setActivite(a => ({ ...a, valide: true, date_validation: new Date().toISOString() }));
