@@ -241,10 +241,10 @@ function EcranConnexion() {
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
           <button
  className="btn-app"
- onClick={() => { setMode("connexion"); setMotDePasseOublieOuvert(false); }} style={{ flex: 1, padding: "8px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, backgroundColor: mode === "connexion" ? TEAL_700 : "transparent", color: mode === "connexion" ? GOLD_LIGHT : "#cdeae4", border: `1px solid ${TEAL_600}` }}>Se connecter</button>
+ onClick={() => { setMode("connexion"); setMotDePasseOublieOuvert(false); if (telephone === "+225 ") setTelephone(""); }} style={{ flex: 1, padding: "8px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, backgroundColor: mode === "connexion" ? TEAL_700 : "transparent", color: mode === "connexion" ? GOLD_LIGHT : "#cdeae4", border: `1px solid ${TEAL_600}` }}>Se connecter</button>
           <button
  className="btn-app"
- onClick={() => { setMode("inscription"); setMotDePasseOublieOuvert(false); }} style={{ flex: 1, padding: "8px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, backgroundColor: mode === "inscription" ? TEAL_700 : "transparent", color: mode === "inscription" ? GOLD_LIGHT : "#cdeae4", border: `1px solid ${TEAL_600}` }}>Inscription</button>
+ onClick={() => { setMode("inscription"); setMotDePasseOublieOuvert(false); if (!telephone.trim()) setTelephone("+225 "); }} style={{ flex: 1, padding: "8px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, backgroundColor: mode === "inscription" ? TEAL_700 : "transparent", color: mode === "inscription" ? GOLD_LIGHT : "#cdeae4", border: `1px solid ${TEAL_600}` }}>Inscription</button>
         </div>
 
         {mode === "connexion" && motDePasseOublieOuvert ? (
@@ -769,7 +769,7 @@ function PrioritesPastorales({ membres, gems, regulariteParMembre, cardStyle }) 
                       📞 Appeler
                     </a>
                     <a
-                      href={`https://wa.me/${membre.telephone.replace(/[^\d]/g, "")}?text=${encodeURIComponent(`Bonjour ${membre.nom}, tu nous manques beaucoup ces derniers temps. Est-ce que tout va bien ? Nous t'aimons et espérons te revoir bientôt au culte. 🙏`)}`}
+                      href={`https://wa.me/${numeroPourWhatsApp(membre.telephone)}?text=${encodeURIComponent(`Bonjour ${membre.nom}, tu nous manques beaucoup ces derniers temps. Est-ce que tout va bien ? Nous t'aimons et espérons te revoir bientôt au culte. 🙏`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{ fontSize: 14, fontWeight: 700, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 12, padding: "12px 20px", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}
@@ -980,7 +980,7 @@ function DetailParent({ parent, type, gems, membres, regulariteParMembre, onBack
           {membresAffiches.map(m => {
             const regularite = regulariteParMembre?.[m.id];
             const moyenne = moyenneSante(santeParMembre[m.id]);
-            const numeroWhatsApp = (m.telephone || "").replace(/[^\d]/g, "");
+            const numeroWhatsApp = numeroPourWhatsApp(m.telephone);
             const messageWhatsApp = encodeURIComponent(`Bonjour ${m.nom}, comment vas-tu ? 🙏`);
             return (
               <div key={m.id} className="card-app" style={cardStyle}>
@@ -1076,6 +1076,14 @@ function dimancheActuel() {
   return d.toISOString().slice(0, 10); // format YYYY-MM-DD
 }
 
+// Garantit que le numéro utilisé pour WhatsApp comporte bien l'indicatif +225 (Côte d'Ivoire),
+// même si le numéro a été enregistré sans, pour que le lien wa.me fonctionne correctement.
+function numeroPourWhatsApp(tel) {
+  const chiffres = (tel || "").replace(/[^\d]/g, "");
+  if (chiffres.startsWith("225")) return chiffres;
+  return "225" + chiffres;
+}
+
 // Redimensionne une photo côté navigateur avant stockage (évite d'alourdir la base).
 function redimensionnerPhoto(fichier) {
   return new Promise((resolve, reject) => {
@@ -1133,7 +1141,7 @@ function BanniereRappelPointage({ rappel }) {
 
 function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regulariteParMembre, membreCible, onMembreCibleConsomme, cardStyle }) {
   const [nom, setNom] = useState("");
-  const [telephone, setTelephone] = useState("");
+  const [telephone, setTelephone] = useState("+225 ");
   const [photo, setPhoto] = useState(null);
   const [nouveauConverti, setNouveauConverti] = useState(false);
   const [erreur, setErreur] = useState("");
@@ -1209,7 +1217,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
     if (!nom.trim() || !telephone.trim()) { setErreur("Nom et téléphone requis."); return; }
     const { error } = await supabase.from("membres").insert({ gem_id: gem.id, nom: nom.trim(), telephone: telephone.trim(), nouveau_converti: nouveauConverti, etape_conversion: "accueil", photo: photo || null });
     if (error) { setErreur(error.message); return; }
-    setNom(""); setTelephone(""); setNouveauConverti(false); setPhoto(null);
+    setNom(""); setTelephone("+225 "); setNouveauConverti(false); setPhoto(null);
     onMembreAjoute();
   }
 
@@ -2116,7 +2124,7 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {membres.filter(m => presences[m.id] === false).map(m => {
-                    const numeroWhatsApp = (m.telephone || "").replace(/[^\d]/g, "");
+                    const numeroWhatsApp = numeroPourWhatsApp(m.telephone);
                     const messageWhatsApp = encodeURIComponent(`Bonjour ${m.nom}, tu nous as manqué au culte de ce dimanche. Tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏`);
                     return (
                       <div key={m.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
@@ -2170,7 +2178,7 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {membres.filter(m => presencesMois.filter(p => p.membre_id === m.id && p.present).length === 0).map(m => {
-                    const numeroWhatsApp = (m.telephone || "").replace(/[^\d]/g, "");
+                    const numeroWhatsApp = numeroPourWhatsApp(m.telephone);
                     const messageWhatsApp = encodeURIComponent(`Bonjour ${m.nom}, nous ne t'avons pas vu ce mois-ci au culte. Tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏`);
                     return (
                       <div key={m.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
@@ -2642,7 +2650,7 @@ function SousPageAttribuerRole({ compte, tribus, departements, onChange, cardSty
 
 function SousPageCreerCompte({ compte, tribus, departements, onChange, cardStyle }) {
   const [nom, setNom] = useState("");
-  const [telephone, setTelephone] = useState("");
+  const [telephone, setTelephone] = useState("+225 ");
   const [motDePasse, setMotDePasse] = useState("");
   const [mdpVisible, setMdpVisible] = useState(false);
 
@@ -2684,7 +2692,7 @@ function SousPageCreerCompte({ compte, tribus, departements, onChange, cardStyle
     }
 
     setSucces(`✓ Compte créé pour ${nom.trim()} avec son rôle actif. Transmets-lui son téléphone et son mot de passe pour qu'il se connecte.`);
-    setNom(""); setTelephone(""); setMotDePasse(""); setNomGem("");
+    setNom(""); setTelephone("+225 "); setMotDePasse(""); setNomGem("");
     setEnCours(false);
     if (onChange) onChange();
   }
@@ -3248,7 +3256,7 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {membres.filter(m => presences[m.id] === false).map(m => {
                     const gemMembre = gems.find(g => g.id === m.gem_id);
-                    const numeroWhatsApp = (m.telephone || "").replace(/[^\d]/g, "");
+                    const numeroWhatsApp = numeroPourWhatsApp(m.telephone);
                     const messageWhatsApp = encodeURIComponent(`Bonjour ${m.nom}, tu nous as manqué au culte de ce dimanche. Tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏`);
                     return (
                       <div key={m.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
