@@ -291,9 +291,11 @@ function App() {
     };
   }, [session]);
 
-  // Verrouillage de l'application : si l'appli a été fermée/mise en arrière-plan plus de 5 minutes,
-  // on redemande le mot de passe avant de laisser accéder aux données — même si la session technique
-  // reste valide. Essentiel sur téléphone, où l'appli reste "connectée" en permanence sinon.
+  // Verrouillage de l'application : si l'appli est restée hors d'usage plus de 5 minutes
+  // (fermée, mise en arrière-plan sur le téléphone...), on redemande le mot de passe avant
+  // de laisser accéder aux données — même si la session technique reste valide.
+  // Plusieurs vérifications redondantes sont utilisées car les navigateurs mobiles ne
+  // signalent pas toujours de façon fiable le retour au premier plan d'une application.
   const [verrouille, setVerrouille] = useState(false);
   const DELAI_VERROUILLAGE_MS = 5 * 60 * 1000;
 
@@ -312,17 +314,27 @@ function App() {
     if (!session) return;
     verifierVerrouillage();
     enregistrerDerniereActivite();
-    const intervalle = setInterval(enregistrerDerniereActivite, 15000);
-    function surVisibilite() {
+
+    const evenementsActivite = ["mousemove", "keydown", "click", "touchstart", "scroll"];
+    evenementsActivite.forEach(ev => window.addEventListener(ev, enregistrerDerniereActivite));
+
+    // Vérification périodique indépendante de la visibilité — filet de sécurité
+    // au cas où l'événement de retour au premier plan ne se déclenche pas.
+    const intervalle = setInterval(verifierVerrouillage, 20000);
+
+    function surRetourAuPremierPlan() {
       if (document.visibilityState === "visible") verifierVerrouillage();
-      else enregistrerDerniereActivite();
     }
-    document.addEventListener("visibilitychange", surVisibilite);
-    window.addEventListener("pagehide", enregistrerDerniereActivite);
+    document.addEventListener("visibilitychange", surRetourAuPremierPlan);
+    window.addEventListener("focus", verifierVerrouillage);
+    window.addEventListener("pageshow", verifierVerrouillage);
+
     return () => {
+      evenementsActivite.forEach(ev => window.removeEventListener(ev, enregistrerDerniereActivite));
       clearInterval(intervalle);
-      document.removeEventListener("visibilitychange", surVisibilite);
-      window.removeEventListener("pagehide", enregistrerDerniereActivite);
+      document.removeEventListener("visibilitychange", surRetourAuPremierPlan);
+      window.removeEventListener("focus", verifierVerrouillage);
+      window.removeEventListener("pageshow", verifierVerrouillage);
     };
   }, [session]);
 
