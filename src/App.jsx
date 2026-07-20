@@ -2417,7 +2417,8 @@ function MonEspace({ compte, assignation, gems, membres, tribus, departements, g
 /* ------------------------------- Assistants désignés ------------------------------- */
 
 function PageAssistants({ compte, tribus, departements, gems, onChange, cardStyle }) {
-  const [sousOnglet, setSousOnglet] = useState("assistants"); // assistants | attribuer | creer
+  const estPasteurStrict = compte.role === "pasteur";
+  const [sousOnglet, setSousOnglet] = useState(estPasteurStrict ? "assistants" : "attribuer"); // assistants | attribuer | creer
 
   const tabBtn = (val, label) => (
     <button
@@ -2436,12 +2437,12 @@ function PageAssistants({ compte, tribus, departements, gems, onChange, cardStyl
     <div>
       <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Rôles & Accès</h2>
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
-        {tabBtn("assistants", "Assistants désignés")}
+        {estPasteurStrict && tabBtn("assistants", "Assistants désignés")}
         {tabBtn("attribuer", "Attribuer un rôle")}
         {tabBtn("creer", "Nouveau compte + rôle")}
       </div>
 
-      {sousOnglet === "assistants" ? (
+      {sousOnglet === "assistants" && estPasteurStrict ? (
         <SousPageAssistantsDesignes compte={compte} cardStyle={cardStyle} />
       ) : sousOnglet === "attribuer" ? (
         <SousPageAttribuerRole compte={compte} tribus={tribus} departements={departements} onChange={onChange} cardStyle={cardStyle} />
