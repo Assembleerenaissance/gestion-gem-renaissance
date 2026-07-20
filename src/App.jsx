@@ -669,6 +669,11 @@ function TableauDeBord({ compte }) {
                   </span>
                 )}
               </button>
+              <button
+ className="btn-app"
+ onClick={() => { setPage("corbeille"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "corbeille" ? TEAL_700 : "transparent", color: page === "corbeille" ? GOLD_LIGHT : "#cdeae4" }}>
+                🗑️ Corbeille
+              </button>
               {compte.role === "pasteur" && (
                 <button
  className="btn-app"
@@ -850,6 +855,8 @@ function TableauDeBord({ compte }) {
           <PageMotsDePasse cardStyle={cardStyle} onTraite={rafraichirCompteurs} />
         ) : page === "suppressions" ? (
           <PageSuppressions compte={compte} cardStyle={cardStyle} onTraite={rafraichirCompteurs} />
+        ) : page === "corbeille" ? (
+          <PageCorbeille compte={compte} gems={gems} cardStyle={cardStyle} onTraite={chargerDonnees} />
         ) : (
           <PageAssistants compte={compte} tribus={tribus} departements={departements} gems={gems} onChange={chargerDonnees} cardStyle={cardStyle} />
         )}
@@ -1344,6 +1351,8 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
   const [dateNaissance, setDateNaissance] = useState("");
   const [quartier, setQuartier] = useState("");
   const [doublonDetecte, setDoublonDetecte] = useState(null);
+  const [apercuImport, setApercuImport] = useState(null);
+  const [importEnCours, setImportEnCours] = useState(false);
   const [nouveauConverti, setNouveauConverti] = useState(false);
   const [erreur, setErreur] = useState("");
   const [dimancheId, setDimancheId] = useState(null);
@@ -1435,6 +1444,59 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
     onMembreAjoute();
   }
 
+  // --- Import en masse depuis un fichier CSV (colonnes : nom, telephone, quartier) ---
+  function analyserCSV(texte) {
+    const lignes = texte.split(/\r?\n/).filter(l => l.trim());
+    if (lignes.length === 0) return [];
+    const entetes = lignes[0].split(",").map(e => e.trim().toLowerCase().replace(/"/g, ""));
+    const idxNom = entetes.findIndex(e => e.includes("nom"));
+    const idxTel = entetes.findIndex(e => e.includes("tel"));
+    const idxQuartier = entetes.findIndex(e => e.includes("quartier"));
+    if (idxNom === -1 || idxTel === -1) return null; // colonnes obligatoires manquantes
+    return lignes.slice(1).map(ligne => {
+      const valeurs = ligne.split(",").map(v => v.trim().replace(/"/g, ""));
+      return {
+        nom: valeurs[idxNom] || "",
+        telephone: valeurs[idxTel] || "",
+        quartier: idxQuartier !== -1 ? (valeurs[idxQuartier] || "") : "",
+      };
+    }).filter(l => l.nom && l.telephone);
+  }
+
+  function surChoisirFichierImport(e) {
+    const fichier = e.target.files[0];
+    if (!fichier) return;
+    const lecteur = new FileReader();
+    lecteur.onload = evt => {
+      const lignes = analyserCSV(evt.target.result);
+      if (lignes === null) {
+        toast("Le fichier doit contenir au moins les colonnes 'nom' et 'telephone'.", "erreur");
+        return;
+      }
+      if (lignes.length === 0) {
+        toast("Aucune ligne valide trouvée dans le fichier.", "erreur");
+        return;
+      }
+      setApercuImport(lignes);
+    };
+    lecteur.readAsText(fichier);
+    e.target.value = "";
+  }
+
+  async function confirmerImport() {
+    setImportEnCours(true);
+    const lignes = apercuImport.map(l => ({
+      gem_id: gem.id, nom: l.nom.trim(), telephone: l.telephone.trim(),
+      quartier: l.quartier?.trim() || null, nouveau_converti: false, etape_conversion: "accueil",
+    }));
+    const { error } = await supabase.from("membres").insert(lignes);
+    setImportEnCours(false);
+    setApercuImport(null);
+    if (error) { toast("Erreur pendant l'import : " + error.message, "erreur"); return; }
+    toast(`✓ ${lignes.length} membre(s) importé(s) avec succès.`, "succes");
+    onMembreAjoute();
+  }
+
   const presentsCount = membres.filter(m => presences[m.id]?.present).length;
   const dateAffichee = new Date(dimancheActuel() + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 
@@ -1470,7 +1532,13 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
       ) : (
         <>
       <div style={{ ...cardStyle, marginBottom: 20 }}>
-        <p style={{ fontWeight: 600, marginBottom: 10, fontSize: 14 }}>Ajouter un membre</p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+          <p style={{ fontWeight: 600, fontSize: 14, margin: 0 }}>Ajouter un membre</p>
+          <label style={{ fontSize: 11, fontWeight: 700, color: GOLD_LIGHT, cursor: "pointer", border: `1px solid ${GOLD_LIGHT}`, borderRadius: 8, padding: "6px 10px", whiteSpace: "nowrap" }}>
+            📂 Importer depuis un fichier (CSV)
+            <input type="file" accept=".csv,text/csv" onChange={surChoisirFichierImport} style={{ display: "none" }} />
+          </label>
+        </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           {photo && <img src={photo} alt="" style={{ width: 40, height: 40, borderRadius: 999, objectFit: "cover", border: `1px solid ${GOLD}`, flexShrink: 0 }} />}
           <label style={{ fontSize: 11, color: GOLD_LIGHT, cursor: "pointer", border: `1px solid ${TEAL_600}`, borderRadius: 8, padding: "8px 10px", whiteSpace: "nowrap" }}>
@@ -1582,6 +1650,27 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
           onConfirmer={creerMembre}
           onAnnuler={() => setDoublonDetecte(null)}
         />
+      )}
+      {apercuImport && (
+        <div className="fade-in" style={{ position: "fixed", inset: 0, backgroundColor: "rgba(5,20,18,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
+          <div style={{ backgroundColor: "#14776B", border: "1px solid #1F9C8D", borderRadius: 16, padding: 24, maxWidth: 480, width: "100%", maxHeight: "80vh", overflowY: "auto", boxShadow: "0 20px 50px rgba(0,0,0,0.4)" }}>
+            <p style={{ fontWeight: 700, fontSize: 17, marginBottom: 10, color: "#FFFFFF" }}>Confirmer l'import — {apercuImport.length} membre(s)</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
+              {apercuImport.slice(0, 15).map((l, i) => (
+                <p key={i} style={{ fontSize: 12, color: "#cdeae4" }}>• {l.nom} — {l.telephone}{l.quartier ? ` (${l.quartier})` : ""}</p>
+              ))}
+              {apercuImport.length > 15 && <p style={{ fontSize: 12, color: "#a9d6cf", fontStyle: "italic" }}>+ {apercuImport.length - 15} autre(s)…</p>}
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+              <button className="btn-app" onClick={() => setApercuImport(null)} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: "transparent", color: "#cdeae4", border: "1px solid #27B3A1", fontWeight: 600, cursor: "pointer" }}>
+                Annuler
+              </button>
+              <button className="btn-app" disabled={importEnCours} onClick={confirmerImport} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: "#D0AF1C", color: "#0D5C52", border: "none", fontWeight: 700, cursor: "pointer" }}>
+                {importEnCours ? "…" : `Importer ${apercuImport.length} membre(s)`}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -1820,6 +1909,22 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
   const [sauvegarde, setSauvegarde] = useState(false);
   const [sousOnglet, setSousOnglet] = useState("sante"); // sante | visites | parcours
   const [demandeSuppressionOuverte, setDemandeSuppressionOuverte] = useState(false);
+  const [historiquePresence, setHistoriquePresence] = useState(null);
+
+  useEffect(() => {
+    if (ouvert && historiquePresence === null) chargerHistoriquePresence();
+  }, [ouvert]);
+
+  async function chargerHistoriquePresence() {
+    const { data: dimanchesRecents } = await supabase.from("dimanches").select("*").order("date", { ascending: true }).limit(8);
+    if (!dimanchesRecents || dimanchesRecents.length === 0) { setHistoriquePresence([]); return; }
+    const { data: presencesMembre } = await supabase.from("presences").select("*").eq("membre_id", membre.id).in("dimanche_id", dimanchesRecents.map(d => d.id));
+    const historique = dimanchesRecents.map(d => {
+      const p = (presencesMembre || []).find(x => x.dimanche_id === d.id);
+      return { date: d.date, present: p ? p.present : false };
+    });
+    setHistoriquePresence(historique);
+  }
 
   async function envoyerDemandeSuppression(motif) {
     setDemandeSuppressionOuverte(false);
@@ -2071,6 +2176,20 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
 
           {sousOnglet === "sante" ? (
             <>
+              {historiquePresence && historiquePresence.length > 0 && (
+                <div style={{ marginBottom: 16, padding: 10, backgroundColor: TEAL_900, borderRadius: 8 }}>
+                  <p style={{ fontSize: 11, color: "#a9d6cf", marginBottom: 8 }}>Présence — 8 derniers dimanches</p>
+                  <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 36 }}>
+                    {historiquePresence.map((h, i) => (
+                      <div
+                        key={i}
+                        title={`${new Date(h.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} : ${h.present ? "présent" : "absent"}`}
+                        style={{ flex: 1, height: h.present ? 36 : 10, backgroundColor: h.present ? GOLD : RED_LIGHT, borderRadius: 3, opacity: h.present ? 1 : 0.6 }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
               <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 10 }}>Évalue chaque dimension de 0 (faible) à 10 (excellent).</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {DIMENSIONS_SANTE.map(([cle, label]) => (
@@ -2406,6 +2525,113 @@ function PageDemandes({ tribus, departements, compte, onTraite, cardStyle }) {
   );
 }
 
+/* --------------------------- Page Corbeille (pasteur) --------------------------- */
+
+function PageCorbeille({ compte, gems, cardStyle, onTraite }) {
+  const [entrees, setEntrees] = useState([]);
+  const [chargement, setChargement] = useState(true);
+  const [enCours, setEnCours] = useState(null);
+
+  useEffect(() => { chargerCorbeille(); }, []);
+
+  async function chargerCorbeille() {
+    setChargement(true);
+    const ilYa30Jours = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    // Supprime définitivement les entrées de plus de 30 jours, puis affiche le reste.
+    await supabase.from("membres_corbeille").delete().lt("supprime_le", ilYa30Jours);
+    const { data } = await supabase.from("membres_corbeille").select("*").order("supprime_le", { ascending: false });
+    setEntrees(data || []);
+    setChargement(false);
+  }
+
+  function nomGem(gemId) {
+    return gems.find(g => g.id === gemId)?.nom || "GEM supprimé";
+  }
+
+  function joursRestants(supprimeLe) {
+    const diff = 30 - Math.floor((Date.now() - new Date(supprimeLe).getTime()) / 86400000);
+    return Math.max(0, diff);
+  }
+
+  async function restaurer(entree) {
+    setEnCours(entree.id);
+    const gemExiste = gems.some(g => g.id === entree.gem_id);
+    if (!gemExiste) {
+      toast("Impossible de restaurer : le GEM d'origine n'existe plus. Contacte le support si besoin.", "erreur");
+      setEnCours(null);
+      return;
+    }
+    const { error } = await supabase.from("membres").insert({
+      gem_id: entree.gem_id, nom: entree.nom, telephone: entree.telephone, photo: entree.photo,
+      date_naissance: entree.date_naissance, quartier: entree.quartier,
+      nouveau_converti: entree.nouveau_converti, etape_conversion: entree.etape_conversion,
+    });
+    if (error) { toast("Erreur lors de la restauration : " + error.message, "erreur"); setEnCours(null); return; }
+    await supabase.from("membres_corbeille").delete().eq("id", entree.id);
+    setEnCours(null);
+    toast(`${entree.nom} a été restauré avec succès.`, "succes");
+    chargerCorbeille();
+    if (onTraite) onTraite();
+  }
+
+  async function supprimerDefinitivement(entree) {
+    setEnCours(entree.id);
+    await supabase.from("membres_corbeille").delete().eq("id", entree.id);
+    setEnCours(null);
+    toast(`${entree.nom} a été effacé définitivement.`, "info");
+    chargerCorbeille();
+  }
+
+  return (
+    <div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>🗑️ Corbeille ({entrees.length})</h2>
+      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>
+        Les membres supprimés restent récupérables ici pendant 30 jours avant d'être effacés définitivement.
+      </p>
+      {chargement ? (
+        <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+      ) : entrees.length === 0 ? (
+        <p style={{ color: "#a9d6cf", fontSize: 13 }}>La corbeille est vide.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {entrees.map(e => (
+            <div key={e.id} style={cardStyle}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
+                <div>
+                  <p style={{ fontWeight: 700, marginBottom: 2 }}>{e.nom}</p>
+                  <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomGem(e.gem_id)} · {e.telephone}</p>
+                  {e.motif && <p style={{ fontSize: 12, color: "#e8c25a", marginTop: 4 }}>Motif de suppression : {e.motif}</p>}
+                  <p style={{ fontSize: 11, color: RED_LIGHT, marginTop: 4, fontWeight: 700 }}>
+                    ⏳ Effacement définitif dans {joursRestants(e.supprime_le)} jour(s)
+                  </p>
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    className="btn-app"
+                    disabled={enCours === e.id}
+                    onClick={() => restaurer(e)}
+                    style={{ padding: "10px 16px", borderRadius: 10, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 12 }}
+                  >
+                    ↩️ Restaurer
+                  </button>
+                  <button
+                    className="btn-app"
+                    disabled={enCours === e.id}
+                    onClick={() => supprimerDefinitivement(e)}
+                    style={{ padding: "10px 16px", borderRadius: 10, backgroundColor: "transparent", color: RED_LIGHT, border: `1px solid ${RED_LIGHT}`, cursor: "pointer", fontSize: 12 }}
+                  >
+                    Effacer maintenant
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* --------------------------- Page Mots de passe oubliés (pasteur) --------------------------- */
 
 /* --------------------------- Page Suppressions de membres (pasteur) --------------------------- */
@@ -2434,6 +2660,16 @@ function PageSuppressions({ compte, cardStyle, onTraite }) {
 
   async function approuver(d) {
     setEnCours(d.id);
+    // Récupère la fiche complète du membre pour l'archiver dans la corbeille avant suppression
+    const { data: membreComplet } = await supabase.from("membres").select("*").eq("id", d.membre_id).maybeSingle();
+    if (membreComplet) {
+      await supabase.from("membres_corbeille").insert({
+        membre_id_original: membreComplet.id, gem_id: membreComplet.gem_id, nom: membreComplet.nom,
+        telephone: membreComplet.telephone, photo: membreComplet.photo, date_naissance: membreComplet.date_naissance,
+        quartier: membreComplet.quartier, nouveau_converti: membreComplet.nouveau_converti, etape_conversion: membreComplet.etape_conversion,
+        motif: d.motif, supprime_par: compte.id,
+      });
+    }
     await supabase.from("presences").delete().eq("membre_id", d.membre_id);
     await supabase.from("sante_spirituelle").delete().eq("membre_id", d.membre_id);
     await supabase.from("visites").delete().eq("membre_id", d.membre_id);
@@ -2443,7 +2679,7 @@ function PageSuppressions({ compte, cardStyle, onTraite }) {
     }
     setEnCours(null);
     if (error) { toast("Suppression impossible : " + error.message, "erreur"); return; }
-    toast(`${d.membre_nom} a été supprimé définitivement.`, "succes");
+    toast(`${d.membre_nom} a été supprimé — récupérable dans la Corbeille pendant 30 jours.`, "succes");
     chargerDemandes();
     if (onTraite) onTraite();
   }
