@@ -2498,7 +2498,7 @@ function PageMotsDePasse({ cardStyle, onTraite }) {
   }
 
   async function ignorer(d) {
-    await supabase.from("demandes_mot_de_passe").update({ statut: "ignoree" }).eq("id", d.id);
+    await supabase.from("demandes_mot_de_passe").delete().eq("id", d.id);
     chargerDemandes();
     if (onTraite) onTraite();
   }
@@ -2525,7 +2525,7 @@ function PageMotsDePasse({ cardStyle, onTraite }) {
       setEnCours(false);
       return;
     }
-    await supabase.from("demandes_mot_de_passe").update({ statut: "traitee" }).eq("id", d.id);
+    await supabase.from("demandes_mot_de_passe").delete().eq("id", d.id);
     setSucces("✓ Mot de passe réinitialisé avec succès.");
     setEnCours(false);
     setTimeout(() => { chargerDemandes(); if (onTraite) onTraite(); }, 1200);
