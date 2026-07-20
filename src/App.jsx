@@ -3850,7 +3850,7 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
   const classementDepartementsSanteMois = vue === "mensuelle" ? calculerClassementSante("departement", departements, santeMois) : [];
   const classementMembresMois = vue === "mensuelle" ? calculerClassementMembres(dimanchesDuMois, presencesMois, 10) : [];
   // Meilleur GEM de la période : combine présence, santé spirituelle et activités validées
-  function calculerMeilleurGem(dimanchesPeriode, presencesPeriode, santePeriode, activitesPeriode) {
+  function calculerClassementGems(dimanchesPeriode, presencesPeriode, santePeriode, activitesPeriode) {
     const resultats = gems.map(g => {
       const membresGem = membres.filter(m => m.gem_id === g.id);
       if (membresGem.length === 0 || dimanchesPeriode.length === 0) return null;
@@ -3870,18 +3870,22 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
       if (composantes.length === 0) return null;
       const score = composantes.reduce((a, b) => a + b, 0) / composantes.length;
 
+      const rattachement = g.tribu_id ? `Tribu de ${tribus.find(t => t.id === g.tribu_id)?.nom || "?"}` : `Département ${departements.find(d => d.id === g.departement_id)?.nom || "?"}`;
+
       return {
-        nom: g.nom, gemId: g.id, score: Math.round(score),
+        nom: g.nom, gemId: g.id, valeur: Math.round(score), rattachement,
         tauxPresence: tauxPresence !== null ? Math.round(tauxPresence) : null,
         scoreSante: scoreSante !== null ? Math.round(scoreSante / 10 * 10) / 10 : null,
         tauxActivite: tauxActivite !== null ? Math.round(tauxActivite) : null,
       };
     }).filter(Boolean);
-    return resultats.sort((a, b) => b.score - a.score)[0] || null;
+    return resultats.sort((a, b) => b.valeur - a.valeur);
   }
 
-  const meilleurGemMois = vue === "mensuelle" ? calculerMeilleurGem(dimanchesDuMois, presencesMois, santeMois, activitesMois) : null;
-  const meilleurGemAnnee = vue === "annuelle" ? calculerMeilleurGem(dimanchesAnnee, presencesAnnee, santeAnnee, activitesAnnee) : null;
+  const classementGemsMois = vue === "mensuelle" ? calculerClassementGems(dimanchesDuMois, presencesMois, santeMois, activitesMois) : [];
+  const classementGemsAnnee = vue === "annuelle" ? calculerClassementGems(dimanchesAnnee, presencesAnnee, santeAnnee, activitesAnnee) : [];
+  const meilleurGemMois = classementGemsMois[0] || null;
+  const meilleurGemAnnee = classementGemsAnnee[0] || null;
 
   const classementTribusAmes = (vue === "mensuelle" || vue === "annuelle") ? calculerClassementAmes("tribu", tribus) : [];
   const classementDepartementsAmes = (vue === "mensuelle" || vue === "annuelle") ? calculerClassementAmes("departement", departements) : [];
@@ -4009,11 +4013,12 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {liste.map((item, i) => (
-              <div key={item.nom} style={cardStyle}>
+              <div key={item.nom + i} style={cardStyle}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
                   <span style={{ fontWeight: 700, fontSize: 13 }}>
                     <span style={{ marginRight: 8 }}>{medaille(i)}</span>
                     {item.nom}
+                    {item.rattachement && <span style={{ fontWeight: 400, fontSize: 11, color: "#a9d6cf", marginLeft: 6 }}>({item.rattachement})</span>}
                   </span>
                   <span style={{ fontWeight: 700, fontSize: 13, color: GOLD_LIGHT }}>{item.valeur}{suffixe}</span>
                 </div>
@@ -4237,6 +4242,7 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
               )}
 
               <PrixMeilleurGem gagnant={meilleurGemMois} titre="Meilleur GEM du mois" />
+              <Classement titre="🏅 Classement complet des GEM" liste={classementGemsMois} suffixe=" pts" maxValeur={100} />
 
               <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>🏆 Classement par régularité (présence)</p>
               <Classement titre="Tribus" liste={classementTribusPresenceMois} suffixe="%" maxValeur={100} />
@@ -4311,6 +4317,7 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
               )}
 
               <PrixMeilleurGem gagnant={meilleurGemAnnee} titre="Meilleur GEM de l'année" />
+              <Classement titre="🏅 Classement complet des GEM" liste={classementGemsAnnee} suffixe=" pts" maxValeur={100} />
 
               <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>🏆 Classement annuel par régularité (présence)</p>
               <Classement titre="Tribus" liste={classementTribusPresenceAnnee} suffixe="%" maxValeur={100} />
