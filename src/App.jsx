@@ -266,6 +266,7 @@ function EcranConnexion() {
 function TableauDeBord({ compte }) {
   const [page, setPage] = useState("dashboard");
   const [gemOuvert, setGemOuvert] = useState(null);
+  const [parentOuvert, setParentOuvert] = useState(null); // { item, type } - vue d'ensemble d'une tribu/département
   const [tribus, setTribus] = useState([]);
   const [departements, setDepartements] = useState([]);
   const [gems, setGems] = useState([]);
@@ -436,12 +437,12 @@ function TableauDeBord({ compte }) {
           {estPasteur ? (
             <>
               {aResponsabilitePersonnelle && (
-                <button onClick={() => { setPage("mon_espace"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "mon_espace" ? TEAL_700 : "transparent", color: page === "mon_espace" ? GOLD_LIGHT : "#cdeae4" }}>Mon espace</button>
+                <button onClick={() => { setPage("mon_espace"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "mon_espace" ? TEAL_700 : "transparent", color: page === "mon_espace" ? GOLD_LIGHT : "#cdeae4" }}>Mon espace</button>
               )}
-              <button onClick={() => { setPage("dashboard"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "dashboard" ? TEAL_700 : "transparent", color: page === "dashboard" ? GOLD_LIGHT : "#cdeae4" }}>Tableau de bord</button>
-              <button onClick={() => { setPage("tribus"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "tribus" ? TEAL_700 : "transparent", color: page === "tribus" ? GOLD_LIGHT : "#cdeae4" }}>Tribus</button>
-              <button onClick={() => { setPage("departements"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "departements" ? TEAL_700 : "transparent", color: page === "departements" ? GOLD_LIGHT : "#cdeae4" }}>Départements</button>
-              <button onClick={() => { setPage("demandes"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "demandes" ? TEAL_700 : "transparent", color: page === "demandes" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
+              <button onClick={() => { setPage("dashboard"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "dashboard" ? TEAL_700 : "transparent", color: page === "dashboard" ? GOLD_LIGHT : "#cdeae4" }}>Tableau de bord</button>
+              <button onClick={() => { setPage("tribus"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "tribus" ? TEAL_700 : "transparent", color: page === "tribus" ? GOLD_LIGHT : "#cdeae4" }}>Tribus</button>
+              <button onClick={() => { setPage("departements"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "departements" ? TEAL_700 : "transparent", color: page === "departements" ? GOLD_LIGHT : "#cdeae4" }}>Départements</button>
+              <button onClick={() => { setPage("demandes"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "demandes" ? TEAL_700 : "transparent", color: page === "demandes" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
                 Demandes
                 {nbDemandesAttente > 0 && (
                   <span style={{ position: "absolute", top: -6, right: -6, backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
@@ -449,9 +450,9 @@ function TableauDeBord({ compte }) {
                   </span>
                 )}
               </button>
-              <button onClick={() => { setPage("rapports"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "rapports" ? TEAL_700 : "transparent", color: page === "rapports" ? GOLD_LIGHT : "#cdeae4" }}>Rapports</button>
-              <button onClick={() => { setPage("historique"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "historique" ? TEAL_700 : "transparent", color: page === "historique" ? GOLD_LIGHT : "#cdeae4" }}>Historique</button>
-              <button onClick={() => { setPage("calendrier"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "calendrier" ? TEAL_700 : "transparent", color: page === "calendrier" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
+              <button onClick={() => { setPage("rapports"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "rapports" ? TEAL_700 : "transparent", color: page === "rapports" ? GOLD_LIGHT : "#cdeae4" }}>Rapports</button>
+              <button onClick={() => { setPage("historique"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "historique" ? TEAL_700 : "transparent", color: page === "historique" ? GOLD_LIGHT : "#cdeae4" }}>Historique</button>
+              <button onClick={() => { setPage("calendrier"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "calendrier" ? TEAL_700 : "transparent", color: page === "calendrier" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
                 Calendrier
                 {nbNouveauxEvenements > 0 && (
                   <span style={{ position: "absolute", top: -6, right: -6, backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
@@ -459,7 +460,7 @@ function TableauDeBord({ compte }) {
                   </span>
                 )}
               </button>
-              <button onClick={() => { setPage("messagerie"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "messagerie" ? TEAL_700 : "transparent", color: page === "messagerie" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
+              <button onClick={() => { setPage("messagerie"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "messagerie" ? TEAL_700 : "transparent", color: page === "messagerie" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
                 Messagerie
                 {nbMessagesNonLus > 0 && (
                   <span style={{ position: "absolute", top: -6, right: -6, backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
@@ -467,7 +468,7 @@ function TableauDeBord({ compte }) {
                   </span>
                 )}
               </button>
-              <button onClick={() => { setPage("mots_de_passe"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "mots_de_passe" ? TEAL_700 : "transparent", color: page === "mots_de_passe" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
+              <button onClick={() => { setPage("mots_de_passe"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "mots_de_passe" ? TEAL_700 : "transparent", color: page === "mots_de_passe" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
                 Mots de passe
                 {nbDemandesMdp > 0 && (
                   <span style={{ position: "absolute", top: -6, right: -6, backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
@@ -476,7 +477,7 @@ function TableauDeBord({ compte }) {
                 )}
               </button>
               {compte.role === "pasteur" && (
-                <button onClick={() => { setPage("assistants"); setGemOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "assistants" ? TEAL_700 : "transparent", color: page === "assistants" ? GOLD_LIGHT : "#cdeae4" }}>Rôles & Accès</button>
+                <button onClick={() => { setPage("assistants"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "assistants" ? TEAL_700 : "transparent", color: page === "assistants" ? GOLD_LIGHT : "#cdeae4" }}>Rôles & Accès</button>
               )}
             </>
           ) : (
@@ -579,6 +580,17 @@ function TableauDeBord({ compte }) {
             onMembreCibleConsomme={() => setMembreCible(null)}
             cardStyle={cardStyle}
           />
+        ) : parentOuvert ? (
+          <DetailParent
+            parent={parentOuvert.item}
+            type={parentOuvert.type}
+            gems={gems}
+            membres={membres}
+            regulariteParMembre={regulariteParMembre}
+            onBack={() => setParentOuvert(null)}
+            onChange={chargerDonnees}
+            cardStyle={cardStyle}
+          />
         ) : page === "dashboard" ? (
           <>
             <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>Tableau de bord</h2>
@@ -605,6 +617,7 @@ function TableauDeBord({ compte }) {
             gems={gems}
             estPasteur={estPasteur}
             onOpenGem={setGemOuvert}
+            onOpenParent={it => setParentOuvert({ item: it, type: "tribu" })}
             onCreerGem={chargerDonnees}
             cardStyle={cardStyle}
           />
@@ -616,6 +629,7 @@ function TableauDeBord({ compte }) {
             gems={gems}
             estPasteur={estPasteur}
             onOpenGem={setGemOuvert}
+            onOpenParent={it => setParentOuvert({ item: it, type: "departement" })}
             onCreerGem={chargerDonnees}
             cardStyle={cardStyle}
           />
@@ -691,7 +705,7 @@ function PrioritesPastorales({ membres, gems, regulariteParMembre, cardStyle }) 
 
 /* ------------------------- Liste Tribus / Départements ------------------------- */
 
-function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onCreerGem, cardStyle }) {
+function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenParent, onCreerGem, cardStyle }) {
   const [recherche, setRecherche] = useState("");
   const [creationPour, setCreationPour] = useState(null);
   const [nomNouveauGem, setNomNouveauGem] = useState("");
@@ -750,7 +764,12 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onCreer
           const responsable = responsablesParParent[it.id];
           return (
             <div key={it.id} style={cardStyle}>
-              <p style={{ fontWeight: 700, marginBottom: 4 }}>{it.nom}</p>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                <p style={{ fontWeight: 700, marginBottom: 4 }}>{it.nom}</p>
+                <button onClick={() => onOpenParent(it)} style={{ fontSize: 11, fontWeight: 700, color: GOLD_LIGHT, background: "none", border: `1px solid ${GOLD_LIGHT}`, borderRadius: 6, padding: "4px 8px", cursor: "pointer", whiteSpace: "nowrap" }}>
+                  👥 Tous les membres
+                </button>
+              </div>
               {responsable ? (
                 <p style={{ fontSize: 11, color: GOLD_LIGHT, marginBottom: 10 }}>
                   {type === "tribu" ? "Patriarche/Matriarche" : "Responsable"} : {responsable.nom}
@@ -789,6 +808,142 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onCreer
           );
         })}
       </div>
+    </div>
+  );
+}
+
+/* ------------------------- Détail Tribu/Département (tous les membres) ------------------------- */
+
+function DetailParent({ parent, type, gems, membres, regulariteParMembre, onBack, onChange, cardStyle }) {
+  const [santeParMembre, setSanteParMembre] = useState({});
+  const [chargement, setChargement] = useState(true);
+  const [recherche, setRecherche] = useState("");
+  const [suppressionEnCours, setSuppressionEnCours] = useState(null);
+
+  const gemsDuParent = gems.filter(g => g.type === type && (type === "tribu" ? g.tribu_id === parent.id : g.departement_id === parent.id));
+  const idsGems = gemsDuParent.map(g => g.id);
+  const membresDuParent = membres.filter(m => idsGems.includes(m.gem_id));
+
+  useEffect(() => { chargerSante(); }, [membresDuParent.length]);
+
+  async function chargerSante() {
+    setChargement(true);
+    if (membresDuParent.length === 0) { setSanteParMembre({}); setChargement(false); return; }
+    const { data } = await supabase.from("sante_spirituelle").select("*").in("membre_id", membresDuParent.map(m => m.id)).order("date_maj", { ascending: false });
+    const map = {};
+    (data || []).forEach(s => { if (!map[s.membre_id]) map[s.membre_id] = s; });
+    setSanteParMembre(map);
+    setChargement(false);
+  }
+
+  function nomGem(gemId) {
+    return gems.find(g => g.id === gemId)?.nom || "GEM inconnu";
+  }
+
+  function initiales(nomComplet) {
+    return nomComplet.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]).join("").toUpperCase();
+  }
+
+  async function supprimerMembre(membre) {
+    const confirmation = window.confirm(`Es-tu sûr de vouloir supprimer définitivement ${membre.nom} ? Cette action est irréversible — son historique de présence, de santé spirituelle et de visites sera aussi supprimé.`);
+    if (!confirmation) return;
+    setSuppressionEnCours(membre.id);
+    await supabase.from("presences").delete().eq("membre_id", membre.id);
+    await supabase.from("sante_spirituelle").delete().eq("membre_id", membre.id);
+    await supabase.from("visites").delete().eq("membre_id", membre.id);
+    const { error } = await supabase.from("membres").delete().eq("id", membre.id);
+    setSuppressionEnCours(null);
+    if (error) { alert("Suppression impossible : " + error.message); return; }
+    if (onChange) onChange();
+  }
+
+  const membresFiltres = membresDuParent.filter(m => m.nom.toLowerCase().includes(recherche.toLowerCase()));
+
+  return (
+    <div>
+      <button onClick={onBack} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 12, fontSize: 13 }}>← Retour</button>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{parent.nom}</h2>
+      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>{membresDuParent.length} membre{membresDuParent.length > 1 ? "s" : ""} au total, répartis sur {gemsDuParent.length} GEM</p>
+
+      <input
+        value={recherche}
+        onChange={e => setRecherche(e.target.value)}
+        placeholder="Rechercher un membre..."
+        style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_850, color: CREAM, border: `1px solid ${TEAL_700}`, marginBottom: 16, width: "100%", maxWidth: 320 }}
+      />
+
+      {chargement ? (
+        <p style={{ color: "#a9d6cf" }}>Chargement…</p>
+      ) : membresFiltres.length === 0 ? (
+        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun membre trouvé.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {membresFiltres.map(m => {
+            const regularite = regulariteParMembre?.[m.id];
+            const moyenne = moyenneSante(santeParMembre[m.id]);
+            const numeroWhatsApp = (m.telephone || "").replace(/[^\d]/g, "");
+            const messageWhatsApp = encodeURIComponent(`Bonjour ${m.nom}, comment vas-tu ? 🙏`);
+            return (
+              <div key={m.id} style={cardStyle}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                    {m.photo ? (
+                      <img src={m.photo} alt="" style={{ width: 40, height: 40, borderRadius: 999, objectFit: "cover", flexShrink: 0, border: `1px solid ${TEAL_600}` }} />
+                    ) : (
+                      <span style={{ width: 40, height: 40, borderRadius: 999, backgroundColor: TEAL_700, color: GOLD_LIGHT, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, flexShrink: 0 }}>
+                        {initiales(m.nom)}
+                      </span>
+                    )}
+                    <div>
+                      <p style={{ fontWeight: 700, marginBottom: 2 }}>{m.nom}</p>
+                      <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 4 }}>{nomGem(m.gem_id)} · {m.telephone}</p>
+                      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: couleurScore(moyenne), backgroundColor: TEAL_900, borderRadius: 999, padding: "2px 8px" }}>
+                          🌡️ Santé : {moyenne !== null ? `${moyenne}/10` : "Non évaluée"}
+                        </span>
+                        {regularite?.absencesConsecutives >= 2 && (
+                          <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "2px 8px" }}>
+                            ⚠️ {regularite.absencesConsecutives} absences
+                          </span>
+                        )}
+                        {regularite?.presencesConsecutives >= 4 && (
+                          <span style={{ fontSize: 11, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD, borderRadius: 999, padding: "2px 8px" }}>
+                            ⭐ Régulier ({regularite.presencesConsecutives})
+                          </span>
+                        )}
+                        {!regularite && (
+                          <span style={{ fontSize: 11, color: "#a9d6cf", backgroundColor: TEAL_900, borderRadius: 999, padding: "2px 8px" }}>
+                            Régularité non disponible
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    {m.telephone && (
+                      <>
+                        <a href={`tel:${m.telephone}`} style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, textDecoration: "none", border: `1px solid ${GOLD_LIGHT}`, borderRadius: 6, padding: "8px 10px", whiteSpace: "nowrap" }}>
+                          📞 Appeler
+                        </a>
+                        <a href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 12, fontWeight: 700, color: "#25D366", textDecoration: "none", border: "1px solid #25D366", borderRadius: 6, padding: "8px 10px", whiteSpace: "nowrap" }}>
+                          💬 WhatsApp
+                        </a>
+                      </>
+                    )}
+                    <button
+                      onClick={() => supprimerMembre(m)}
+                      disabled={suppressionEnCours === m.id}
+                      style={{ fontSize: 12, fontWeight: 700, color: RED_LIGHT, background: "none", border: `1px solid ${RED_LIGHT}`, borderRadius: 6, padding: "8px 10px", cursor: "pointer", whiteSpace: "nowrap" }}
+                    >
+                      {suppressionEnCours === m.id ? "…" : "🗑️ Supprimer"}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
