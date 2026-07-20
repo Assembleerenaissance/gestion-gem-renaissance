@@ -1542,26 +1542,34 @@ const CHAMPS_ACTIVITE_TEXTE = [
 ];
 
 function ActivitesSemaine({ gem, membres, compte, cardStyle }) {
+  const [dimanches, setDimanches] = useState([]);
   const [dimancheId, setDimancheId] = useState(null);
   const [activite, setActivite] = useState(null); // ligne activites_semaine en cours
   const [chargement, setChargement] = useState(true);
   const [enregistrement, setEnregistrement] = useState(false);
 
-  useEffect(() => { chargerActivite(); }, [gem.id]);
+  useEffect(() => { initialiser(); }, [gem.id]);
+  useEffect(() => { if (dimancheId) chargerActivite(); }, [dimancheId]);
+
+  async function initialiser() {
+    setChargement(true);
+    // S'assure que la semaine en cours existe dans la liste, sans forcer sa sélection.
+    const dateAuj = dimancheActuel();
+    let { data: dimAuj } = await supabase.from("dimanches").select("*").eq("date", dateAuj).maybeSingle();
+    if (!dimAuj) {
+      const { data: nouveauDim } = await supabase.from("dimanches").insert({ date: dateAuj }).select().single();
+      dimAuj = nouveauDim;
+    }
+    const { data: toutesLesSemaines } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(52);
+    setDimanches(toutesLesSemaines || []);
+    setDimancheId(dimAuj.id);
+  }
 
   async function chargerActivite() {
     setChargement(true);
-    const date = dimancheActuel();
-    let { data: dim } = await supabase.from("dimanches").select("*").eq("date", date).maybeSingle();
-    if (!dim) {
-      const { data: nouveauDim } = await supabase.from("dimanches").insert({ date }).select().single();
-      dim = nouveauDim;
-    }
-    setDimancheId(dim.id);
-
-    const { data: act } = await supabase.from("activites_semaine").select("*").eq("gem_id", gem.id).eq("dimanche_id", dim.id).maybeSingle();
+    const { data: act } = await supabase.from("activites_semaine").select("*").eq("gem_id", gem.id).eq("dimanche_id", dimancheId).maybeSingle();
     setActivite(act || {
-      gem_id: gem.id, dimanche_id: dim.id,
+      gem_id: gem.id, dimanche_id: dimancheId,
       visites_membres: [], appels_membres: [],
       priere_jour: "", priere_heures: "",
       jeune: "", agape: "", evangelisation: "", autres: "",
@@ -1626,12 +1634,21 @@ function ActivitesSemaine({ gem, membres, compte, cardStyle }) {
 
   if (chargement || !activite) return <p style={{ color: "#a9d6cf" }}>Chargement…</p>;
 
-  const dateAffichee = new Date(dimancheActuel() + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
-
   return (
     <div>
+      <label style={{ display: "block", fontSize: 12, color: "#a9d6cf", marginBottom: 6 }}>Semaine concernée</label>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
-        <p style={{ fontSize: 13, color: "#a9d6cf", margin: 0 }}>Semaine du {dateAffichee}</p>
+        <select
+          value={dimancheId || ""}
+          onChange={e => setDimancheId(e.target.value)}
+          style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}
+        >
+          {dimanches.map(d => (
+            <option key={d.id} value={d.id}>
+              {new Date(d.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+            </option>
+          ))}
+        </select>
         {activite.valide && (
           <span style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD, borderRadius: 999, padding: "6px 12px" }}>
             ✓ Rapport validé
