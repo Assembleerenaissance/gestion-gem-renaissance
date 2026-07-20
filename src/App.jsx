@@ -1916,8 +1916,9 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
   }, [ouvert]);
 
   async function chargerHistoriquePresence() {
-    const { data: dimanchesRecents } = await supabase.from("dimanches").select("*").order("date", { ascending: true }).limit(8);
-    if (!dimanchesRecents || dimanchesRecents.length === 0) { setHistoriquePresence([]); return; }
+    const { data } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(8);
+    if (!data || data.length === 0) { setHistoriquePresence([]); return; }
+    const dimanchesRecents = [...data].reverse(); // remet en ordre chronologique pour l'affichage
     const { data: presencesMembre } = await supabase.from("presences").select("*").eq("membre_id", membre.id).in("dimanche_id", dimanchesRecents.map(d => d.id));
     const historique = dimanchesRecents.map(d => {
       const p = (presencesMembre || []).find(x => x.dimanche_id === d.id);
