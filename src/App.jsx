@@ -944,6 +944,7 @@ function PrioritesPastorales({ membres, gems, regulariteParMembre, cardStyle }) 
     .sort((a, b) => b.regularite.absencesConsecutives - a.regularite.absencesConsecutives);
 
   const totalPages = Math.max(1, Math.ceil(membresAlerte.length / PAR_PAGE));
+  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [totalPages]);
   const membresAffiches = membresAlerte.slice((page - 1) * PAR_PAGE, page * PAR_PAGE);
 
   return (
@@ -1154,6 +1155,7 @@ function DetailParent({ compte, parent, type, gems, membres, regulariteParMembre
   const membresFiltres = membresDuParent.filter(m => m.nom.toLowerCase().includes(recherche.toLowerCase()));
   const PAR_PAGE = 20;
   const totalPages = Math.max(1, Math.ceil(membresFiltres.length / PAR_PAGE));
+  useEffect(() => { if (page > totalPages) setPage(totalPages); }, [totalPages]);
   const membresAffiches = membresFiltres.slice((page - 1) * PAR_PAGE, page * PAR_PAGE);
 
   return (
