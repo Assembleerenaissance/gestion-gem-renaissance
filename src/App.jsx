@@ -1910,6 +1910,11 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
   const [sousOnglet, setSousOnglet] = useState("sante"); // sante | visites | parcours
   const [demandeSuppressionOuverte, setDemandeSuppressionOuverte] = useState(false);
   const [historiquePresence, setHistoriquePresence] = useState(null);
+  const [editNom, setEditNom] = useState(membre.nom);
+  const [editTelephone, setEditTelephone] = useState(membre.telephone);
+  const [editQuartier, setEditQuartier] = useState(membre.quartier || "");
+  const [editDateNaissance, setEditDateNaissance] = useState(membre.date_naissance || "");
+  const [enregistrementInfos, setEnregistrementInfos] = useState(false);
 
   useEffect(() => {
     if (ouvert && historiquePresence === null) chargerHistoriquePresence();
@@ -2014,16 +2019,18 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
     }
   }
 
-  async function enregistrerDateNaissance(valeur) {
-    const { error } = await supabase.from("membres").update({ date_naissance: valeur || null }).eq("id", membre.id);
-    if (error) { toast("Impossible d'enregistrer la date de naissance : " + error.message, "erreur"); return; }
-    if (onMisAJour) onMisAJour();
-  }
-
-  async function enregistrerChamp(champ, valeur, obligatoire) {
-    if (obligatoire && !valeur.trim()) { toast("Ce champ ne peut pas être vide.", "erreur"); return; }
-    const { error } = await supabase.from("membres").update({ [champ]: valeur.trim() || null }).eq("id", membre.id);
+  async function enregistrerInfosMembre() {
+    if (!editNom.trim() || !editTelephone.trim()) { toast("Le nom et le téléphone ne peuvent pas être vides.", "erreur"); return; }
+    setEnregistrementInfos(true);
+    const { error } = await supabase.from("membres").update({
+      nom: editNom.trim(),
+      telephone: editTelephone.trim(),
+      quartier: editQuartier.trim() || null,
+      date_naissance: editDateNaissance || null,
+    }).eq("id", membre.id);
+    setEnregistrementInfos(false);
     if (error) { toast("Impossible d'enregistrer : " + error.message, "erreur"); return; }
+    toast(`✓ Informations de ${editNom.trim()} mises à jour.`, "succes");
     if (onMisAJour) onMisAJour();
   }
 
@@ -2102,8 +2109,8 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
                 <div style={{ flex: 1, minWidth: 140 }}>
                   <label style={{ fontSize: 10, color: "#a9d6cf", display: "block", marginBottom: 2 }}>Nom complet</label>
                   <input
-                    defaultValue={membre.nom}
-                    onBlur={e => enregistrerChamp("nom", e.target.value, true)}
+                    value={editNom}
+                    onChange={e => setEditNom(e.target.value)}
                     onClick={e => e.stopPropagation()}
                     style={{ width: "100%", padding: 8, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }}
                   />
@@ -2111,8 +2118,8 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
                 <div style={{ flex: 1, minWidth: 140 }}>
                   <label style={{ fontSize: 10, color: "#a9d6cf", display: "block", marginBottom: 2 }}>Téléphone</label>
                   <input
-                    defaultValue={membre.telephone}
-                    onBlur={e => enregistrerChamp("telephone", e.target.value, true)}
+                    value={editTelephone}
+                    onChange={e => setEditTelephone(e.target.value)}
                     onClick={e => e.stopPropagation()}
                     style={{ width: "100%", padding: 8, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }}
                   />
@@ -2122,8 +2129,8 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
                 <div style={{ flex: 1, minWidth: 140 }}>
                   <label style={{ fontSize: 10, color: "#a9d6cf", display: "block", marginBottom: 2 }}>Quartier</label>
                   <input
-                    defaultValue={membre.quartier || ""}
-                    onBlur={e => enregistrerChamp("quartier", e.target.value, false)}
+                    value={editQuartier}
+                    onChange={e => setEditQuartier(e.target.value)}
                     onClick={e => e.stopPropagation()}
                     placeholder="Non renseigné"
                     style={{ width: "100%", padding: 8, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }}
@@ -2133,14 +2140,22 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
                   <label style={{ fontSize: 10, color: "#a9d6cf", display: "block", marginBottom: 2 }}>🎂 Date de naissance</label>
                   <input
                     type="date"
-                    defaultValue={membre.date_naissance || ""}
-                    onBlur={e => enregistrerDateNaissance(e.target.value)}
+                    value={editDateNaissance}
+                    onChange={e => setEditDateNaissance(e.target.value)}
                     onClick={e => e.stopPropagation()}
                     style={{ width: "100%", padding: 8, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }}
                   />
                 </div>
               </div>
-              <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginTop: 4 }}>
+              <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginTop: 8 }}>
+                <button
+                  className="btn-app"
+                  disabled={enregistrementInfos}
+                  onClick={e => { e.stopPropagation(); enregistrerInfosMembre(); }}
+                  style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD, border: "none", borderRadius: 8, padding: "10px 18px", cursor: "pointer" }}
+                >
+                  {enregistrementInfos ? "…" : "💾 Enregistrer les modifications"}
+                </button>
                 <label style={{ display: "inline-block", fontSize: 11, color: GOLD_LIGHT, cursor: "pointer", border: `1px solid ${TEAL_600}`, borderRadius: 8, padding: "6px 10px" }}>
                   📷 {membre.photo ? "Changer la photo" : "Ajouter une photo"}
                   <input type="file" accept="image/*" onChange={surChangerPhoto} style={{ display: "none" }} />
