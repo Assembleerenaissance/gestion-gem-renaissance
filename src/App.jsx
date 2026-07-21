@@ -30,6 +30,11 @@ function StylesGlobaux() {
       @keyframes fadeInApp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
       @keyframes tourner { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       .spinner-app { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(232,202,74,0.3); border-top-color: #E8CA4A; border-radius: 50%; animation: tourner 0.7s linear infinite; margin-right: 8px; vertical-align: middle; }
+      @keyframes chuteConfetti {
+        0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+        100% { transform: translateY(100vh) rotate(600deg); opacity: 0.3; }
+      }
+      .transition-page { animation: fadeInApp 0.28s ease; }
       input, select, textarea { transition: border-color 0.15s ease, box-shadow 0.15s ease; }
       input:focus, select:focus, textarea:focus { outline: none; box-shadow: 0 0 0 2px rgba(208,175,28,0.4); }
 
@@ -53,6 +58,71 @@ function Chargement({ texte = "Chargement…" }) {
       <span className="spinner-app" />
       {texte}
     </p>
+  );
+}
+
+// Affiche un nombre en comptant progressivement jusqu'à sa valeur finale — donne du dynamisme
+// aux chiffres clés (tableau de bord, classements) sans surcharger l'interface.
+function NombreAnime({ valeur, suffixe = "" }) {
+  const [affiche, setAffiche] = useState(0);
+  const cibleValide = typeof valeur === "number" && !isNaN(valeur) ? valeur : 0;
+
+  useEffect(() => {
+    let debut = null;
+    const duree = 700;
+    const depart = 0;
+    function etape(horodatage) {
+      if (!debut) debut = horodatage;
+      const progres = Math.min((horodatage - debut) / duree, 1);
+      const progresAdouci = 1 - Math.pow(1 - progres, 3); // easing "ease-out"
+      setAffiche(Math.round(depart + (cibleValide - depart) * progresAdouci));
+      if (progres < 1) requestAnimationFrame(etape);
+    }
+    const id = requestAnimationFrame(etape);
+    return () => cancelAnimationFrame(id);
+  }, [cibleValide]);
+
+  return <>{affiche}{suffixe}</>;
+}
+
+// Petite pluie de confettis pour célébrer un moment fort (nouveau converti intégré,
+// GEM primé...). Se déclenche une fois puis disparaît d'elle-même.
+function Confettis({ actif, onFin }) {
+  const couleurs = ["#D0AF1C", "#E8CA4A", "#27B3A1", "#6fcf97", "#e2626d"];
+  const morceaux = React.useMemo(() => (
+    Array.from({ length: 60 }, (_, i) => ({
+      id: i,
+      gauche: Math.random() * 100,
+      delai: Math.random() * 0.4,
+      duree: 2 + Math.random() * 1.2,
+      couleur: couleurs[i % couleurs.length],
+      taille: 6 + Math.random() * 6,
+      rotation: Math.random() * 360,
+    }))
+  ), [actif]);
+
+  useEffect(() => {
+    if (!actif) return;
+    const t = setTimeout(() => { if (onFin) onFin(); }, 3200);
+    return () => clearTimeout(t);
+  }, [actif]);
+
+  if (!actif) return null;
+
+  return (
+    <div style={{ position: "fixed", inset: 0, pointerEvents: "none", zIndex: 3000, overflow: "hidden" }}>
+      {morceaux.map(m => (
+        <span
+          key={m.id}
+          style={{
+            position: "absolute", top: -20, left: `${m.gauche}%`, width: m.taille, height: m.taille * 0.4,
+            backgroundColor: m.couleur, borderRadius: 2,
+            animation: `chuteConfetti ${m.duree}s ease-in ${m.delai}s forwards`,
+            transform: `rotate(${m.rotation}deg)`,
+          }}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -860,7 +930,7 @@ function TableauDeBord({ compte }) {
         </div>
       </div>
 
-      <div style={{ padding: 24 }}>
+      <div key={page} className="transition-page" style={{ padding: 24 }}>
         {chargement ? (
           <p style={{ color: "#cdeae4" }}>Chargement des données…</p>
         ) : page === "aide" ? (
@@ -958,19 +1028,19 @@ function TableauDeBord({ compte }) {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 24 }}>
               <div className="card-app" style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 14 }}>
                 <span style={{ fontSize: 28 }}>👥</span>
-                <div><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}>{membres.length}</p></div>
+                <div><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}><NombreAnime valeur={membres.length} /></p></div>
               </div>
               <div className="card-app" style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 14 }}>
                 <span style={{ fontSize: 28 }}>🏠</span>
-                <div><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>GEM actifs</p><p style={{ fontSize: 28, fontWeight: 700 }}>{gems.length}</p></div>
+                <div><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>GEM actifs</p><p style={{ fontSize: 28, fontWeight: 700 }}><NombreAnime valeur={gems.length} /></p></div>
               </div>
               <div className="card-app" style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 14 }}>
                 <span style={{ fontSize: 28 }}>🏛️</span>
-                <div><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Tribus</p><p style={{ fontSize: 28, fontWeight: 700 }}>{tribus.length}</p></div>
+                <div><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Tribus</p><p style={{ fontSize: 28, fontWeight: 700 }}><NombreAnime valeur={tribus.length} /></p></div>
               </div>
               <div className="card-app" style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 14 }}>
                 <span style={{ fontSize: 28 }}>🏢</span>
-                <div><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Départements</p><p style={{ fontSize: 28, fontWeight: 700 }}>{departements.length}</p></div>
+                <div><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Départements</p><p style={{ fontSize: 28, fontWeight: 700 }}><NombreAnime valeur={departements.length} /></p></div>
               </div>
             </div>
             <AnniversairesAVenir membres={membres} gems={gems} cardStyle={cardStyle} />
@@ -2074,6 +2144,7 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
   const [sauvegarde, setSauvegarde] = useState(false);
   const [sousOnglet, setSousOnglet] = useState("sante"); // sante | visites | parcours
   const [demandeSuppressionOuverte, setDemandeSuppressionOuverte] = useState(false);
+  const [confettiActif, setConfettiActif] = useState(false);
   const [historiquePresence, setHistoriquePresence] = useState(null);
   const [editNom, setEditNom] = useState(membre.nom);
   const [editTelephone, setEditTelephone] = useState(membre.telephone);
@@ -2118,6 +2189,10 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
     if (indexActuel >= ETAPES_CONVERSION.length - 1) return;
     const nouvelleEtape = ETAPES_CONVERSION[indexActuel + 1];
     await supabase.from("membres").update({ etape_conversion: nouvelleEtape }).eq("id", membre.id);
+    if (nouvelleEtape === "integre") {
+      setConfettiActif(true);
+      toast(`🎉 ${membre.nom} a atteint la fin de son parcours d'intégration !`, "succes");
+    }
     if (onMisAJour) onMisAJour();
   }
   const [visites, setVisites] = useState([]);
@@ -2479,6 +2554,7 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
           onAnnuler={() => setDemandeSuppressionOuverte(false)}
         />
       )}
+      <Confettis actif={confettiActif} onFin={() => setConfettiActif(false)} />
     </div>
   );
 }
@@ -4974,6 +5050,8 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
   }
 
   function PrixMeilleurGem({ gagnant, titre }) {
+    const [confettiActif, setConfettiActif] = useState(false);
+    useEffect(() => { if (gagnant) setConfettiActif(true); }, [gagnant?.gemId]);
     if (!gagnant) return null;
     return (
       <div style={{ background: "linear-gradient(135deg, rgba(208,175,28,0.25), rgba(232,202,74,0.1))", border: `2px solid ${GOLD}`, borderRadius: 16, padding: 20, marginBottom: 28, textAlign: "center" }}>
@@ -4985,6 +5063,7 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
           {gagnant.scoreSante !== null && <span>🌡️ Santé : <b style={{ color: GOLD_LIGHT }}>{gagnant.scoreSante}/10</b></span>}
           {gagnant.tauxActivite !== null && <span>📋 Activités : <b style={{ color: GOLD_LIGHT }}>{gagnant.tauxActivite}%</b></span>}
         </div>
+        <Confettis actif={confettiActif} onFin={() => setConfettiActif(false)} />
       </div>
     );
   }
