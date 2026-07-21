@@ -981,7 +981,7 @@ function TableauDeBord({ compte }) {
         ) : page === "mon_espace" ? (
           <MonEspace
             compte={compte}
-            assignation={mesAssignations.find(a => a.statut === "actif")}
+            assignationsActives={mesAssignations.filter(a => a.statut === "actif")}
             gems={gems}
             membres={membres}
             tribus={tribus}
@@ -998,7 +998,7 @@ function TableauDeBord({ compte }) {
         ) : !estPasteur ? (
           <MonEspace
             compte={compte}
-            assignation={mesAssignations.find(a => a.statut === "actif")}
+            assignationsActives={mesAssignations.filter(a => a.statut === "actif")}
             gems={gems}
             membres={membres}
             tribus={tribus}
@@ -4298,12 +4298,23 @@ function EvolutionPerimetre({ membres, cardStyle }) {
 
 /* ------------------------------- Mon espace (responsable) ------------------------------- */
 
-function MonEspace({ compte, assignation, gems, membres, tribus, departements, gemOuvert, setGemOuvert, onMembreAjoute, onCreerGem, regulariteParMembre, membreCible, onMembreCibleConsomme, cardStyle }) {
+function MonEspace({ compte, assignationsActives, gems, membres, tribus, departements, gemOuvert, setGemOuvert, onMembreAjoute, onCreerGem, regulariteParMembre, membreCible, onMembreCibleConsomme, cardStyle }) {
   const [nomNouveauGem, setNomNouveauGem] = useState("");
   const [creationOuverte, setCreationOuverte] = useState(false);
   const [sousOnglet, setSousOnglet] = useState("gems");
+  const [indexRoleSelectionne, setIndexRoleSelectionne] = useState(0);
 
-  if (!assignation) return <p style={{ color: "#a9d6cf" }}>Aucune responsabilité active trouvée.</p>;
+  const listeAssignations = assignationsActives || [];
+  if (listeAssignations.length === 0) return <p style={{ color: "#a9d6cf" }}>Aucune responsabilité active trouvée.</p>;
+
+  const assignation = listeAssignations[Math.min(indexRoleSelectionne, listeAssignations.length - 1)];
+
+  function libelleRole(a) {
+    if (a.role_demande === "gem") return `GEM : ${gems.find(g => g.id === a.gem_id)?.nom || "…"}`;
+    if (a.role_demande === "departement_resp") return `Département : ${departements.find(d => d.id === a.departement_id)?.nom || "…"}`;
+    if (a.role_demande === "tribu_resp") return `Tribu : ${tribus.find(t => t.id === a.tribu_id)?.nom || "…"}`;
+    return "Responsabilité";
+  }
 
   if (gemOuvert) {
     return (
@@ -4321,6 +4332,21 @@ function MonEspace({ compte, assignation, gems, membres, tribus, departements, g
     );
   }
 
+  const selecteurRole = listeAssignations.length > 1 ? (
+    <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+      {listeAssignations.map((a, i) => (
+        <button
+          key={a.id}
+          className="btn-app"
+          onClick={() => setIndexRoleSelectionne(i)}
+          style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: i === indexRoleSelectionne ? GOLD : TEAL_900, color: i === indexRoleSelectionne ? TEAL_950 : "#cdeae4" }}
+        >
+          {libelleRole(a)}
+        </button>
+      ))}
+    </div>
+  ) : null;
+
   // Un responsable GEM gère directement et uniquement son propre GEM
   if (assignation.role_demande === "gem") {
     const monGem = gems.find(g => g.id === assignation.gem_id);
@@ -4328,6 +4354,7 @@ function MonEspace({ compte, assignation, gems, membres, tribus, departements, g
     const membresGem = membres.filter(m => m.gem_id === monGem.id);
     return (
       <div>
+        {selecteurRole}
         <AnniversairesAVenir membres={membresGem} gems={gems} cardStyle={cardStyle} />
         <DetailGem
           compte={compte}
@@ -4366,6 +4393,7 @@ function MonEspace({ compte, assignation, gems, membres, tribus, departements, g
 
   return (
     <div>
+      {selecteurRole}
       <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>
         {estDept ? "Mon département" : "Ma tribu"} — {parent?.nom || "…"}
       </h2>
