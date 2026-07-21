@@ -5461,9 +5461,10 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
 /* ------------------------------- Messagerie ------------------------------- */
 
 function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
-  const [onglet, setOnglet] = useState("diffusion"); // diffusion | direct
+  const [onglet, setOnglet] = useState("diffusion"); // diffusion | direct | rappels
   const [messages, setMessages] = useState([]);
   const [messagesDirects, setMessagesDirects] = useState([]);
+  const [notificationsPerso, setNotificationsPerso] = useState([]);
   const [comptesParId, setComptesParId] = useState({});
   const [texte, setTexte] = useState("");
   const [chargement, setChargement] = useState(true);
@@ -5477,12 +5478,14 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
 
   async function chargerTout() {
     setChargement(true);
-    const [{ data: m }, { data: md }] = await Promise.all([
+    const [{ data: m }, { data: md }, { data: np }] = await Promise.all([
       supabase.from("messages").select("*").order("date", { ascending: false }).limit(30),
       supabase.from("messages_directs").select("*").order("date", { ascending: false }).limit(50),
+      supabase.from("notifications_personnelles").select("*").eq("compte_id", compte.id).order("date_creation", { ascending: false }).limit(30),
     ]);
     setMessages(m || []);
     setMessagesDirects(md || []);
+    setNotificationsPerso(np || []);
     if (estPasteur && md && md.length > 0) {
       const ids = [...new Set(md.map(x => x.de_compte_id))];
       const { data: c } = await supabase.from("comptes").select("*").in("id", ids);
@@ -5491,6 +5494,11 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
       setComptesParId(map);
     }
     setChargement(false);
+  }
+
+  async function marquerRappelLu(id) {
+    await supabase.from("notifications_personnelles").update({ lu: true }).eq("id", id);
+    chargerTout();
   }
 
   async function envoyerDiffusion() {
@@ -5532,6 +5540,11 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
  onClick={() => setOnglet("direct")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "direct" ? GOLD : TEAL_900, color: onglet === "direct" ? TEAL_950 : "#cdeae4" }}>
           {estPasteur ? "Boîte de réception" : "Écrire au pasteur"}{estPasteur && nonLus > 0 ? ` (${nonLus})` : ""}
         </button>
+        <button
+ className="btn-app"
+ onClick={() => setOnglet("rappels")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "rappels" ? GOLD : TEAL_900, color: onglet === "rappels" ? TEAL_950 : "#cdeae4" }}>
+          🔔 Mes rappels{notificationsPerso.filter(n => !n.lu).length > 0 ? ` (${notificationsPerso.filter(n => !n.lu).length})` : ""}
+        </button>
       </div>
 
       {chargement ? (
@@ -5560,7 +5573,7 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
             </div>
           )}
         </div>
-      ) : (
+      ) : onglet === "direct" ? (
         <div>
           {!estPasteur && (
             <div style={{ ...cardStyle, marginBottom: 16 }}>
@@ -5585,6 +5598,29 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
                       <button
  className="btn-app"
  onClick={() => marquerLu(m.id)} style={{ fontSize: 11, color: GOLD_LIGHT, background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>Marquer comme lu</button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div>
+          <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>Rappels automatiques générés par l'application (ex : rapport hebdomadaire non validé).</p>
+          {notificationsPerso.length === 0 ? (
+            <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun rappel pour l'instant.</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              {notificationsPerso.map(n => (
+                <div key={n.id} style={{ ...cardStyle, borderColor: !n.lu ? GOLD : TEAL_700 }}>
+                  <p style={{ whiteSpace: "pre-wrap" }}>{n.texte}</p>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
+                    <p style={{ fontSize: 11, color: "#a9d6cf" }}>{formaterDate(n.date_creation)}</p>
+                    {!n.lu && (
+                      <button
+ className="btn-app"
+ onClick={() => marquerRappelLu(n.id)} style={{ fontSize: 11, color: GOLD_LIGHT, background: "none", border: "none", cursor: "pointer", fontWeight: 700 }}>Marquer comme lu</button>
                     )}
                   </div>
                 </div>
