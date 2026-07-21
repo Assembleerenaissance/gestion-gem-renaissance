@@ -509,6 +509,7 @@ function EcranConnexion() {
     };
     await supabase.from("assignations").insert(payload);
     setChargement(false);
+    toast("✓ Inscription réussie ! Ta demande a bien été envoyée — elle est en attente de validation par le pasteur ou un assistant. Tu pourras utiliser l'application dès qu'elle sera validée.", "succes");
   }
 
   function chiffresSeuls(tel) {
