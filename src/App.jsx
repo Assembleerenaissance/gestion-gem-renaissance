@@ -552,7 +552,7 @@ function EcranConnexion() {
           <img src={LOGO_VH} alt="Vases d'Honneur" style={{ height: 72, width: "auto" }} />
         </div>
         <h1 style={{ color: CREAM, fontSize: 22, fontWeight: 700, marginBottom: 4, textAlign: "center" }}>Gestion des GEM</h1>
-        <p style={{ color: "#cdeae4", fontSize: 13, marginBottom: 20, textAlign: "center" }}>Assemblée RENAISSANCE — Vases d'Honneur</p>
+        <p style={{ color: "#cdeae4", fontSize: 13, marginBottom: 20, textAlign: "center" }}>Assemblée RENAISSANCE -Bouaflé</p>
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
           <button
  className="btn-app"
