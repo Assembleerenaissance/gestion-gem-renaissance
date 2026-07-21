@@ -646,6 +646,7 @@ function TableauDeBord({ compte }) {
   const [nbDemandesSuppression, setNbDemandesSuppression] = useState(0);
   const [nbMessagesNonLus, setNbMessagesNonLus] = useState(0);
   const [membres, setMembres] = useState([]);
+  const [tousLesComptes, setTousLesComptes] = useState([]);
   const [regulariteParMembre, setRegulariteParMembre] = useState({});
   const [rappelPointageGlobal, setRappelPointageGlobal] = useState(null);
   const [rechercheGlobale, setRechercheGlobale] = useState("");
@@ -697,6 +698,10 @@ function TableauDeBord({ compte }) {
       supabase.from("assignations").select("*").eq("compte_id", compte.id),
     ]);
     setTribus(t || []); setDepartements(d || []); setGems(g || []); setMembres(m || []); setMesAssignations(a || []);
+    if (estPasteur) {
+      const { data: tousLesComptes } = await supabase.from("comptes").select("id, nom, role, assistant, date_naissance, quartier");
+      setTousLesComptes(tousLesComptes || []);
+    }
     await calculerRegularite(m || []);
     verifierPointageManquant(m || []).then(setRappelPointageGlobal);
     await rafraichirCompteurs();
@@ -945,7 +950,7 @@ function TableauDeBord({ compte }) {
         ) : page === "aide" ? (
           <PageAide estPasteur={estPasteur} cardStyle={cardStyle} />
         ) : page === "mon_compte" ? (
-          <PageMonCompte compte={compte} cardStyle={cardStyle} />
+          <PageMonCompte compte={compte} cardStyle={cardStyle} onMisAJour={chargerDonnees} />
         ) : !estPasteur && !aResponsabilitePersonnelle ? (
           <DemanderResponsabilite
             compte={compte}
@@ -1053,6 +1058,7 @@ function TableauDeBord({ compte }) {
               </div>
             </div>
             <AnniversairesAVenir membres={membres} gems={gems} cardStyle={cardStyle} />
+            <AnniversairesResponsables comptes={tousLesComptes} cardStyle={cardStyle} />
             <PrioritesPastorales membres={membres} gems={gems} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
             <div style={{ marginTop: 24 }}>
               <button
@@ -1144,6 +1150,44 @@ function AnniversairesAVenir({ membres, gems, cardStyle }) {
             <div>
               <p style={{ fontWeight: 700, marginBottom: 2 }}>{membre.nom}</p>
               <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomGem(membre.gem_id)}</p>
+            </div>
+            <span style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, backgroundColor: "#E8CA4A", borderRadius: 999, padding: "6px 12px" }}>
+              {diffJours === 0 ? "🎉 Aujourd'hui !" : diffJours === 1 ? "Demain" : `Dans ${diffJours} jours`} — {date.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AnniversairesResponsables({ comptes, cardStyle }) {
+  function prochainAnniversaire(dateNaissance) {
+    const aujourdHui = new Date(new Date().toDateString());
+    const anniv = new Date(dateNaissance);
+    anniv.setFullYear(aujourdHui.getFullYear());
+    if (anniv < aujourdHui) anniv.setFullYear(aujourdHui.getFullYear() + 1);
+    const diffJours = Math.round((anniv - aujourdHui) / 86400000);
+    return { date: anniv, diffJours };
+  }
+
+  const anniversaires = (comptes || [])
+    .filter(c => c.date_naissance)
+    .map(c => ({ compte: c, ...prochainAnniversaire(c.date_naissance) }))
+    .filter(x => x.diffJours >= 0 && x.diffJours <= 14)
+    .sort((a, b) => a.diffJours - b.diffJours);
+
+  if (anniversaires.length === 0) return null;
+
+  return (
+    <div style={{ marginBottom: 28 }}>
+      <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>🎂 Anniversaires des responsables (14 prochains jours)</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {anniversaires.map(({ compte, date, diffJours }) => (
+          <div key={compte.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+            <div>
+              <p style={{ fontWeight: 700, marginBottom: 2 }}>{compte.nom}</p>
+              <p style={{ fontSize: 12, color: "#a9d6cf" }}>{compte.role === "pasteur" ? "Pasteur" : compte.assistant ? "Assistant" : "Responsable"} · {compte.quartier || "Quartier non renseigné"}</p>
             </div>
             <span style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, backgroundColor: "#E8CA4A", borderRadius: 999, padding: "6px 12px" }}>
               {diffJours === 0 ? "🎉 Aujourd'hui !" : diffJours === 1 ? "Demain" : `Dans ${diffJours} jours`} — {date.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
@@ -3379,16 +3423,31 @@ function PageAnalyse({ gems, membres, cardStyle }) {
   );
 }
 
-function PageMonCompte({ compte, cardStyle }) {
+function PageMonCompte({ compte, cardStyle, onMisAJour }) {
   const [ancienMdp, setAncienMdp] = useState("");
   const [nouveauMdp, setNouveauMdp] = useState("");
   const [confirmationMdp, setConfirmationMdp] = useState("");
   const [mdpVisible, setMdpVisible] = useState(false);
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState("");
+  const [dateNaissance, setDateNaissance] = useState(compte.date_naissance || "");
+  const [quartier, setQuartier] = useState(compte.quartier || "");
+  const [enregistrementProfil, setEnregistrementProfil] = useState(false);
 
   function emailTechnique(tel) {
     return `${(tel || "").replace(/[^\d]/g, "")}@gestiongem.com`;
+  }
+
+  async function enregistrerProfil() {
+    setEnregistrementProfil(true);
+    const { error } = await supabase.from("comptes").update({
+      date_naissance: dateNaissance || null,
+      quartier: quartier.trim() || null,
+    }).eq("id", compte.id);
+    setEnregistrementProfil(false);
+    if (error) { toast("Impossible d'enregistrer : " + error.message, "erreur"); return; }
+    toast("✓ Tes informations ont été mises à jour.", "succes");
+    if (onMisAJour) onMisAJour();
   }
 
   async function changerMotDePasse() {
@@ -3422,6 +3481,38 @@ function PageMonCompte({ compte, cardStyle }) {
         <p style={{ fontSize: 13, color: "#cdeae4", marginBottom: 4 }}><b>Nom :</b> {compte.nom}</p>
         <p style={{ fontSize: 13, color: "#cdeae4", marginBottom: 4 }}><b>Téléphone :</b> {compte.telephone}</p>
         <p style={{ fontSize: 13, color: "#cdeae4" }}><b>Rôle :</b> {compte.role === "pasteur" ? "Pasteur" : compte.assistant ? "Assistant désigné" : "Responsable"}</p>
+      </div>
+
+      <div style={{ ...cardStyle, marginBottom: 20 }}>
+        <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>✏️ Compléter mon profil</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div>
+            <label style={{ fontSize: 11, color: "#a9d6cf", display: "block", marginBottom: 4 }}>🎂 Date de naissance</label>
+            <input
+              type="date"
+              value={dateNaissance}
+              onChange={e => setDateNaissance(e.target.value)}
+              style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}
+            />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#a9d6cf", display: "block", marginBottom: 4 }}>Quartier</label>
+            <input
+              value={quartier}
+              onChange={e => setQuartier(e.target.value)}
+              placeholder="Non renseigné"
+              style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}
+            />
+          </div>
+          <button
+            className="btn-app"
+            disabled={enregistrementProfil}
+            onClick={enregistrerProfil}
+            style={{ padding: "10px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer", alignSelf: "flex-start" }}
+          >
+            {enregistrementProfil ? "…" : "💾 Enregistrer"}
+          </button>
+        </div>
       </div>
 
       <div style={cardStyle}>
