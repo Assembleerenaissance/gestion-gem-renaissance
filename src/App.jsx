@@ -769,6 +769,9 @@ function TableauDeBord({ compte }) {
  onClick={() => { setPage("historique"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "historique" ? TEAL_700 : "transparent", color: page === "historique" ? GOLD_LIGHT : "#cdeae4" }}>Historique</button>
               <button
  className="btn-app"
+ onClick={() => { setPage("analyse"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "analyse" ? TEAL_700 : "transparent", color: page === "analyse" ? GOLD_LIGHT : "#cdeae4" }}>🧠 Analyse</button>
+              <button
+ className="btn-app"
  onClick={() => { setPage("calendrier"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "calendrier" ? TEAL_700 : "transparent", color: page === "calendrier" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
                 Calendrier
                 {nbNouveauxEvenements > 0 && (
@@ -847,6 +850,9 @@ function TableauDeBord({ compte }) {
           )}
           <button
  className="btn-app"
+ onClick={() => { setPage("mon_compte"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "mon_compte" ? TEAL_700 : "transparent", color: page === "mon_compte" ? GOLD_LIGHT : "#cdeae4" }}>👤 Mon compte</button>
+          <button
+ className="btn-app"
  onClick={() => { setPage("aide"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "aide" ? TEAL_700 : "transparent", color: page === "aide" ? GOLD_LIGHT : "#cdeae4" }}>❓ Aide</button>
           <button
  className="btn-app"
@@ -859,6 +865,8 @@ function TableauDeBord({ compte }) {
           <p style={{ color: "#cdeae4" }}>Chargement des données…</p>
         ) : page === "aide" ? (
           <PageAide estPasteur={estPasteur} cardStyle={cardStyle} />
+        ) : page === "mon_compte" ? (
+          <PageMonCompte compte={compte} cardStyle={cardStyle} />
         ) : !estPasteur && !aResponsabilitePersonnelle ? (
           <DemanderResponsabilite
             compte={compte}
@@ -1006,6 +1014,8 @@ function TableauDeBord({ compte }) {
           <PageRapports gems={gems} membres={membres} tribus={tribus} departements={departements} cardStyle={cardStyle} />
         ) : page === "historique" ? (
           <PageHistorique cardStyle={cardStyle} />
+        ) : page === "analyse" ? (
+          <PageAnalyse gems={gems} membres={membres} cardStyle={cardStyle} />
         ) : page === "mots_de_passe" ? (
           <PageMotsDePasse cardStyle={cardStyle} onTraite={rafraichirCompteurs} />
         ) : page === "suppressions" ? (
@@ -2950,6 +2960,389 @@ function PageAide({ estPasteur, cardStyle }) {
         <p style={{ fontSize: 13, color: "#cdeae4", margin: 0 }}>
           Une question sans réponse ici ? Contacte le pasteur ou un assistant directement via la Messagerie.
         </p>
+      </div>
+    </div>
+  );
+}
+
+/* --------------------------- Page Mon compte --------------------------- */
+
+/* --------------------------- Page Analyse intelligente --------------------------- */
+
+function PageAnalyse({ gems, membres, cardStyle }) {
+  const [chargement, setChargement] = useState(true);
+  const [tauxParMois, setTauxParMois] = useState([]);
+  const [santeParMoisList, setSanteParMoisList] = useState([]);
+  const [activiteParMoisList, setActiviteParMoisList] = useState([]);
+  const [tendancesGems, setTendancesGems] = useState([]);
+  const [membresEnDeclin, setMembresEnDeclin] = useState([]);
+  const [croissanceRecente, setCroissanceRecente] = useState([]);
+  const [periodes, setPeriodes] = useState(null); // { recente: [dates], precedente: [dates] }
+
+  useEffect(() => { analyser(); }, []);
+
+  function libelleMois(cle) {
+    const [annee, mois] = cle.split("-");
+    return new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  }
+
+  function libelleDate(iso) {
+    return new Date(iso + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+  }
+
+  async function analyser() {
+    setChargement(true);
+    const [{ data: dimanchesTous }, { data: presences }, { data: sante }, { data: activites }, { data: membresAvecDate }, { data: departsApprouves }] = await Promise.all([
+      supabase.from("dimanches").select("*").order("date", { ascending: true }).limit(200),
+      supabase.from("presences").select("*"),
+      supabase.from("sante_spirituelle").select("*"),
+      supabase.from("activites_semaine").select("*").eq("valide", true),
+      supabase.from("membres").select("id, created_at"),
+      supabase.from("demandes_suppression_membre").select("*").eq("statut", "approuvee"),
+    ]);
+
+    // --- Graphique de contexte : évolution mensuelle sur 6 mois (vue d'ensemble) ---
+    const moisDimanches = {};
+    (dimanchesTous || []).forEach(d => {
+      const cle = d.date.slice(0, 7);
+      if (!moisDimanches[cle]) moisDimanches[cle] = [];
+      moisDimanches[cle].push(d.id);
+    });
+    const moisTries = Object.keys(moisDimanches).sort().slice(-6);
+
+    setTauxParMois(moisTries.map(mois => {
+      const ids = moisDimanches[mois];
+      const slots = ids.length * membres.length;
+      const presents = (presences || []).filter(p => ids.includes(p.dimanche_id) && p.present).length;
+      return { mois, taux: slots > 0 ? Math.round((presents / slots) * 100) : null };
+    }).filter(x => x.taux !== null));
+
+    const santeMoisMap = {};
+    (sante || []).forEach(s => {
+      const cle = s.date_maj.slice(0, 7);
+      const moy = moyenneSante(s);
+      if (moy === null) return;
+      if (!santeMoisMap[cle]) santeMoisMap[cle] = [];
+      santeMoisMap[cle].push(moy);
+    });
+    setSanteParMoisList(moisTries.map(mois => {
+      const valeurs = santeMoisMap[mois] || [];
+      return { mois, moyenne: valeurs.length > 0 ? Math.round((valeurs.reduce((a, b) => a + b, 0) / valeurs.length) * 10) / 10 : null };
+    }).filter(x => x.moyenne !== null));
+
+    setActiviteParMoisList(moisTries.map(mois => {
+      const ids = moisDimanches[mois];
+      const attendu = ids.length * gems.length;
+      const valides = (activites || []).filter(a => ids.includes(a.dimanche_id)).length;
+      return { mois, taux: attendu > 0 ? Math.round((valides / attendu) * 100) : null };
+    }).filter(x => x.taux !== null));
+
+    // --- Analyse principale : fenêtre glissante de 4 semaines (4 derniers dimanches vs 4 précédents) ---
+    const dimanchesTriesChrono = dimanchesTous || [];
+    const huitDerniers = dimanchesTriesChrono.slice(-8);
+    if (huitDerniers.length >= 5) {
+      // S'il y a moins de 8 dimanches au total, on prend ce qu'il y a, en gardant 4 pour la période récente au maximum
+      const periodeRecente = huitDerniers.slice(-4);
+      const periodePrecedente = huitDerniers.slice(0, huitDerniers.length - periodeRecente.length).slice(-4);
+
+      const idsRecents = periodeRecente.map(d => d.id);
+      const idsPrecedents = periodePrecedente.map(d => d.id);
+
+      setPeriodes({
+        recente: { debut: periodeRecente[0].date, fin: periodeRecente[periodeRecente.length - 1].date, nb: periodeRecente.length },
+        precedente: periodePrecedente.length > 0 ? { debut: periodePrecedente[0].date, fin: periodePrecedente[periodePrecedente.length - 1].date, nb: periodePrecedente.length } : null,
+      });
+
+      if (idsPrecedents.length > 0) {
+        // Taux de présence global sur chaque fenêtre de 4 semaines
+        function tauxPeriode(ids, idsMembresCibles) {
+          const cible = idsMembresCibles || membres.map(m => m.id);
+          const slots = ids.length * cible.length;
+          if (slots === 0) return null;
+          const presents = (presences || []).filter(p => ids.includes(p.dimanche_id) && p.present && cible.includes(p.membre_id)).length;
+          return (presents / slots) * 100;
+        }
+
+        const tauxGlobalPrecedent = tauxPeriode(idsPrecedents);
+        const tauxGlobalRecent = tauxPeriode(idsRecents);
+        setTauxParMois(anciennes => {
+          // On remplace la comparaison principale par les 2 fenêtres de 4 semaines,
+          // tout en gardant la courbe de contexte sur 6 mois calculée plus haut.
+          return anciennes;
+        });
+
+        // Tendances par GEM, sur les mêmes fenêtres de 4 semaines
+        const tendances = gems.map(g => {
+          const membresGem = membres.filter(m => m.gem_id === g.id);
+          if (membresGem.length === 0) return null;
+          const idsMembres = membresGem.map(m => m.id);
+          const tauxPrecedent = tauxPeriode(idsPrecedents, idsMembres);
+          const tauxActuel = tauxPeriode(idsRecents, idsMembres);
+          if (tauxPrecedent === null || tauxActuel === null) return null;
+          return { nom: g.nom, tauxPrecedent: Math.round(tauxPrecedent), tauxActuel: Math.round(tauxActuel), evolution: Math.round(tauxActuel - tauxPrecedent) };
+        }).filter(Boolean).sort((a, b) => a.evolution - b.evolution);
+        setTendancesGems(tendances);
+
+        // Membres en déclin marqué, sur les mêmes fenêtres
+        const declin = membres.map(m => {
+          const presentsPrecedent = (presences || []).filter(p => p.membre_id === m.id && idsPrecedents.includes(p.dimanche_id) && p.present).length;
+          const presentsActuel = (presences || []).filter(p => p.membre_id === m.id && idsRecents.includes(p.dimanche_id) && p.present).length;
+          const tauxPrecedent = idsPrecedents.length > 0 ? (presentsPrecedent / idsPrecedents.length) * 100 : null;
+          const tauxActuel = idsRecents.length > 0 ? (presentsActuel / idsRecents.length) * 100 : null;
+          if (tauxPrecedent === null || tauxActuel === null) return null;
+          return { membre: m, tauxPrecedent: Math.round(tauxPrecedent), tauxActuel: Math.round(tauxActuel), chute: Math.round(tauxPrecedent - tauxActuel) };
+        }).filter(x => x && x.chute >= 40 && x.tauxPrecedent >= 50)
+          .sort((a, b) => b.chute - a.chute)
+          .slice(0, 10);
+        setMembresEnDeclin(declin);
+
+        // Santé spirituelle sur les mêmes fenêtres de dates
+        function santePeriode(borneDebut, borneFin) {
+          const valeurs = (sante || []).filter(s => s.date_maj.slice(0, 10) >= borneDebut && s.date_maj.slice(0, 10) <= borneFin).map(s => moyenneSante(s)).filter(v => v !== null);
+          return valeurs.length > 0 ? valeurs.reduce((a, b) => a + b, 0) / valeurs.length : null;
+        }
+        const santeRecente = santePeriode(periodeRecente[0].date, periodeRecente[periodeRecente.length - 1].date);
+        const santePrecedente = santePeriode(periodePrecedente[0].date, periodePrecedente[periodePrecedente.length - 1].date);
+
+        // Activités validées sur les mêmes fenêtres
+        const activiteRecente = idsRecents.length * gems.length > 0 ? ((activites || []).filter(a => idsRecents.includes(a.dimanche_id)).length / (idsRecents.length * gems.length)) * 100 : null;
+
+        // Croissance nette sur la fenêtre récente (dates)
+        const nouveaux = (membresAvecDate || []).filter(m => m.created_at && m.created_at.slice(0, 10) >= periodeRecente[0].date).length;
+        const partis = (departsApprouves || []).filter(d => d.date_traitement && d.date_traitement.slice(0, 10) >= periodeRecente[0].date).length;
+        setCroissanceRecente([{ mois: "periode", net: nouveaux - partis }]);
+
+        setPeriodes(p => ({
+          ...p,
+          tauxGlobalPrecedent: tauxGlobalPrecedent !== null ? Math.round(tauxGlobalPrecedent) : null,
+          tauxGlobalRecent: tauxGlobalRecent !== null ? Math.round(tauxGlobalRecent) : null,
+          santeRecente: santeRecente !== null ? Math.round(santeRecente * 10) / 10 : null,
+          santePrecedente: santePrecedente !== null ? Math.round(santePrecedente * 10) / 10 : null,
+          activiteRecente: activiteRecente !== null ? Math.round(activiteRecente) : null,
+        }));
+      }
+    }
+
+    setChargement(false);
+  }
+
+  // --- Génération des constats et recommandations, sur la base des 4 dernières semaines ---
+  const constats = [];
+
+  if (periodes?.tauxGlobalPrecedent !== undefined && periodes?.tauxGlobalPrecedent !== null && periodes?.tauxGlobalRecent !== null) {
+    const variation = periodes.tauxGlobalRecent - periodes.tauxGlobalPrecedent;
+    if (variation <= -10) {
+      constats.push({ type: "alerte", titre: "📉 Baisse de la présence sur 4 semaines",
+        detail: `Le taux de présence est passé de ${periodes.tauxGlobalPrecedent}% à ${periodes.tauxGlobalRecent}% entre les deux périodes de 4 semaines les plus récentes.`,
+        action: "Envisage un message d'encouragement à toute l'assemblée, et demande aux responsables de département/tribu de relancer les GEM concernés." });
+    } else if (variation >= 10) {
+      constats.push({ type: "positif", titre: "📈 Belle progression de la présence sur 4 semaines",
+        detail: `Le taux de présence est passé de ${periodes.tauxGlobalPrecedent}% à ${periodes.tauxGlobalRecent}% (+${variation}%).`,
+        action: "C'est le moment d'encourager publiquement cette dynamique et de capitaliser dessus (invitation à inviter d'autres, activités d'évangélisation)." });
+    }
+  }
+
+  if (periodes?.santeRecente !== undefined && periodes?.santeRecente !== null && periodes?.santePrecedente !== null) {
+    const variation = Math.round((periodes.santeRecente - periodes.santePrecedente) * 10) / 10;
+    if (variation <= -1) {
+      constats.push({ type: "alerte", titre: "🌡️ Santé spirituelle en baisse sur 4 semaines",
+        detail: `La santé spirituelle moyenne est passée de ${periodes.santePrecedente}/10 à ${periodes.santeRecente}/10.`,
+        action: "Un temps d'enseignement ou de consécration collectif pourrait être opportun. Encourage les responsables GEM à approfondir les échanges sur la prière et le jeûne." });
+    }
+  }
+
+  if (periodes?.activiteRecente !== undefined && periodes?.activiteRecente !== null && periodes.activiteRecente < 50) {
+    constats.push({ type: "alerte", titre: "📋 Faible taux de rapports d'activités (4 semaines)",
+      detail: `Seulement ${periodes.activiteRecente}% des rapports hebdomadaires attendus ont été validés sur les 4 dernières semaines.`,
+      action: "Rappelle aux responsables GEM l'importance de valider leur rapport chaque semaine — un message groupé via la Messagerie peut aider." });
+  }
+
+  if (croissanceRecente.length === 1 && croissanceRecente[0].net < 0) {
+    constats.push({ type: "alerte", titre: "👥 Décroissance numérique sur 4 semaines",
+      detail: `Le solde net de membres est de ${croissanceRecente[0].net} sur les 4 dernières semaines.`,
+      action: "Vérifie les motifs des départs récents dans la Corbeille, et envisage une stratégie d'intégration plus forte pour les nouveaux venus." });
+  }
+
+  if (!chargement && constats.length === 0) {
+    constats.push({ type: "positif", titre: "✅ Rien d'alarmant à signaler",
+      detail: "Les indicateurs de l'église sont stables ou en légère amélioration sur les 4 dernières semaines.",
+      action: "Continue le bon travail — reviens consulter cette page régulièrement pour suivre l'évolution." });
+  }
+
+  const gemsEnBaisse = tendancesGems.filter(t => t.evolution <= -15);
+  const gemsEnHausse = tendancesGems.filter(t => t.evolution >= 15);
+
+  return (
+    <div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>🧠 Analyse intelligente</h2>
+      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 8 }}>
+        Détection automatique des tendances et recommandations, sur une fenêtre glissante de 4 semaines.
+      </p>
+      {periodes?.recente && periodes?.precedente && (
+        <p style={{ fontSize: 12, color: GOLD_LIGHT, marginBottom: 20 }}>
+          Comparaison : {libelleDate(periodes.precedente.debut)} → {libelleDate(periodes.precedente.fin)} (période précédente) vs {libelleDate(periodes.recente.debut)} → {libelleDate(periodes.recente.fin)} (4 dernières semaines)
+        </p>
+      )}
+
+      {chargement ? (
+        <Chargement />
+      ) : !periodes?.precedente ? (
+        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Pas encore assez de dimanches enregistrés (au moins 5) pour comparer deux périodes de 4 semaines — reviens dans quelques semaines.</p>
+      ) : (
+        <>
+          <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>📌 Constats et recommandations</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 28 }}>
+            {constats.map((c, i) => (
+              <div key={i} style={{ ...cardStyle, borderLeft: `4px solid ${c.type === "alerte" ? RED_LIGHT : "#6fcf97"}` }}>
+                <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>{c.titre}</p>
+                <p style={{ fontSize: 13, color: "#cdeae4", marginBottom: 8 }}>{c.detail}</p>
+                <p style={{ fontSize: 12, color: GOLD_LIGHT, fontStyle: "italic" }}>💡 {c.action}</p>
+              </div>
+            ))}
+          </div>
+
+          {gemsEnBaisse.length > 0 && (
+            <>
+              <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>⚠️ GEM à surveiller</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 28 }}>
+                {gemsEnBaisse.map((t, i) => (
+                  <div key={i} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                    <p style={{ fontWeight: 700, margin: 0 }}>{t.nom}</p>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: RED_LIGHT }}>{t.tauxPrecedent}% → {t.tauxActuel}% ({t.evolution}%)</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {gemsEnHausse.length > 0 && (
+            <>
+              <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>🌟 GEM en belle dynamique</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 28 }}>
+                {gemsEnHausse.map((t, i) => (
+                  <div key={i} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                    <p style={{ fontWeight: 700, margin: 0 }}>{t.nom}</p>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#6fcf97" }}>{t.tauxPrecedent}% → {t.tauxActuel}% (+{t.evolution}%)</span>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+
+          {membresEnDeclin.length > 0 && (
+            <>
+              <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>🔻 Membres en décrochage progressif</p>
+              <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 10 }}>Étaient réguliers le mois dernier, mais leur présence a nettement chuté ce mois-ci.</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {membresEnDeclin.map(({ membre, tauxPrecedent, tauxActuel }) => {
+                  const gemMembre = gems.find(g => g.id === membre.gem_id);
+                  return (
+                    <div key={membre.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                      <div>
+                        <p style={{ fontWeight: 700, margin: 0 }}>{membre.nom}</p>
+                        <p style={{ fontSize: 12, color: "#a9d6cf", margin: 0 }}>{gemMembre?.nom || "GEM inconnu"}</p>
+                      </div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, color: RED_LIGHT }}>{tauxPrecedent}% → {tauxActuel}%</span>
+                        {membre.telephone && (
+                          <a title="Appeler" href={`tel:${membre.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}>📞</a>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function PageMonCompte({ compte, cardStyle }) {
+  const [ancienMdp, setAncienMdp] = useState("");
+  const [nouveauMdp, setNouveauMdp] = useState("");
+  const [confirmationMdp, setConfirmationMdp] = useState("");
+  const [mdpVisible, setMdpVisible] = useState(false);
+  const [enCours, setEnCours] = useState(false);
+  const [erreur, setErreur] = useState("");
+
+  function emailTechnique(tel) {
+    return `${(tel || "").replace(/[^\d]/g, "")}@gestiongem.com`;
+  }
+
+  async function changerMotDePasse() {
+    setErreur("");
+    if (!ancienMdp || !nouveauMdp || !confirmationMdp) { setErreur("Merci de remplir les trois champs."); return; }
+    if (nouveauMdp.length < 8) { setErreur("Le nouveau mot de passe doit contenir au moins 8 caractères."); return; }
+    if (nouveauMdp !== confirmationMdp) { setErreur("Les deux nouveaux mots de passe ne correspondent pas."); return; }
+
+    setEnCours(true);
+    // Vérifie l'ancien mot de passe avant d'autoriser le changement
+    const { error: erreurVerif } = await supabase.auth.signInWithPassword({ email: emailTechnique(compte.telephone), password: ancienMdp });
+    if (erreurVerif) {
+      setEnCours(false);
+      setErreur("Ton mot de passe actuel est incorrect.");
+      return;
+    }
+    const { error } = await supabase.auth.updateUser({ password: nouveauMdp });
+    setEnCours(false);
+    if (error) { setErreur(error.message); return; }
+    setAncienMdp(""); setNouveauMdp(""); setConfirmationMdp("");
+    toast("✓ Ton mot de passe a bien été changé.", "succes");
+  }
+
+  return (
+    <div style={{ maxWidth: 480 }}>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>👤 Mon compte</h2>
+      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>Tes informations et la gestion de ton mot de passe.</p>
+
+      <div style={{ ...cardStyle, marginBottom: 20 }}>
+        <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>Informations</p>
+        <p style={{ fontSize: 13, color: "#cdeae4", marginBottom: 4 }}><b>Nom :</b> {compte.nom}</p>
+        <p style={{ fontSize: 13, color: "#cdeae4", marginBottom: 4 }}><b>Téléphone :</b> {compte.telephone}</p>
+        <p style={{ fontSize: 13, color: "#cdeae4" }}><b>Rôle :</b> {compte.role === "pasteur" ? "Pasteur" : compte.assistant ? "Assistant désigné" : "Responsable"}</p>
+      </div>
+
+      <div style={cardStyle}>
+        <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>🔑 Changer mon mot de passe</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <input
+            value={ancienMdp}
+            onChange={e => setAncienMdp(e.target.value)}
+            type={mdpVisible ? "text" : "password"}
+            placeholder="Mot de passe actuel"
+            style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}
+          />
+          <input
+            value={nouveauMdp}
+            onChange={e => setNouveauMdp(e.target.value)}
+            type={mdpVisible ? "text" : "password"}
+            placeholder="Nouveau mot de passe (8 car. min.)"
+            style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}
+          />
+          <input
+            value={confirmationMdp}
+            onChange={e => setConfirmationMdp(e.target.value)}
+            type={mdpVisible ? "text" : "password"}
+            placeholder="Confirme le nouveau mot de passe"
+            style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}
+          />
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#a9d6cf", cursor: "pointer" }}>
+            <input type="checkbox" checked={mdpVisible} onChange={e => setMdpVisible(e.target.checked)} />
+            Afficher les mots de passe
+          </label>
+          {erreur && <p style={{ color: RED_LIGHT, fontSize: 12 }}>{erreur}</p>}
+          <button
+            className="btn-app"
+            disabled={enCours}
+            onClick={changerMotDePasse}
+            style={{ padding: "12px 0", borderRadius: 8, fontWeight: 700, fontSize: 14, backgroundColor: GOLD, color: TEAL_950, border: "none", cursor: "pointer" }}
+          >
+            {enCours ? "…" : "Changer mon mot de passe"}
+          </button>
+        </div>
       </div>
     </div>
   );
