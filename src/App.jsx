@@ -63,6 +63,51 @@ function Chargement({ texte = "Chargement…" }) {
 
 // Affiche un nombre en comptant progressivement jusqu'à sa valeur finale — donne du dynamisme
 // aux chiffres clés (tableau de bord, classements) sans surcharger l'interface.
+const MOIS_NOMS = ["Janvier", "Février", "Mars", "Avril", "Mai", "Juin", "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre"];
+const ANNEE_FICTIVE_ANNIVERSAIRE = 2000; // année bissextile neutre, jamais affichée — seuls jour et mois comptent
+
+// Sélecteur de date de naissance sans année — beaucoup de membres ne souhaitent pas
+// communiquer leur année de naissance. On stocke quand même une date complète en base
+// (avec une année fictive fixe), mais seuls le jour et le mois sont demandés et affichés.
+function SelecteurJourMois({ value, onChange, style }) {
+  let jour = "", mois = "";
+  if (value) {
+    const parties = value.split("-");
+    if (parties.length === 3) { mois = String(Number(parties[1])); jour = String(Number(parties[2])); }
+  }
+
+  function emettreChangement(nouveauJour, nouveauMois) {
+    if (!nouveauJour || !nouveauMois) { onChange(""); return; }
+    const jj = String(nouveauJour).padStart(2, "0");
+    const mm = String(nouveauMois).padStart(2, "0");
+    onChange(`${ANNEE_FICTIVE_ANNIVERSAIRE}-${mm}-${jj}`);
+  }
+
+  const joursDuMois = mois ? new Date(ANNEE_FICTIVE_ANNIVERSAIRE, Number(mois), 0).getDate() : 31;
+
+  return (
+    <div style={{ display: "flex", gap: 8, ...style }}>
+      <select
+        value={jour}
+        onChange={e => emettreChangement(e.target.value, mois)}
+        style={{ flex: 1, padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}
+      >
+        <option value="">Jour</option>
+        {Array.from({ length: joursDuMois }, (_, i) => i + 1).map(j => <option key={j} value={j}>{j}</option>)}
+      </select>
+      <select
+        value={mois}
+        onChange={e => emettreChangement(jour, e.target.value)}
+        style={{ flex: 2, padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}
+      >
+        <option value="">Mois</option>
+        {MOIS_NOMS.map((nom, i) => <option key={i} value={i + 1}>{nom}</option>)}
+      </select>
+    </div>
+  );
+}
+
+
 function NombreAnime({ valeur, suffixe = "" }) {
   const [affiche, setAffiche] = useState(0);
   const cibleValide = typeof valeur === "number" && !isNaN(valeur) ? valeur : 0;
@@ -1855,7 +1900,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
           </label>
           <input value={nom} onChange={e => setNom(e.target.value)} placeholder="Nom complet" style={{ flex: 1, minWidth: 160, padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
           <input value={telephone} onChange={e => setTelephone(e.target.value)} placeholder="Téléphone" style={{ flex: 1, minWidth: 160, padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
-          <input value={dateNaissance} onChange={e => setDateNaissance(e.target.value)} type="date" title="Date de naissance (optionnel)" style={{ padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+          <SelecteurJourMois value={dateNaissance} onChange={setDateNaissance} style={{ flex: 1, minWidth: 160 }} />
           <input value={quartier} onChange={e => setQuartier(e.target.value)} placeholder="Quartier" style={{ flex: 1, minWidth: 140, padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
           <button
  className="btn-app"
@@ -2465,14 +2510,8 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
                   />
                 </div>
                 <div style={{ flex: 1, minWidth: 140 }}>
-                  <label style={{ fontSize: 10, color: "#a9d6cf", display: "block", marginBottom: 2 }}>🎂 Date de naissance</label>
-                  <input
-                    type="date"
-                    value={editDateNaissance}
-                    onChange={e => setEditDateNaissance(e.target.value)}
-                    onClick={e => e.stopPropagation()}
-                    style={{ width: "100%", padding: 8, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }}
-                  />
+                  <label style={{ fontSize: 10, color: "#a9d6cf", display: "block", marginBottom: 2 }}>🎂 Date de naissance (jour et mois)</label>
+                  <SelecteurJourMois value={editDateNaissance} onChange={setEditDateNaissance} />
                 </div>
               </div>
               <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginTop: 8 }}>
