@@ -1593,6 +1593,8 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
   const [dimancheId, setDimancheId] = useState(null);
   const [presences, setPresences] = useState({}); // { membre_id: true/false }
   const [chargementPresences, setChargementPresences] = useState(true);
+  const [rapportPresenceValide, setRapportPresenceValide] = useState(false);
+  const [validationEnCours, setValidationEnCours] = useState(false);
   const [santeParMembre, setSanteParMembre] = useState({}); // { membre_id: dernierEnregistrement }
   const [membreOuvert, setMembreOuvert] = useState(null);
   const [rappelPointage, setRappelPointage] = useState(null);
@@ -1633,7 +1635,23 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
       (pres || []).forEach(p => { map[p.membre_id] = { present: p.present, motif: p.motif || "" }; });
       setPresences(map);
     }
+
+    const { data: validation } = await supabase.from("validations_presence").select("*").eq("gem_id", gem.id).eq("dimanche_id", dim.id).maybeSingle();
+    setRapportPresenceValide(!!validation?.valide);
+
     setChargementPresences(false);
+  }
+
+  async function validerRapportPresence() {
+    setValidationEnCours(true);
+    const { error } = await supabase.from("validations_presence").upsert({
+      gem_id: gem.id, dimanche_id: dimancheId, valide: true,
+      date_validation: new Date().toISOString(), valide_par: compte?.id || null,
+    }, { onConflict: "gem_id,dimanche_id" });
+    setValidationEnCours(false);
+    if (error) { toast("Impossible de valider le rapport de présence : " + error.message, "erreur"); return; }
+    setRapportPresenceValide(true);
+    toast("✓ Rapport de présence envoyé — Tu es béni pour ton engagement dans l'œuvre de Dieu 🙏", "succes");
   }
 
   async function basculerPresence(membreId) {
@@ -1642,6 +1660,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
     const motifConserve = nouvelEtat ? "" : (etatActuel?.motif || "");
     setPresences(prev => ({ ...prev, [membreId]: { present: nouvelEtat, motif: motifConserve } }));
     await supabase.from("presences").upsert({ membre_id: membreId, dimanche_id: dimancheId, present: nouvelEtat, motif: motifConserve || null }, { onConflict: "membre_id,dimanche_id" });
+    if (rapportPresenceValide) setRapportPresenceValide(false);
   }
 
   async function enregistrerMotif(membreId, motif) {
@@ -1798,11 +1817,18 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
       <div style={{ ...cardStyle, marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, flexWrap: "wrap", gap: 8 }}>
           <p style={{ fontWeight: 600, fontSize: 14 }}>Présence — dimanche {dateAffichee}</p>
-          {!chargementPresences && (
-            <span style={{ fontSize: 12, color: GOLD_LIGHT, fontWeight: 700 }}>
-              {presentsCount} / {membres.length} présent{presentsCount > 1 ? "s" : ""}
-            </span>
-          )}
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+            {!chargementPresences && (
+              <span style={{ fontSize: 12, color: GOLD_LIGHT, fontWeight: 700 }}>
+                {presentsCount} / {membres.length} présent{presentsCount > 1 ? "s" : ""}
+              </span>
+            )}
+            {rapportPresenceValide && (
+              <span style={{ fontSize: 11, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD, borderRadius: 999, padding: "4px 10px" }}>
+                ✓ Rapport validé
+              </span>
+            )}
+          </div>
         </div>
         <p style={{ fontSize: 11, color: "#a9d6cf", marginBottom: 12 }}>Coche chaque membre présent au culte de ce dimanche.</p>
 
@@ -1850,6 +1876,14 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
                 </div>
               );
             })}
+            <button
+              className="btn-app"
+              disabled={validationEnCours}
+              onClick={validerRapportPresence}
+              style={{ marginTop: 10, padding: "12px 20px", borderRadius: 10, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer", alignSelf: "flex-start" }}
+            >
+              {validationEnCours ? "…" : rapportPresenceValide ? "✓ Revalider le rapport de présence" : "Valider le rapport de présence"}
+            </button>
           </div>
         )}
       </div>
