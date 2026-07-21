@@ -847,6 +847,9 @@ function TableauDeBord({ compte }) {
           )}
           <button
  className="btn-app"
+ onClick={() => { setPage("aide"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "aide" ? TEAL_700 : "transparent", color: page === "aide" ? GOLD_LIGHT : "#cdeae4" }}>❓ Aide</button>
+          <button
+ className="btn-app"
  onClick={seDeconnecter} style={{ ...btnStyle, backgroundColor: "transparent", color: "#cdeae4" }}>Déconnexion</button>
         </div>
       </div>
@@ -854,6 +857,8 @@ function TableauDeBord({ compte }) {
       <div style={{ padding: 24 }}>
         {chargement ? (
           <p style={{ color: "#cdeae4" }}>Chargement des données…</p>
+        ) : page === "aide" ? (
+          <PageAide estPasteur={estPasteur} cardStyle={cardStyle} />
         ) : !estPasteur && !aResponsabilitePersonnelle ? (
           <DemanderResponsabilite
             compte={compte}
@@ -2825,6 +2830,130 @@ function PageCorbeille({ compte, gems, cardStyle, onTraite }) {
 /* --------------------------- Page Mots de passe oubliés (pasteur) --------------------------- */
 
 /* --------------------------- Page Suppressions de membres (pasteur) --------------------------- */
+
+/* --------------------------- Page Aide --------------------------- */
+
+const SECTIONS_AIDE = [
+  {
+    titre: "👤 Gérer les membres de mon GEM",
+    items: [
+      ["Ajouter un membre", "Ouvre ton GEM → remplis nom et téléphone (obligatoires) → photo, date de naissance et quartier sont optionnels → clique \"Ajouter\". L'appli te préviendra si un numéro très proche existe déjà ailleurs."],
+      ["Importer plusieurs membres d'un coup", "Bouton \"📂 Importer depuis un fichier (CSV)\" au-dessus du formulaire d'ajout. Le fichier doit avoir des colonnes nom et telephone (quartier optionnel), séparées par des virgules."],
+      ["Modifier les informations d'un membre", "Clique sur son nom pour déplier sa fiche → modifie les champs dans \"✏️ Informations du membre\" → clique \"💾 Enregistrer les modifications\"."],
+      ["Pointer la présence du dimanche", "Coche la case à côté de chaque membre présent. Pour un absent, tu peux préciser un motif juste en dessous."],
+      ["Suivre la santé spirituelle", "Sur la fiche d'un membre, onglet \"Santé spirituelle\" → ajuste les 6 curseurs → \"Enregistrer\"."],
+      ["Suivre un nouveau converti", "Coche \"Nouveau converti\" à l'ajout du membre. Un onglet \"Parcours\" apparaît alors sur sa fiche pour faire avancer ses étapes (Accueil → Classe de baptême → Baptisé → Intégré)."],
+      ["Demander la suppression d'un membre", "Sur sa fiche, bouton \"🗑️ Demander la suppression\" → indique un motif obligatoire. La suppression n'est effective qu'après validation du pasteur."],
+    ],
+  },
+  {
+    titre: "📋 Activités de la semaine",
+    items: [
+      ["Remplir le rapport hebdomadaire", "Dans ton GEM, onglet \"📋 Activités de la semaine\" → choisis la bonne semaine dans le menu déroulant → coche les membres visités/appelés, renseigne prière/jeûne/agapé/évangélisation → clique \"Valider le rapport de la semaine\"."],
+      ["Pourquoi valider ?", "Tant que le rapport n'est pas validé, il n'apparaît pas comme complété dans les statistiques du pasteur, même si tu as rempli des champs."],
+    ],
+  },
+  {
+    titre: "🔍 Retrouver une information",
+    items: [
+      ["Rechercher un membre", "Barre de recherche en haut de chaque page (icône 🔍) — tape un nom ou un numéro, ça t'amène directement à sa fiche, même s'il est dans un autre GEM."],
+      ["Voir tous les membres d'un département ou d'une tribu", "Va dans \"Tribus\" ou \"Départements\" → clique \"👥 Tous les membres\" sur la carte concernée."],
+    ],
+  },
+  {
+    titre: "🎂 Anniversaires et rappels",
+    items: [
+      ["Voir les anniversaires à venir", "Section \"🎂 Anniversaires à venir\" sur le Tableau de bord (ou \"Mon espace\" pour les responsables de département/tribu) — les 14 prochains jours."],
+      ["Rappel de pointage", "Une bannière dorée apparaît automatiquement si le pointage d'un dimanche récent n'est pas terminé."],
+    ],
+  },
+];
+
+const SECTIONS_AIDE_PASTEUR = [
+  {
+    titre: "✅ Gérer les demandes",
+    items: [
+      ["Valider une nouvelle responsabilité", "Page \"Demandes\" — un nouveau responsable apparaît ici après son inscription, en attente de validation."],
+      ["Attribuer un rôle directement", "\"Rôles & Accès\" → \"Attribuer un rôle\" — choisis un compte déjà inscrit sans rôle actif, sans attendre sa demande."],
+      ["Créer un compte pour quelqu'un", "\"Rôles & Accès\" → \"Nouveau compte + rôle\" — utile pour une personne qui n'est pas encore inscrite elle-même."],
+      ["Désigner un assistant", "\"Rôles & Accès\" → \"Assistants désignés\" (visible uniquement par le pasteur) — un assistant a les mêmes droits que toi."],
+      ["Approuver une suppression de membre", "Page \"Suppressions\" — chaque demande affiche le motif ; \"Approuver\" supprime réellement (récupérable 30 jours dans la Corbeille), \"Refuser\" annule la demande."],
+      ["Réinitialiser un mot de passe oublié", "Page \"Mots de passe\" — choisis un nouveau mot de passe pour la personne et transmets-le lui directement (téléphone, WhatsApp...)."],
+    ],
+  },
+  {
+    titre: "📊 Rapports et suivi global",
+    items: [
+      ["Rapport hebdomadaire / mensuel / annuel", "Page \"Rapports\" — 3 vues + un onglet \"📋 Activités\" pour le suivi des rapports hebdomadaires de chaque GEM."],
+      ["Classements et meilleur GEM", "Vue mensuelle ou annuelle de \"Rapports\" — classements par présence, santé, activités, suivi des âmes, et un trophée 🏆 pour le GEM du mois/de l'année."],
+      ["Courbes d'évolution", "Page \"Historique\" — présence, santé spirituelle, activités et croissance numérique de l'église, mois après mois."],
+      ["Priorités pastorales", "Sur le Tableau de bord — liste automatique des membres en absence répétée (2+ dimanches), avec appel et WhatsApp en un clic."],
+      ["Exporter des données", "Boutons \"📊 Exporter CSV\" (ouvrable dans Excel) et \"🖨️ Imprimer / PDF\" présents sur les pages de rapports. \"Exporter toutes les données (JSON)\" sur le Tableau de bord pour une sauvegarde complète."],
+    ],
+  },
+  {
+    titre: "🗑️ Corbeille et sécurité",
+    items: [
+      ["Récupérer un membre supprimé", "Page \"🗑️ Corbeille\" — chaque suppression reste récupérable 30 jours, avec le motif indiqué."],
+      ["Verrouillage automatique", "Si l'application reste plus de 5 minutes sans être utilisée, elle redemande le mot de passe avant de continuer — utile si ton téléphone est repris par quelqu'un d'autre."],
+      ["Déconnexion automatique", "Après 30 minutes d'inactivité sur un même appareil, la déconnexion se fait automatiquement."],
+    ],
+  },
+  {
+    titre: "📅 Communication",
+    items: [
+      ["Envoyer un message à tout le monde", "\"Messagerie\" → onglet \"Messages du pasteur\"."],
+      ["Créer un événement", "\"Calendrier\" → \"+ Nouvel événement\" — chacun peut ensuite l'ajouter à son propre calendrier."],
+    ],
+  },
+];
+
+function PageAide({ estPasteur, cardStyle }) {
+  const [ouvert, setOuvert] = useState(null); // "sectionIndex-itemIndex"
+  const toutesLesSections = estPasteur ? [...SECTIONS_AIDE, ...SECTIONS_AIDE_PASTEUR] : SECTIONS_AIDE;
+
+  return (
+    <div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>❓ Aide</h2>
+      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 24 }}>
+        Un guide rapide pour utiliser l'application. Clique sur une question pour voir la réponse.
+      </p>
+      {toutesLesSections.map((section, si) => (
+        <div key={si} style={{ marginBottom: 24 }}>
+          <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 10, color: GOLD_LIGHT }}>{section.titre}</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {section.items.map(([question, reponse], ii) => {
+              const cle = `${si}-${ii}`;
+              const estOuvert = ouvert === cle;
+              return (
+                <div key={ii} style={cardStyle}>
+                  <button
+                    className="btn-app"
+                    onClick={() => setOuvert(estOuvert ? null : cle)}
+                    style={{ width: "100%", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", color: CREAM, textAlign: "left", fontSize: 13, fontWeight: 600 }}
+                  >
+                    <span>{question}</span>
+                    <span style={{ color: "#a9d6cf", flexShrink: 0, marginLeft: 10 }}>{estOuvert ? "▲" : "▼"}</span>
+                  </button>
+                  {estOuvert && (
+                    <p className="fade-in" style={{ fontSize: 13, color: "#cdeae4", lineHeight: 1.5, marginTop: 10, paddingTop: 10, borderTop: `1px solid ${TEAL_700}` }}>
+                      {reponse}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+      <div style={{ ...cardStyle, textAlign: "center", marginTop: 8 }}>
+        <p style={{ fontSize: 13, color: "#cdeae4", margin: 0 }}>
+          Une question sans réponse ici ? Contacte le pasteur ou un assistant directement via la Messagerie.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 function PageSuppressions({ compte, cardStyle, onTraite }) {
   const [demandes, setDemandes] = useState([]);
