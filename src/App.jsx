@@ -327,7 +327,12 @@ function App() {
       if (session) chargerCompte(session.user.id);
       else setChargement(false);
     });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, session) => {
+      // Une connexion explicite et réussie ne doit jamais déclencher le verrouillage
+      // juste après — on marque l'activité comme "maintenant" avant toute vérification.
+      if (event === "SIGNED_IN") {
+        try { localStorage.setItem("gem_derniere_activite", String(Date.now())); } catch {}
+      }
       setSession(session);
       if (session) chargerCompte(session.user.id);
       else { setCompte(null); setChargement(false); }
@@ -406,7 +411,11 @@ function App() {
       window.removeEventListener("focus", verifierVerrouillage);
       window.removeEventListener("pageshow", verifierVerrouillage);
     };
-  }, [session]);
+    // Volontairement basé sur la présence d'une session (booléen), pas sur l'objet session
+    // lui-même : celui-ci change de référence à chaque rafraîchissement technique automatique
+    // du jeton (toutes les heures environ), ce qui relançait injustement cette vérification.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [!!session]);
 
   if (chargement) {
     return (
