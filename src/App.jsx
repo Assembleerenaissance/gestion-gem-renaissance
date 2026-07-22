@@ -970,6 +970,11 @@ function TableauDeBord({ compte }) {
  className="btn-app"
  onClick={() => { setPage("mon_espace"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "mon_espace" ? TEAL_700 : "transparent", color: page === "mon_espace" ? GOLD_LIGHT : "#cdeae4" }}>Mon espace</button>
               )}
+              {compte.role !== "pasteur" && (
+                <button
+ className="btn-app"
+ onClick={() => { setPage("demande_role_supp"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "demande_role_supp" ? TEAL_700 : "transparent", color: page === "demande_role_supp" ? GOLD_LIGHT : "#cdeae4" }}>➕ Rôle supplémentaire</button>
+              )}
               <button
  className="btn-app"
  onClick={() => { setPage("dashboard"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "dashboard" ? TEAL_700 : "transparent", color: page === "dashboard" ? GOLD_LIGHT : "#cdeae4" }}>Tableau de bord</button>
