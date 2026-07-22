@@ -2026,8 +2026,10 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
   const [membreOuvert, setMembreOuvert] = useState(null);
   const [rappelPointage, setRappelPointage] = useState(null);
   const [sousOnglet, setSousOnglet] = useState("membres"); // membres | activites
+  const [dimanchesDisponibles, setDimanchesDisponibles] = useState([]);
 
-  useEffect(() => { chargerPresences(); chargerSante(); verifierPointageManquant(membres).then(setRappelPointage); }, [membres.length]);
+  useEffect(() => { initialiserPresences(); chargerSante(); verifierPointageManquant(membres).then(setRappelPointage); }, [membres.length]);
+  useEffect(() => { chargerPresences(); }, [dimancheId]);
 
   useEffect(() => {
     if (membreCible && membres.some(m => m.id === membreCible)) {
@@ -2044,26 +2046,31 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
     setSanteParMembre(map);
   }
 
-  async function chargerPresences() {
+  async function initialiserPresences() {
     setChargementPresences(true);
-    const date = dimancheActuel();
-
-    // S'assure que le dimanche du jour existe déjà, sinon le crée
-    let { data: dim } = await supabase.from("dimanches").select("*").eq("date", date).maybeSingle();
-    if (!dim) {
-      const { data: nouveauDim } = await supabase.from("dimanches").insert({ date }).select().single();
-      dim = nouveauDim;
+    const dateAuj = dimancheActuel();
+    let { data: dimAuj } = await supabase.from("dimanches").select("*").eq("date", dateAuj).maybeSingle();
+    if (!dimAuj) {
+      const { data: nouveauDim } = await supabase.from("dimanches").insert({ date: dateAuj }).select().single();
+      dimAuj = nouveauDim;
     }
-    setDimancheId(dim.id);
+    const { data: toutesLesSemaines } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(52);
+    setDimanchesDisponibles(toutesLesSemaines || []);
+    setDimancheId(dimAuj.id);
+  }
+
+  async function chargerPresences() {
+    if (!dimancheId) return;
+    setChargementPresences(true);
 
     if (membres.length > 0) {
-      const { data: pres } = await supabase.from("presences").select("*").eq("dimanche_id", dim.id).in("membre_id", membres.map(m => m.id));
+      const { data: pres } = await supabase.from("presences").select("*").eq("dimanche_id", dimancheId).in("membre_id", membres.map(m => m.id));
       const map = {};
       (pres || []).forEach(p => { map[p.membre_id] = { present: p.present, motif: p.motif || "" }; });
       setPresences(map);
     }
 
-    const { data: validation } = await supabase.from("validations_presence").select("*").eq("gem_id", gem.id).eq("dimanche_id", dim.id).maybeSingle();
+    const { data: validation } = await supabase.from("validations_presence").select("*").eq("gem_id", gem.id).eq("dimanche_id", dimancheId).maybeSingle();
     setRapportPresenceValide(!!validation?.valide);
 
     setChargementPresences(false);
@@ -2242,8 +2249,8 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
       </div>
 
       <div style={{ ...cardStyle, marginBottom: 20 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4, flexWrap: "wrap", gap: 8 }}>
-          <p style={{ fontWeight: 600, fontSize: 14 }}>Présence — dimanche {dateAffichee}</p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
+          <p style={{ fontWeight: 600, fontSize: 14, margin: 0 }}>Présence — semaine</p>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
             {!chargementPresences && (
               <span style={{ fontSize: 12, color: GOLD_LIGHT, fontWeight: 700 }}>
@@ -2257,6 +2264,17 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
             )}
           </div>
         </div>
+        <select
+          value={dimancheId || ""}
+          onChange={e => setDimancheId(e.target.value)}
+          style={{ padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, marginBottom: 12 }}
+        >
+          {dimanchesDisponibles.map(d => (
+            <option key={d.id} value={d.id}>
+              {new Date(d.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+            </option>
+          ))}
+        </select>
         <p style={{ fontSize: 11, color: "#a9d6cf", marginBottom: 12 }}>Coche chaque membre présent au culte de ce dimanche.</p>
 
         {chargementPresences ? (
