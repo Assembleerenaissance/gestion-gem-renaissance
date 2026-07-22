@@ -38,6 +38,13 @@ function StylesGlobaux() {
       input, select, textarea { transition: border-color 0.15s ease, box-shadow 0.15s ease; }
       input:focus, select:focus, textarea:focus { outline: none; box-shadow: 0 0 0 2px rgba(208,175,28,0.4); }
 
+      .nav-bureau { display: flex; gap: 8px; flex-wrap: wrap; }
+      .bouton-hamburger { display: none; }
+      @media (max-width: 860px) {
+        .nav-bureau { display: none !important; }
+        .bouton-hamburger { display: flex !important; }
+      }
+
       @media print {
         body, #root { background: #fff !important; }
         * { color: #111 !important; background-color: #fff !important; box-shadow: none !important; text-shadow: none !important; }
@@ -695,6 +702,7 @@ function EcranConnexion() {
 
 function TableauDeBord({ compte }) {
   const [page, setPage] = useState("dashboard");
+  const [menuMobileOuvert, setMenuMobileOuvert] = useState(false);
   const [gemOuvert, setGemOuvert] = useState(null);
   const [parentOuvert, setParentOuvert] = useState(null); // { item, type } - vue d'ensemble d'une tribu/département
 
@@ -962,7 +970,14 @@ function TableauDeBord({ compte }) {
             </div>
           )}
         </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+        <button
+          className="btn-app bouton-hamburger"
+          onClick={() => setMenuMobileOuvert(true)}
+          style={{ alignItems: "center", justifyContent: "center", width: 44, height: 44, borderRadius: 10, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, cursor: "pointer", fontSize: 20, flexShrink: 0 }}
+        >
+          ☰
+        </button>
+        <div className="nav-bureau">
           {estPasteur ? (
             <>
               {aResponsabilitePersonnelle && (
@@ -1095,6 +1110,101 @@ function TableauDeBord({ compte }) {
  onClick={seDeconnecter} style={{ ...btnStyle, backgroundColor: "transparent", color: "#cdeae4" }}>Déconnexion</button>
         </div>
       </div>
+
+      {menuMobileOuvert && (
+        <div className="fade-in" style={{ position: "fixed", inset: 0, backgroundColor: "rgba(5,20,18,0.85)", zIndex: 500, overflowY: "auto" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 20, borderBottom: `1px solid ${TEAL_800}` }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <img src={LOGO_VH} alt="Vases d'Honneur" style={{ height: 30, width: "auto" }} />
+              <p style={{ fontWeight: 700, margin: 0 }}>{compte.nom}</p>
+            </div>
+            <button className="btn-app" onClick={() => setMenuMobileOuvert(false)} style={{ width: 40, height: 40, borderRadius: 10, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 18, cursor: "pointer" }}>✕</button>
+          </div>
+          <div style={{ padding: 20 }}>
+            {(() => {
+              function allerA(cible) { setPage(cible); setGemOuvert(null); setParentOuvert(null); setMenuMobileOuvert(false); }
+              function GroupeMenu({ titre, items }) {
+                return (
+                  <div style={{ marginBottom: 24 }}>
+                    <p style={{ fontSize: 11, fontWeight: 700, color: GOLD_LIGHT, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>{titre}</p>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                      {items.map(it => (
+                        <button
+                          key={it.cible}
+                          className="btn-app"
+                          onClick={it.action || (() => allerA(it.cible))}
+                          style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", borderRadius: 10, backgroundColor: page === it.cible ? "rgba(208,175,28,0.15)" : TEAL_900, border: `1px solid ${page === it.cible ? GOLD : TEAL_700}`, color: page === it.cible ? GOLD_LIGHT : CREAM, fontWeight: 600, fontSize: 14, cursor: "pointer", textAlign: "left" }}
+                        >
+                          {it.label}
+                          {it.badge > 0 && (
+                            <span style={{ backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 11, fontWeight: 700, minWidth: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px" }}>
+                              {it.badge}
+                            </span>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              }
+
+              if (estPasteur) {
+                const groupeSuivi = [{ label: "Tableau de bord", cible: "dashboard" }];
+                if (aResponsabilitePersonnelle) groupeSuivi.push({ label: "Mon espace", cible: "mon_espace" });
+                groupeSuivi.push({ label: "Tribus", cible: "tribus" }, { label: "Départements", cible: "departements" });
+
+                const groupeGestion = [
+                  { label: "Demandes", cible: "demandes", badge: nbDemandesAttente },
+                  { label: "Suppressions", cible: "suppressions", badge: nbDemandesSuppression },
+                  { label: "🗑️ Corbeille", cible: "corbeille" },
+                ];
+                if (compte.role === "pasteur") groupeGestion.push({ label: "Rôles & Accès", cible: "assistants" });
+                if (compte.role !== "pasteur") groupeGestion.push({ label: "➕ Rôle supplémentaire", cible: "demande_role_supp" });
+
+                return (
+                  <>
+                    <GroupeMenu titre="Suivi" items={groupeSuivi} />
+                    <GroupeMenu titre="Rapports" items={[
+                      { label: "Rapports", cible: "rapports" },
+                      { label: "Historique", cible: "historique" },
+                      { label: "🧠 Analyse", cible: "analyse" },
+                    ]} />
+                    <GroupeMenu titre="Gestion" items={groupeGestion} />
+                    <GroupeMenu titre="Communication" items={[
+                      { label: "Calendrier", cible: "calendrier", badge: nbNouveauxEvenements },
+                      { label: "Messagerie", cible: "messagerie", badge: nbMessagesNonLus },
+                      { label: "Mots de passe", cible: "mots_de_passe", badge: nbDemandesMdp },
+                    ]} />
+                    <GroupeMenu titre="Compte" items={[
+                      { label: "👤 Mon compte", cible: "mon_compte" },
+                      { label: "❓ Aide", cible: "aide" },
+                      { label: "Déconnexion", cible: "deconnexion", action: seDeconnecter },
+                    ]} />
+                  </>
+                );
+              }
+
+              return (
+                <>
+                  <GroupeMenu titre="Mon espace" items={[
+                    { label: "Mon espace", cible: "dashboard" },
+                    { label: "➕ Rôle supplémentaire", cible: "demande_role_supp" },
+                  ]} />
+                  <GroupeMenu titre="Communication" items={[
+                    { label: "Calendrier", cible: "calendrier", badge: nbNouveauxEvenements },
+                    { label: "Messagerie", cible: "messagerie", badge: nbMessagesNonLus },
+                  ]} />
+                  <GroupeMenu titre="Compte" items={[
+                    { label: "👤 Mon compte", cible: "mon_compte" },
+                    { label: "❓ Aide", cible: "aide" },
+                    { label: "Déconnexion", cible: "deconnexion", action: seDeconnecter },
+                  ]} />
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
 
       <div key={page} className="transition-page" style={{ padding: 24 }}>
         {chargement ? (
@@ -3749,13 +3859,8 @@ function PageMonCompte({ compte, cardStyle, onMisAJour }) {
         <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>✏️ Compléter mon profil</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div>
-            <label style={{ fontSize: 11, color: "#a9d6cf", display: "block", marginBottom: 4 }}>🎂 Date de naissance</label>
-            <input
-              type="date"
-              value={dateNaissance}
-              onChange={e => setDateNaissance(e.target.value)}
-              style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}
-            />
+            <label style={{ fontSize: 11, color: "#a9d6cf", display: "block", marginBottom: 4 }}>🎂 Date de naissance (jour et mois)</label>
+            <SelecteurJourMois value={dateNaissance} onChange={setDateNaissance} />
           </div>
           <div>
             <label style={{ fontSize: 11, color: "#a9d6cf", display: "block", marginBottom: 4 }}>Quartier</label>
