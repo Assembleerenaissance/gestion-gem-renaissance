@@ -5108,8 +5108,37 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
   const [creationOuverte, setCreationOuverte] = useState(false);
   const [sousOnglet, setSousOnglet] = useState("gems");
   const [indexRoleSelectionne, setIndexRoleSelectionne] = useState(0);
+  const [responsablesGemPerimetre, setResponsablesGemPerimetre] = useState({}); // { gemId: nom }
 
   const listeAssignations = assignationsActives || [];
+  const assignationSure = listeAssignations[Math.min(indexRoleSelectionne, Math.max(0, listeAssignations.length - 1))];
+  const estDeptPourChargement = assignationSure?.role_demande === "departement_resp";
+  const gemsDuPerimetrePourChargement = (assignationSure && assignationSure.role_demande !== "gem")
+    ? gems.filter(g => estDeptPourChargement ? g.departement_id === assignationSure.departement_id : g.tribu_id === assignationSure.tribu_id)
+    : [];
+
+  // Toujours appelé, quel que soit le rôle affiché — évite une erreur React
+  // liée à un nombre de hooks différent selon les cas (règle des Hooks).
+  useEffect(() => {
+    async function chargerResponsablesGem() {
+      if (!assignationSure || assignationSure.role_demande === "gem") { setResponsablesGemPerimetre({}); return; }
+      const idsGems = gemsDuPerimetrePourChargement.map(g => g.id);
+      if (idsGems.length === 0) { setResponsablesGemPerimetre({}); return; }
+      const { data: assignationsGem } = await supabase.from("assignations").select("gem_id, compte_id").eq("role_demande", "gem").eq("statut", "actif").in("gem_id", idsGems);
+      const idsComptes = [...new Set((assignationsGem || []).map(a => a.compte_id))];
+      if (idsComptes.length === 0) { setResponsablesGemPerimetre({}); return; }
+      const { data: comptesResp } = await supabase.from("comptes").select("id, nom").in("id", idsComptes);
+      const map = {};
+      (assignationsGem || []).forEach(a => {
+        const c = (comptesResp || []).find(cc => cc.id === a.compte_id);
+        if (c) map[a.gem_id] = c.nom;
+      });
+      setResponsablesGemPerimetre(map);
+    }
+    chargerResponsablesGem();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assignationSure?.id, gemsDuPerimetrePourChargement.length]);
+
   if (listeAssignations.length === 0) return <p style={{ color: "#a9d6cf" }}>Aucune responsabilité active trouvée.</p>;
 
   const assignation = listeAssignations[Math.min(indexRoleSelectionne, listeAssignations.length - 1)];
@@ -5183,26 +5212,6 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
     : tribus.find(t => t.id === assignation.tribu_id);
   const gemsDuPerimetre = gems.filter(g => estDept ? g.departement_id === assignation.departement_id : g.tribu_id === assignation.tribu_id);
   const membresDuPerimetre = membres.filter(m => gemsDuPerimetre.some(g => g.id === m.gem_id));
-
-  const [responsablesGemPerimetre, setResponsablesGemPerimetre] = useState({}); // { gemId: nom }
-
-  useEffect(() => {
-    async function chargerResponsablesGem() {
-      const idsGems = gemsDuPerimetre.map(g => g.id);
-      if (idsGems.length === 0) { setResponsablesGemPerimetre({}); return; }
-      const { data: assignationsGem } = await supabase.from("assignations").select("gem_id, compte_id").eq("role_demande", "gem").eq("statut", "actif").in("gem_id", idsGems);
-      const idsComptes = [...new Set((assignationsGem || []).map(a => a.compte_id))];
-      if (idsComptes.length === 0) { setResponsablesGemPerimetre({}); return; }
-      const { data: comptesResp } = await supabase.from("comptes").select("id, nom").in("id", idsComptes);
-      const map = {};
-      (assignationsGem || []).forEach(a => {
-        const c = (comptesResp || []).find(cc => cc.id === a.compte_id);
-        if (c) map[a.gem_id] = c.nom;
-      });
-      setResponsablesGemPerimetre(map);
-    }
-    chargerResponsablesGem();
-  }, [gemsDuPerimetre.length]);
 
   async function creerGem() {
     if (!nomNouveauGem.trim()) return;
