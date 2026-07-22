@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabaseClient";
 import { BERGER_IMG } from "./bergerImage";
 import { LOGO_VH } from "./logoVH";
@@ -695,6 +695,49 @@ function TableauDeBord({ compte }) {
   const [page, setPage] = useState("dashboard");
   const [gemOuvert, setGemOuvert] = useState(null);
   const [parentOuvert, setParentOuvert] = useState(null); // { item, type } - vue d'ensemble d'une tribu/département
+
+  // Rattache la touche "retour" du téléphone à la navigation interne de l'appli,
+  // au lieu de la quitter directement. Fonctionne sans avoir à modifier chaque bouton.
+  const pileNavigationInterne = useRef([]);
+  const dernierEtatConnu = useRef({ page: "dashboard", gemOuvert: null, parentOuvert: null });
+  const retourEnCours = useRef(false);
+  const premierRenduNavigation = useRef(true);
+
+  useEffect(() => {
+    const etatActuel = { page, gemOuvert, parentOuvert };
+    if (premierRenduNavigation.current) {
+      premierRenduNavigation.current = false;
+      dernierEtatConnu.current = etatActuel;
+      return;
+    }
+    if (retourEnCours.current) {
+      retourEnCours.current = false;
+      dernierEtatConnu.current = etatActuel;
+      return;
+    }
+    pileNavigationInterne.current.push(dernierEtatConnu.current);
+    dernierEtatConnu.current = etatActuel;
+    try { window.history.pushState({ appInterne: true }, ""); } catch {}
+  }, [page, gemOuvert, parentOuvert]);
+
+  useEffect(() => {
+    function surRetourArriere() {
+      if (pileNavigationInterne.current.length > 0) {
+        const precedent = pileNavigationInterne.current.pop();
+        retourEnCours.current = true;
+        setPage(precedent.page);
+        setGemOuvert(precedent.gemOuvert);
+        setParentOuvert(precedent.parentOuvert);
+        dernierEtatConnu.current = precedent;
+        try { window.history.pushState({ appInterne: true }, ""); } catch {}
+      }
+      // Si la pile est vide, on laisse le comportement naturel du navigateur
+      // (quitter l'application), puisqu'il n'y a plus rien à afficher avant.
+    }
+    window.addEventListener("popstate", surRetourArriere);
+    return () => window.removeEventListener("popstate", surRetourArriere);
+  }, []);
+
   const [tribus, setTribus] = useState([]);
   const [departements, setDepartements] = useState([]);
   const [gems, setGems] = useState([]);
