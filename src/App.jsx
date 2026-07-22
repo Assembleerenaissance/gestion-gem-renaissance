@@ -705,6 +705,7 @@ function TableauDeBord({ compte }) {
   const [nbMessagesNonLus, setNbMessagesNonLus] = useState(0);
   const [membres, setMembres] = useState([]);
   const [tousLesComptes, setTousLesComptes] = useState([]);
+  const [responsablesParGem, setResponsablesParGem] = useState({});
   const [regulariteParMembre, setRegulariteParMembre] = useState({});
   const [rappelPointageGlobal, setRappelPointageGlobal] = useState(null);
   const [rechercheGlobale, setRechercheGlobale] = useState("");
@@ -759,6 +760,13 @@ function TableauDeBord({ compte }) {
     if (estPasteur) {
       const { data: tousLesComptes } = await supabase.from("comptes").select("id, nom, role, assistant, date_naissance, quartier");
       setTousLesComptes(tousLesComptes || []);
+      const { data: assignationsGem } = await supabase.from("assignations").select("gem_id, compte_id").eq("role_demande", "gem").eq("statut", "actif");
+      const map = {};
+      (assignationsGem || []).forEach(as => {
+        const c = (tousLesComptes || []).find(cc => cc.id === as.compte_id);
+        if (as.gem_id && c) map[as.gem_id] = c.nom;
+      });
+      setResponsablesParGem(map);
     }
     await calculerRegularite(m || []);
     verifierPointageManquant(m || []).then(setRappelPointageGlobal);
@@ -1084,6 +1092,8 @@ function TableauDeBord({ compte }) {
         ) : parentOuvert ? (
           <DetailParent
             compte={compte}
+            estPasteur={estPasteur}
+            responsablesParGem={responsablesParGem}
             parent={parentOuvert.item}
             type={parentOuvert.type}
             gems={gems}
@@ -1455,19 +1465,45 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
 
 /* ------------------------- Détail Tribu/Département (tous les membres) ------------------------- */
 
-function DetailParent({ compte, parent, type, gems, membres, regulariteParMembre, onBack, onChange, cardStyle }) {
+function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, gems, membres, regulariteParMembre, onBack, onChange, cardStyle }) {
   const [santeParMembre, setSanteParMembre] = useState({});
   const [chargement, setChargement] = useState(true);
   const [recherche, setRecherche] = useState("");
   const [suppressionEnCours, setSuppressionEnCours] = useState(null);
   const [membreAConfirmer, setMembreAConfirmer] = useState(null);
   const [page, setPage] = useState(1);
+  const [gemEnEdition, setGemEnEdition] = useState(null); // id du GEM en cours de renommage
+  const [nomEdite, setNomEdite] = useState("");
+  const [gemAConfirmerSuppression, setGemAConfirmerSuppression] = useState(null);
+  const [suppressionGemEnCours, setSuppressionGemEnCours] = useState(false);
 
   useEffect(() => { setPage(1); }, [recherche]);
 
   const gemsDuParent = gems.filter(g => g.type === type && (type === "tribu" ? g.tribu_id === parent.id : g.departement_id === parent.id));
   const idsGems = gemsDuParent.map(g => g.id);
   const membresDuParent = membres.filter(m => idsGems.includes(m.gem_id));
+
+  async function renommerGem(gemId) {
+    if (!nomEdite.trim()) { toast("Le nom du GEM ne peut pas être vide.", "erreur"); return; }
+    const { error } = await supabase.from("gems").update({ nom: nomEdite.trim() }).eq("id", gemId);
+    if (error) { toast("Erreur : " + error.message, "erreur"); return; }
+    toast("✓ GEM renommé avec succès.", "succes");
+    setGemEnEdition(null);
+    if (onChange) onChange();
+  }
+
+  async function confirmerSuppressionGem() {
+    const gem = gemAConfirmerSuppression;
+    setSuppressionGemEnCours(true);
+    // Nettoie les demandes de rôle liées à ce GEM avant suppression
+    await supabase.from("assignations").delete().eq("gem_id", gem.id);
+    const { error } = await supabase.from("gems").delete().eq("id", gem.id);
+    setSuppressionGemEnCours(false);
+    setGemAConfirmerSuppression(null);
+    if (error) { toast("Suppression impossible : " + error.message, "erreur"); return; }
+    toast(`Le GEM "${gem.nom}" et tous ses membres ont été supprimés.`, "succes");
+    if (onChange) onChange();
+  }
 
   useEffect(() => { chargerSante(); }, [membresDuParent.length]);
 
@@ -1519,6 +1555,71 @@ function DetailParent({ compte, parent, type, gems, membres, regulariteParMembre
       <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{parent.nom}</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>{membresDuParent.length} membre{membresDuParent.length > 1 ? "s" : ""} au total, répartis sur {gemsDuParent.length} GEM</p>
 
+      <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 10 }}>📋 GEM de ce {type === "tribu" ? "tribu" : "département"} ({gemsDuParent.length})</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
+        {gemsDuParent.length === 0 ? (
+          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun GEM créé pour l'instant.</p>
+        ) : (
+          gemsDuParent.map(g => {
+            const nbMembresGem = membres.filter(m => m.gem_id === g.id).length;
+            const nomResponsable = responsablesParGem?.[g.id];
+            const enEdition = gemEnEdition === g.id;
+            return (
+              <div key={g.id} style={cardStyle}>
+                {enEdition ? (
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+                    <input
+                      value={nomEdite}
+                      onChange={e => setNomEdite(e.target.value)}
+                      autoFocus
+                      style={{ flex: 1, minWidth: 140, padding: 8, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}
+                    />
+                    <button className="btn-app" onClick={() => renommerGem(g.id)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 12 }}>Enregistrer</button>
+                    <button className="btn-app" onClick={() => setGemEnEdition(null)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: "transparent", color: "#a9d6cf", border: `1px solid ${TEAL_600}`, cursor: "pointer", fontSize: 12 }}>Annuler</button>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+                    <div>
+                      <p style={{ fontWeight: 700, marginBottom: 2 }}>
+                        {g.nom}
+                        {nomResponsable && (
+                          <span style={{ fontSize: 10, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, borderRadius: 999, padding: "2px 8px", marginLeft: 8 }}>
+                            👤 R
+                          </span>
+                        )}
+                      </p>
+                      <p style={{ fontSize: 12, color: "#a9d6cf" }}>
+                        {nbMembresGem} membre{nbMembresGem > 1 ? "s" : ""}
+                        {nomResponsable ? ` · Responsable : ${nomResponsable}` : " · Aucun responsable désigné"}
+                      </p>
+                    </div>
+                    {estPasteur && (
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <button
+                          className="btn-app"
+                          onClick={() => { setGemEnEdition(g.id); setNomEdite(g.nom); }}
+                          style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, cursor: "pointer", fontSize: 12, fontWeight: 700 }}
+                        >
+                          ✏️ Modifier
+                        </button>
+                        <button
+                          className="btn-app"
+                          onClick={() => setGemAConfirmerSuppression(g)}
+                          style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: RED_LIGHT, color: "#fff", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700 }}
+                        >
+                          🗑️ Supprimer
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 10 }}>👥 Tous les membres</p>
       <input
         value={recherche}
         onChange={e => setRecherche(e.target.value)}
@@ -1612,6 +1713,16 @@ function DetailParent({ compte, parent, type, gems, membres, regulariteParMembre
           nomMembre={membreAConfirmer.nom}
           onEnvoyer={envoyerDemandeSuppression}
           onAnnuler={() => setMembreAConfirmer(null)}
+        />
+      )}
+      {gemAConfirmerSuppression && (
+        <BoiteConfirmation
+          titre="Supprimer ce GEM ?"
+          message={`Es-tu sûr de vouloir supprimer définitivement "${gemAConfirmerSuppression.nom}" ? Cette action est irréversible et supprimera aussi tous ses membres, leur présence, leur santé spirituelle et leurs visites.`}
+          texteConfirmer={suppressionGemEnCours ? "…" : "Supprimer définitivement"}
+          dangereux
+          onConfirmer={confirmerSuppressionGem}
+          onAnnuler={() => setGemAConfirmerSuppression(null)}
         />
       )}
     </div>
