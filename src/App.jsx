@@ -642,13 +642,15 @@ function EcranConnexion() {
             {mode === "inscription" && (
               <input value={nom} onChange={e => setNom(e.target.value)} placeholder="Nom complet" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_850, color: CREAM, border: `1px solid ${TEAL_700}` }} />
             )}
-            <input value={telephone} onChange={e => setTelephone(e.target.value)} placeholder="Téléphone" type="tel" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_850, color: CREAM, border: `1px solid ${TEAL_700}` }} />
+            <input value={telephone} onChange={e => setTelephone(e.target.value)} placeholder="Téléphone" type="tel" autoComplete="tel" name="telephone" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_850, color: CREAM, border: `1px solid ${TEAL_700}` }} />
 
             <input
               value={motDePasse}
               onChange={e => setMotDePasse(e.target.value)}
               placeholder="Mot de passe (8 car. min.)"
               type={motDePasseVisible ? "text" : "password"}
+              autoComplete={mode === "inscription" ? "new-password" : "current-password"}
+              name="mot-de-passe"
               style={inputPasswordStyle}
             />
             <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#cdeae4", cursor: "pointer", marginTop: -4 }}>
