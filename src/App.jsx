@@ -758,7 +758,7 @@ function TableauDeBord({ compte }) {
     ]);
     setTribus(t || []); setDepartements(d || []); setGems(g || []); setMembres(m || []); setMesAssignations(a || []);
     if (estPasteur) {
-      const { data: tousLesComptes } = await supabase.from("comptes").select("id, nom, role, assistant, date_naissance, quartier");
+      const { data: tousLesComptes } = await supabase.from("comptes").select("id, nom, role, assistant, telephone, date_naissance, quartier");
       setTousLesComptes(tousLesComptes || []);
       const { data: assignationsGem } = await supabase.from("assignations").select("gem_id, compte_id").eq("role_demande", "gem").eq("statut", "actif");
       const map = {};
@@ -842,8 +842,32 @@ function TableauDeBord({ compte }) {
     ? membres.filter(m =>
         m.nom.toLowerCase().includes(rechercheGlobale.toLowerCase()) ||
         (m.telephone || "").includes(rechercheGlobale)
-      ).slice(0, 8)
+      ).slice(0, 6).map(m => ({ type: "membre", data: m }))
     : [];
+
+  const resultatsResponsables = (estPasteur && rechercheGlobale.trim().length >= 2)
+    ? tousLesComptes.filter(c =>
+        c.nom.toLowerCase().includes(rechercheGlobale.toLowerCase()) ||
+        (c.telephone || "").includes(rechercheGlobale)
+      ).slice(0, 4).map(c => ({ type: "responsable", data: c }))
+    : [];
+
+  const tousLesResultats = [...resultatsRecherche, ...resultatsResponsables];
+
+  function libelleRoleCompte(c) {
+    if (c.role === "pasteur") return "Pasteur";
+    if (c.assistant) return "Assistant désigné";
+    return "Responsable";
+  }
+
+  function surClicResultat(resultat) {
+    if (resultat.type === "membre") {
+      allerAuMembre(resultat.data);
+    } else {
+      toast(`👤 ${resultat.data.nom} — ${resultat.data.telephone || "téléphone non renseigné"} — ${libelleRoleCompte(resultat.data)}`, "info");
+      setRechercheGlobale("");
+    }
+  }
 
   function nomGemMembre(membre) {
     return gems.find(g => g.id === membre.gem_id)?.nom || "GEM inconnu";
@@ -869,16 +893,25 @@ function TableauDeBord({ compte }) {
             placeholder="🔍 Rechercher un membre (nom, téléphone)..."
             style={{ width: "100%", padding: "10px 12px", borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 13 }}
           />
-          {resultatsRecherche.length > 0 && (
+          {tousLesResultats.length > 0 && (
             <div style={{ position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0, backgroundColor: TEAL_850, border: `1px solid ${TEAL_600}`, borderRadius: 8, zIndex: 20, overflow: "hidden", boxShadow: "0 8px 24px rgba(0,0,0,0.35)" }}>
-              {resultatsRecherche.map(m => (
+              {tousLesResultats.map((r, i) => (
                 <button
-                  key={m.id}
-                  onClick={() => allerAuMembre(m)}
+                  key={r.type + r.data.id + i}
+                  onClick={() => surClicResultat(r)}
                   style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 12px", background: "none", border: "none", borderBottom: `1px solid ${TEAL_700}`, cursor: "pointer", color: CREAM }}
                 >
-                  <p style={{ fontWeight: 700, fontSize: 13, margin: 0 }}>{m.nom}</p>
-                  <p style={{ fontSize: 11, color: "#a9d6cf", margin: 0 }}>{nomGemMembre(m)} · {m.telephone}</p>
+                  <p style={{ fontWeight: 700, fontSize: 13, margin: 0 }}>
+                    {r.data.nom}
+                    {r.type === "responsable" && (
+                      <span style={{ fontSize: 9, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, borderRadius: 999, padding: "2px 7px", marginLeft: 6 }}>
+                        👤 {libelleRoleCompte(r.data)}
+                      </span>
+                    )}
+                  </p>
+                  <p style={{ fontSize: 11, color: "#a9d6cf", margin: 0 }}>
+                    {r.type === "membre" ? `${nomGemMembre(r.data)} · ${r.data.telephone}` : (r.data.telephone || "Téléphone non renseigné")}
+                  </p>
                 </button>
               ))}
             </div>
