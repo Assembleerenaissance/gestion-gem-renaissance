@@ -1053,7 +1053,10 @@ function TableauDeBord({ compte }) {
             <>
               <button
  className="btn-app"
- onClick={() => setPage("dashboard")} style={{ ...btnStyle, backgroundColor: (page !== "messagerie" && page !== "calendrier") ? TEAL_700 : "transparent", color: (page !== "messagerie" && page !== "calendrier") ? GOLD_LIGHT : "#cdeae4" }}>Mon espace</button>
+ onClick={() => setPage("dashboard")} style={{ ...btnStyle, backgroundColor: (page !== "messagerie" && page !== "calendrier" && page !== "demande_role_supp") ? TEAL_700 : "transparent", color: (page !== "messagerie" && page !== "calendrier" && page !== "demande_role_supp") ? GOLD_LIGHT : "#cdeae4" }}>Mon espace</button>
+              <button
+ className="btn-app"
+ onClick={() => setPage("demande_role_supp")} style={{ ...btnStyle, backgroundColor: page === "demande_role_supp" ? TEAL_700 : "transparent", color: page === "demande_role_supp" ? GOLD_LIGHT : "#cdeae4" }}>➕ Rôle supplémentaire</button>
               <button
  className="btn-app"
  onClick={() => setPage("calendrier")} style={{ ...btnStyle, backgroundColor: page === "calendrier" ? TEAL_700 : "transparent", color: page === "calendrier" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
@@ -1095,6 +1098,15 @@ function TableauDeBord({ compte }) {
           <PageAide estPasteur={estPasteur} cardStyle={cardStyle} />
         ) : page === "mon_compte" ? (
           <PageMonCompte compte={compte} cardStyle={cardStyle} onMisAJour={chargerDonnees} />
+        ) : page === "demande_role_supp" ? (
+          <DemanderResponsabilite
+            compte={compte}
+            tribus={tribus}
+            departements={departements}
+            mesAssignations={mesAssignations}
+            onDemandeEnvoyee={chargerDonnees}
+            cardStyle={cardStyle}
+          />
         ) : !estPasteur && !aResponsabilitePersonnelle ? (
           <DemanderResponsabilite
             compte={compte}
@@ -2898,6 +2910,7 @@ function DemanderResponsabilite({ compte, tribus, departements, mesAssignations,
   const [erreur, setErreur] = useState("");
   const [envoye, setEnvoye] = useState(false);
 
+  const aDejaUneResponsabilite = mesAssignations.some(a => a.statut === "actif");
   const demandeEnAttente = mesAssignations.find(a => a.statut === "attente");
   const demandeRefusee = mesAssignations.find(a => a.statut === "refusee" && !mesAssignations.some(x => x.statut !== "refusee"));
 
@@ -2915,15 +2928,16 @@ function DemanderResponsabilite({ compte, tribus, departements, mesAssignations,
     const { error } = await supabase.from("assignations").insert(payload);
     if (error) { setErreur(error.message); return; }
     setEnvoye(true);
+    toast("✓ Ta demande a bien été envoyée — elle est en attente de validation par le pasteur ou un assistant.", "succes");
     onDemandeEnvoyee();
   }
 
   if (demandeEnAttente || envoye) {
     return (
       <div style={{ ...cardStyle, maxWidth: 480 }}>
-        <p style={{ fontWeight: 700, marginBottom: 8 }}>Inscription envoyée ✅</p>
+        <p style={{ fontWeight: 700, marginBottom: 8 }}>Demande envoyée ✅</p>
         <p style={{ fontSize: 13, color: "#a9d6cf" }}>
-          Ta demande de responsabilité a bien été enregistrée. Le Pasteur Dimitri Koffi, ou un assistant désigné, doit encore la valider avant que tu puisses accéder à ton espace. Reviens un peu plus tard — cet écran se mettra à jour automatiquement une fois validée.
+          Ta demande de responsabilité a bien été enregistrée. Le Pasteur Dimitri Koffi, ou un assistant désigné, doit encore la valider{aDejaUneResponsabilite ? " avant qu'elle apparaisse dans ton espace" : " avant que tu puisses accéder à ton espace"}. Reviens un peu plus tard — cet écran se mettra à jour automatiquement une fois validée.
         </p>
       </div>
     );
@@ -2931,9 +2945,11 @@ function DemanderResponsabilite({ compte, tribus, departements, mesAssignations,
 
   return (
     <div style={{ maxWidth: 480 }}>
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Demander une responsabilité</h2>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>{aDejaUneResponsabilite ? "Demander un rôle supplémentaire" : "Demander une responsabilité"}</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>
-        Ton compte n'a pas encore de responsabilité active. Choisis ce que tu souhaites gérer — le pasteur validera ta demande.
+        {aDejaUneResponsabilite
+          ? "Tu peux demander une responsabilité supplémentaire sur ton compte existant — pas besoin de créer un nouveau compte. Une fois validée, tu la retrouveras via le sélecteur dans \"Mon espace\"."
+          : "Ton compte n'a pas encore de responsabilité active. Choisis ce que tu souhaites gérer — le pasteur validera ta demande."}
       </p>
       {demandeRefusee && (
         <p style={{ fontSize: 12, color: RED_LIGHT, marginBottom: 12 }}>Ta précédente demande a été refusée. Tu peux en soumettre une nouvelle.</p>
