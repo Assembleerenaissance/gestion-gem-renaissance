@@ -2093,7 +2093,12 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
     const nouvelEtat = !etatActuel?.present;
     const motifConserve = nouvelEtat ? "" : (etatActuel?.motif || "");
     setPresences(prev => ({ ...prev, [membreId]: { present: nouvelEtat, motif: motifConserve } }));
-    await supabase.from("presences").upsert({ membre_id: membreId, dimanche_id: dimancheId, present: nouvelEtat, motif: motifConserve || null }, { onConflict: "membre_id,dimanche_id" });
+    const { error } = await supabase.from("presences").upsert({ membre_id: membreId, dimanche_id: dimancheId, present: nouvelEtat, motif: motifConserve || null }, { onConflict: "membre_id,dimanche_id" });
+    if (error) {
+      toast("⚠️ La présence n'a pas pu être enregistrée : " + error.message, "erreur");
+      setPresences(prev => ({ ...prev, [membreId]: etatActuel || { present: false, motif: "" } }));
+      return;
+    }
     if (rapportPresenceValide) setRapportPresenceValide(false);
   }
 
@@ -5773,6 +5778,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, cardStyle }
                     const membresGem = membres.filter(m => m.gem_id === g.id);
                     const presentsGem = membresGem.filter(m => presences[m.id]).length;
                     const tauxGem = membresGem.length > 0 ? Math.round((presentsGem / membresGem.length) * 100) : 0;
+                    const aUneDonneeDePresence = membresGem.some(m => presences[m.id] !== undefined);
                     return (
                       <div key={g.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
                         <div>
@@ -5782,7 +5788,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, cardStyle }
                         <div style={{ textAlign: "right" }}>
                           <p style={{ fontSize: 13, fontWeight: 700, color: GOLD_LIGHT }}>{presentsGem} / {membresGem.length} présents</p>
                           <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 6 }}>{tauxGem}% de présence</p>
-                          {membresGem.length > 0 && (
+                          {aUneDonneeDePresence ? (
                             <button
                               className="btn-app"
                               onClick={() => setGemRapportASupprimer(g)}
@@ -5790,6 +5796,8 @@ function PageRapports({ compte, gems, membres, tribus, departements, cardStyle }
                             >
                               🗑️ Supprimer ce rapport
                             </button>
+                          ) : (
+                            <span style={{ fontSize: 11, color: "#a9d6cf", fontStyle: "italic" }}>Aucun pointage pour cette semaine</span>
                           )}
                         </div>
                       </div>
