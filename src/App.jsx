@@ -3749,6 +3749,20 @@ function PageSanteResponsables({ tousLesComptes, gems, tribus, departements, res
                 </div>
               </div>
             </div>
+            {historiqueDetail.length > 1 && (
+              <div style={{ ...cardStyle, marginBottom: 20 }}>
+                <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>📈 Courbe d'évolution — {compteDetail.nom}</p>
+                <GraphiqueBarres
+                  donnees={[...historiqueDetail].reverse().map(h => ({
+                    libelle: new Date(h.date_maj).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }),
+                    valeur: moyenneSante(h),
+                    texteAffiche: moyenneSante(h),
+                    couleur: couleurScore(moyenneSante(h)),
+                    infoBulle: `${new Date(h.date_maj).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })} : ${moyenneSante(h)}/10`,
+                  }))}
+                />
+              </div>
+            )}
             <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 12 }}>Historique ({historiqueDetail.length} évaluation{historiqueDetail.length > 1 ? "s" : ""})</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {historiqueDetail.map(h => (
