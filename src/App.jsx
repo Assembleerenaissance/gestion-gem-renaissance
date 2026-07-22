@@ -4440,6 +4440,24 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
                 <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Santé moy.</p><p style={{ fontSize: 24, fontWeight: 700, color: couleurScore(scoreMoyenGlobal) }}>{scoreMoyenGlobal !== null ? `${scoreMoyenGlobal}/10` : "—"}</p></div>
               </div>
 
+              <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>Détail par GEM</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 28 }}>
+                {gems.map(g => {
+                  const membresGem = membres.filter(m => m.gem_id === g.id);
+                  const presentsGem = membresGem.filter(m => presences[m.id]).length;
+                  const tauxGem = membresGem.length > 0 ? Math.round((presentsGem / membresGem.length) * 100) : 0;
+                  return (
+                    <div key={g.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                      <p style={{ fontWeight: 700 }}>{g.nom}</p>
+                      <div style={{ textAlign: "right" }}>
+                        <p style={{ fontSize: 13, fontWeight: 700, color: GOLD_LIGHT }}>{presentsGem} / {membresGem.length} présents</p>
+                        <p style={{ fontSize: 12, color: "#a9d6cf" }}>{tauxGem}% de présence</p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
               <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>📵 Absents ({membres.filter(m => presences[m.id] === false).length})</p>
               {membres.filter(m => presences[m.id] === false).length === 0 ? (
                 <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun absent pointé pour ce dimanche.</p>
