@@ -5184,6 +5184,26 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
   const gemsDuPerimetre = gems.filter(g => estDept ? g.departement_id === assignation.departement_id : g.tribu_id === assignation.tribu_id);
   const membresDuPerimetre = membres.filter(m => gemsDuPerimetre.some(g => g.id === m.gem_id));
 
+  const [responsablesGemPerimetre, setResponsablesGemPerimetre] = useState({}); // { gemId: nom }
+
+  useEffect(() => {
+    async function chargerResponsablesGem() {
+      const idsGems = gemsDuPerimetre.map(g => g.id);
+      if (idsGems.length === 0) { setResponsablesGemPerimetre({}); return; }
+      const { data: assignationsGem } = await supabase.from("assignations").select("gem_id, compte_id").eq("role_demande", "gem").eq("statut", "actif").in("gem_id", idsGems);
+      const idsComptes = [...new Set((assignationsGem || []).map(a => a.compte_id))];
+      if (idsComptes.length === 0) { setResponsablesGemPerimetre({}); return; }
+      const { data: comptesResp } = await supabase.from("comptes").select("id, nom").in("id", idsComptes);
+      const map = {};
+      (assignationsGem || []).forEach(a => {
+        const c = (comptesResp || []).find(cc => cc.id === a.compte_id);
+        if (c) map[a.gem_id] = c.nom;
+      });
+      setResponsablesGemPerimetre(map);
+    }
+    chargerResponsablesGem();
+  }, [gemsDuPerimetre.length]);
+
   async function creerGem() {
     if (!nomNouveauGem.trim()) return;
     const payload = {
@@ -5250,8 +5270,13 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {gemsDuPerimetre.map(g => (
-                <button key={g.id} onClick={() => setGemOuvert(g)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontWeight: 700 }}>{g.nom}</span>
+                <button key={g.id} onClick={() => setGemOuvert(g)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                  <div>
+                    <p style={{ fontWeight: 700, margin: 0 }}>{g.nom}</p>
+                    <p style={{ fontSize: 12, color: "#a9d6cf", margin: 0 }}>
+                      {responsablesGemPerimetre[g.id] ? `👤 ${responsablesGemPerimetre[g.id]}` : "Aucun responsable désigné"}
+                    </p>
+                  </div>
                   <span style={{ fontSize: 12, color: "#a9d6cf" }}>{membres.filter(m => m.gem_id === g.id).length} membre(s)</span>
                 </button>
               ))}
