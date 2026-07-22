@@ -1112,7 +1112,7 @@ function TableauDeBord({ compte }) {
       </div>
 
       {menuMobileOuvert && (
-        <div className="fade-in" style={{ position: "fixed", inset: 0, backgroundColor: "rgba(5,20,18,0.85)", zIndex: 500, overflowY: "auto" }}>
+        <div className="fade-in" style={{ position: "fixed", inset: 0, backgroundColor: TEAL_950, zIndex: 500, overflowY: "auto" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 20, borderBottom: `1px solid ${TEAL_800}` }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <img src={LOGO_VH} alt="Vases d'Honneur" style={{ height: 30, width: "auto" }} />
@@ -1369,7 +1369,7 @@ function TableauDeBord({ compte }) {
         ) : page === "demandes" ? (
           <PageDemandes tribus={tribus} departements={departements} compte={compte} onTraite={chargerDonnees} cardStyle={cardStyle} />
         ) : page === "rapports" ? (
-          <PageRapports gems={gems} membres={membres} tribus={tribus} departements={departements} cardStyle={cardStyle} />
+          <PageRapports compte={compte} gems={gems} membres={membres} tribus={tribus} departements={departements} cardStyle={cardStyle} />
         ) : page === "historique" ? (
           <PageHistorique cardStyle={cardStyle} />
         ) : page === "analyse" ? (
@@ -5154,7 +5154,7 @@ function SousPageCreerCompte({ compte, tribus, departements, onChange, cardStyle
 
 /* ------------------------------- Rapports ------------------------------- */
 
-function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
+function PageRapports({ compte, gems, membres, tribus, departements, cardStyle }) {
   const [vue, setVue] = useState("hebdomadaire"); // hebdomadaire | mensuelle | annuelle
 
   const [dimanches, setDimanches] = useState([]);
@@ -5180,6 +5180,22 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
   const [tauxPrecedentAnnee, setTauxPrecedentAnnee] = useState(null);
 
   const [chargement, setChargement] = useState(true);
+  const [gemRapportASupprimer, setGemRapportASupprimer] = useState(null);
+  const [suppressionRapportEnCours, setSuppressionRapportEnCours] = useState(false);
+
+  async function supprimerRapportPresence() {
+    const gem = gemRapportASupprimer;
+    setSuppressionRapportEnCours(true);
+    const idsMembresGem = membres.filter(m => m.gem_id === gem.id).map(m => m.id);
+    if (idsMembresGem.length > 0) {
+      await supabase.from("presences").delete().eq("dimanche_id", dimancheChoisi).in("membre_id", idsMembresGem);
+    }
+    await supabase.from("validations_presence").delete().eq("dimanche_id", dimancheChoisi).eq("gem_id", gem.id);
+    setSuppressionRapportEnCours(false);
+    setGemRapportASupprimer(null);
+    toast(`Le rapport de présence de "${gem.nom}" pour cette semaine a été supprimé.`, "succes");
+    chargerDonneesRapport();
+  }
 
   useEffect(() => { chargerDimanches(); }, []);
   useEffect(() => { if (dimancheChoisi && vue === "hebdomadaire") chargerDonneesRapport(); }, [dimancheChoisi, vue]);
@@ -5747,12 +5763,32 @@ function PageRapports({ gems, membres, tribus, departements, cardStyle }) {
                         </div>
                         <div style={{ textAlign: "right" }}>
                           <p style={{ fontSize: 13, fontWeight: 700, color: GOLD_LIGHT }}>{presentsGem} / {membresGem.length} présents</p>
-                          <p style={{ fontSize: 12, color: "#a9d6cf" }}>{tauxGem}% de présence</p>
+                          <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 6 }}>{tauxGem}% de présence</p>
+                          {membresGem.length > 0 && (
+                            <button
+                              className="btn-app"
+                              onClick={() => setGemRapportASupprimer(g)}
+                              style={{ fontSize: 11, fontWeight: 700, color: RED_LIGHT, background: "none", border: `1px solid ${RED_LIGHT}`, borderRadius: 6, padding: "5px 10px", cursor: "pointer" }}
+                            >
+                              🗑️ Supprimer ce rapport
+                            </button>
+                          )}
                         </div>
                       </div>
                     );
                   })}
                 </div>
+              )}
+
+              {gemRapportASupprimer && (
+                <BoiteConfirmation
+                  titre="Supprimer ce rapport de présence ?"
+                  message={`Es-tu sûr de vouloir supprimer le rapport de présence de "${gemRapportASupprimer.nom}" pour ce dimanche ? Cette action est irréversible — le responsable devra repointer la présence.`}
+                  texteConfirmer={suppressionRapportEnCours ? "…" : "Supprimer définitivement"}
+                  dangereux
+                  onConfirmer={supprimerRapportPresence}
+                  onAnnuler={() => setGemRapportASupprimer(null)}
+                />
               )}
 
               <p style={{ fontWeight: 600, fontSize: 14, marginTop: 28, marginBottom: 10 }}>📵 Absents ce dimanche ({membres.filter(m => presences[m.id] === false).length})</p>
