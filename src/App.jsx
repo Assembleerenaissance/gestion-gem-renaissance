@@ -77,13 +77,27 @@ const ANNEE_FICTIVE_ANNIVERSAIRE = 2000; // année bissextile neutre, jamais aff
 // communiquer leur année de naissance. On stocke quand même une date complète en base
 // (avec une année fictive fixe), mais seuls le jour et le mois sont demandés et affichés.
 function SelecteurJourMois({ value, onChange, style }) {
-  let jour = "", mois = "";
-  if (value) {
-    const parties = value.split("-");
-    if (parties.length === 3) { mois = String(Number(parties[1])); jour = String(Number(parties[2])); }
+  function extraireJourMois(v) {
+    if (!v) return { jour: "", mois: "" };
+    const parties = v.split("-");
+    if (parties.length === 3) return { mois: String(Number(parties[1])), jour: String(Number(parties[2])) };
+    return { jour: "", mois: "" };
   }
 
+  const [jour, setJour] = useState(() => extraireJourMois(value).jour);
+  const [mois, setMois] = useState(() => extraireJourMois(value).mois);
+
+  // Si la valeur externe change (ex : chargement d'une fiche différente), on resynchronise.
+  useEffect(() => {
+    const extrait = extraireJourMois(value);
+    setJour(extrait.jour);
+    setMois(extrait.mois);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
   function emettreChangement(nouveauJour, nouveauMois) {
+    setJour(nouveauJour);
+    setMois(nouveauMois);
     if (!nouveauJour || !nouveauMois) { onChange(""); return; }
     const jj = String(nouveauJour).padStart(2, "0");
     const mm = String(nouveauMois).padStart(2, "0");
