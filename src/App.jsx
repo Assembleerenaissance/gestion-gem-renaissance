@@ -1079,6 +1079,11 @@ function TableauDeBord({ compte }) {
  onClick={() => { setPage("corbeille"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "corbeille" ? TEAL_700 : "transparent", color: page === "corbeille" ? GOLD_LIGHT : "#cdeae4" }}>
                 🗑️ Corbeille
               </button>
+              <button
+ className="btn-app"
+ onClick={() => { setPage("sante_responsables"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "sante_responsables" ? TEAL_700 : "transparent", color: page === "sante_responsables" ? GOLD_LIGHT : "#cdeae4" }}>
+                🌡️ Santé responsables
+              </button>
               {compte.role === "pasteur" && (
                 <button
  className="btn-app"
@@ -1173,6 +1178,7 @@ function TableauDeBord({ compte }) {
                   { label: "Demandes", cible: "demandes", badge: nbDemandesAttente },
                   { label: "Suppressions", cible: "suppressions", badge: nbDemandesSuppression },
                   { label: "🗑️ Corbeille", cible: "corbeille" },
+                  { label: "🌡️ Santé responsables", cible: "sante_responsables" },
                 ];
                 if (compte.role === "pasteur") groupeGestion.push({ label: "Rôles & Accès", cible: "assistants" });
                 if (compte.role !== "pasteur") groupeGestion.push({ label: "➕ Rôle supplémentaire", cible: "demande_role_supp" });
@@ -1414,6 +1420,8 @@ function TableauDeBord({ compte }) {
           <PageSuppressions compte={compte} cardStyle={cardStyle} onTraite={rafraichirCompteurs} />
         ) : page === "corbeille" ? (
           <PageCorbeille compte={compte} gems={gems} cardStyle={cardStyle} onTraite={chargerDonnees} />
+        ) : page === "sante_responsables" ? (
+          <PageSanteResponsables tousLesComptes={tousLesComptes} gems={gems} tribus={tribus} departements={departements} responsablesParGem={responsablesParGem} cardStyle={cardStyle} />
         ) : (
           <PageAssistants compte={compte} tribus={tribus} departements={departements} gems={gems} onChange={chargerDonnees} cardStyle={cardStyle} />
         )}
@@ -3641,6 +3649,189 @@ function PageAide({ estPasteur, cardStyle }) {
 
 /* --------------------------- Page Analyse intelligente --------------------------- */
 
+/* --------------------------- Santé spirituelle des responsables (pasteur) --------------------------- */
+
+function PageSanteResponsables({ tousLesComptes, gems, tribus, departements, responsablesParGem, cardStyle }) {
+  const [chargement, setChargement] = useState(true);
+  const [santeParCompte, setSanteParCompte] = useState({}); // { compte_id: derniereFiche }
+  const [historiqueParCompte, setHistoriqueParCompte] = useState({}); // { compte_id: [fiches] }
+  const [evolutionMoyenne, setEvolutionMoyenne] = useState([]);
+  const [recherche, setRecherche] = useState("");
+  const [responsableSelectionne, setResponsableSelectionne] = useState(null);
+
+  useEffect(() => { chargerToutesLesFiches(); }, []);
+
+  async function chargerToutesLesFiches() {
+    setChargement(true);
+    const { data } = await supabase.from("sante_spirituelle_responsables").select("*").order("date_maj", { ascending: false });
+
+    const derniere = {};
+    const historique = {};
+    (data || []).forEach(s => {
+      if (!derniere[s.compte_id]) derniere[s.compte_id] = s;
+      if (!historique[s.compte_id]) historique[s.compte_id] = [];
+      historique[s.compte_id].push(s);
+    });
+    setSanteParCompte(derniere);
+    setHistoriqueParCompte(historique);
+
+    // Courbe : moyenne mensuelle sur les 6 derniers mois
+    const parMois = {};
+    (data || []).forEach(s => {
+      const cle = s.date_maj.slice(0, 7);
+      const moy = moyenneSante(s);
+      if (moy === null) return;
+      if (!parMois[cle]) parMois[cle] = [];
+      parMois[cle].push(moy);
+    });
+    const moisTries = Object.keys(parMois).sort().slice(-6);
+    setEvolutionMoyenne(moisTries.map(mois => ({
+      mois, moyenne: Math.round((parMois[mois].reduce((a, b) => a + b, 0) / parMois[mois].length) * 10) / 10,
+    })));
+
+    setChargement(false);
+  }
+
+  function libelleMois(cle) {
+    const [annee, mois] = cle.split("-");
+    return new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  }
+
+  function infosResponsable(compte) {
+    const gemId = Object.keys(responsablesParGem || {}).find(id => responsablesParGem[id] === compte.nom);
+    const gem = gemId ? gems.find(g => g.id === gemId) : null;
+    let rattachement = "Aucune responsabilité GEM active";
+    if (gem) {
+      if (gem.tribu_id) rattachement = `GEM "${gem.nom}" — Tribu de ${tribus.find(t => t.id === gem.tribu_id)?.nom || "?"}`;
+      else if (gem.departement_id) rattachement = `GEM "${gem.nom}" — Département ${departements.find(d => d.id === gem.departement_id)?.nom || "?"}`;
+    }
+    return rattachement;
+  }
+
+  const responsablesAvecFiche = (tousLesComptes || []).filter(c => santeParCompte[c.id]);
+  const scoresValides = responsablesAvecFiche.map(c => moyenneSante(santeParCompte[c.id])).filter(s => s !== null);
+  const moyenneGlobale = scoresValides.length > 0 ? Math.round((scoresValides.reduce((a, b) => a + b, 0) / scoresValides.length) * 10) / 10 : null;
+
+  const resultatsRecherche = recherche.trim().length >= 1
+    ? (tousLesComptes || []).filter(c => c.nom.toLowerCase().includes(recherche.toLowerCase()))
+    : (tousLesComptes || []);
+
+  const compteDetail = responsableSelectionne ? (tousLesComptes || []).find(c => c.id === responsableSelectionne) : null;
+  const ficheDetail = compteDetail ? santeParCompte[compteDetail.id] : null;
+  const historiqueDetail = compteDetail ? (historiqueParCompte[compteDetail.id] || []) : [];
+
+  if (chargement) return <Chargement />;
+
+  if (compteDetail) {
+    return (
+      <div>
+        <button className="btn-app" onClick={() => setResponsableSelectionne(null)} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 16, fontSize: 13 }}>← Retour à la liste</button>
+        <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{compteDetail.nom}</h2>
+        <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 4 }}>{compteDetail.role === "pasteur" ? "Pasteur" : compteDetail.assistant ? "Assistant désigné" : "Responsable"}</p>
+        <p style={{ fontSize: 13, color: GOLD_LIGHT, marginBottom: 20 }}>{infosResponsable(compteDetail)}</p>
+
+        {!ficheDetail ? (
+          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucune fiche de santé spirituelle remplie pour l'instant.</p>
+        ) : (
+          <>
+            <div style={{ ...cardStyle, marginBottom: 20 }}>
+              <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 12 }}>Dernière évaluation — {new Date(ficheDetail.date_maj).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {DIMENSIONS_SANTE.map(([cle, label]) => (
+                  <div key={cle} style={{ display: "flex", justifyContent: "space-between" }}>
+                    <span style={{ fontSize: 13, color: "#cdeae4" }}>{label}</span>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: couleurScore(ficheDetail[cle]) }}>{ficheDetail[cle]}/10</span>
+                  </div>
+                ))}
+                <div style={{ borderTop: `1px solid ${TEAL_700}`, marginTop: 8, paddingTop: 8, display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 14, fontWeight: 700 }}>Moyenne</span>
+                  <span style={{ fontSize: 16, fontWeight: 700, color: couleurScore(moyenneSante(ficheDetail)) }}>{moyenneSante(ficheDetail)}/10</span>
+                </div>
+              </div>
+            </div>
+            <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 12 }}>Historique ({historiqueDetail.length} évaluation{historiqueDetail.length > 1 ? "s" : ""})</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {historiqueDetail.map(h => (
+                <div key={h.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 13, color: "#a9d6cf" }}>{new Date(h.date_maj).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: couleurScore(moyenneSante(h)) }}>{moyenneSante(h)}/10</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>🌡️ Santé spirituelle des responsables</h2>
+      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>Suivi des fiches remplies chaque semaine par les responsables GEM, département et tribu.</p>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
+        <div className="card-app" style={cardStyle}>
+          <p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Fiches remplies</p>
+          <p style={{ fontSize: 24, fontWeight: 700 }}><NombreAnime valeur={responsablesAvecFiche.length} /> / {(tousLesComptes || []).length}</p>
+        </div>
+        <div className="card-app" style={cardStyle}>
+          <p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Moyenne générale</p>
+          <p style={{ fontSize: 24, fontWeight: 700, color: couleurScore(moyenneGlobale) }}>{moyenneGlobale !== null ? `${moyenneGlobale}/10` : "—"}</p>
+        </div>
+      </div>
+
+      {evolutionMoyenne.length > 0 && (
+        <div style={{ ...cardStyle, marginBottom: 24 }}>
+          <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>Évolution de la moyenne (6 derniers mois)</p>
+          <GraphiqueBarres
+            donnees={evolutionMoyenne.map(e => ({
+              libelle: libelleMois(e.mois),
+              valeur: e.moyenne,
+              texteAffiche: e.moyenne,
+              couleur: couleurScore(e.moyenne),
+              infoBulle: `${libelleMois(e.mois)} : moyenne ${e.moyenne}/10`,
+            }))}
+          />
+        </div>
+      )}
+
+      <input
+        value={recherche}
+        onChange={e => setRecherche(e.target.value)}
+        placeholder="🔍 Rechercher un responsable par nom..."
+        style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_850, color: CREAM, border: `1px solid ${TEAL_700}`, marginBottom: 16, width: "100%", maxWidth: 320 }}
+      />
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {resultatsRecherche.length === 0 ? (
+          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun responsable trouvé.</p>
+        ) : (
+          resultatsRecherche.map(c => {
+            const fiche = santeParCompte[c.id];
+            const moyenne = fiche ? moyenneSante(fiche) : null;
+            return (
+              <button
+                key={c.id}
+                className="btn-app card-app"
+                onClick={() => setResponsableSelectionne(c.id)}
+                style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, cursor: "pointer", textAlign: "left", width: "100%" }}
+              >
+                <div>
+                  <p style={{ fontWeight: 700, marginBottom: 2 }}>{c.nom}</p>
+                  <p style={{ fontSize: 12, color: "#a9d6cf" }}>{c.role === "pasteur" ? "Pasteur" : c.assistant ? "Assistant désigné" : "Responsable"}</p>
+                </div>
+                <span style={{ fontSize: 13, fontWeight: 700, color: moyenne !== null ? couleurScore(moyenne) : "#a9d6cf", backgroundColor: TEAL_900, borderRadius: 999, padding: "6px 12px" }}>
+                  {moyenne !== null ? `${moyenne}/10` : "Aucune fiche"}
+                </span>
+              </button>
+            );
+          })
+        )}
+      </div>
+    </div>
+  );
+}
+
 function PageAnalyse({ gems, membres, cardStyle }) {
   const [chargement, setChargement] = useState(true);
   const [tauxParMois, setTauxParMois] = useState([]);
@@ -3943,6 +4134,32 @@ function PageMonCompte({ compte, cardStyle, onMisAJour }) {
   const [quartier, setQuartier] = useState(compte.quartier || "");
   const [enregistrementProfil, setEnregistrementProfil] = useState(false);
 
+  const [derniereSante, setDerniereSante] = useState(null);
+  const [valeursSante, setValeursSante] = useState(null);
+  const [enregistrementSante, setEnregistrementSante] = useState(false);
+  const [chargementSante, setChargementSante] = useState(true);
+
+  useEffect(() => { chargerMaSante(); }, []);
+
+  async function chargerMaSante() {
+    setChargementSante(true);
+    const { data } = await supabase.from("sante_spirituelle_responsables").select("*").eq("compte_id", compte.id).order("date_maj", { ascending: false }).limit(1).maybeSingle();
+    setDerniereSante(data || null);
+    const init = {};
+    DIMENSIONS_SANTE.forEach(([cle]) => { init[cle] = data?.[cle] ?? 5; });
+    setValeursSante(init);
+    setChargementSante(false);
+  }
+
+  async function enregistrerMaSante() {
+    setEnregistrementSante(true);
+    const { error } = await supabase.from("sante_spirituelle_responsables").insert({ compte_id: compte.id, ...valeursSante });
+    setEnregistrementSante(false);
+    if (error) { toast("Impossible d'enregistrer : " + error.message, "erreur"); return; }
+    toast("✓ Ta fiche de santé spirituelle a été enregistrée. Sois béni ! 🙏", "succes");
+    chargerMaSante();
+  }
+
   function emailTechnique(tel) {
     return `${(tel || "").replace(/[^\d]/g, "")}@gestiongem.com`;
   }
@@ -3984,6 +4201,45 @@ function PageMonCompte({ compte, cardStyle, onMisAJour }) {
     <div style={{ maxWidth: 480 }}>
       <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>👤 Mon compte</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>Tes informations et la gestion de ton mot de passe.</p>
+
+      <div style={{ ...cardStyle, marginBottom: 20, border: `2px solid ${GOLD}`, background: "linear-gradient(135deg, rgba(208,175,28,0.12), rgba(232,202,74,0.04))" }}>
+        <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>🌡️ Ma fiche de santé spirituelle</p>
+        <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 14 }}>À remplir chaque semaine — évalue chaque dimension de 0 (faible) à 10 (excellent).</p>
+        {chargementSante ? (
+          <Chargement />
+        ) : (
+          <>
+            {derniereSante && (
+              <p style={{ fontSize: 12, color: GOLD_LIGHT, marginBottom: 12 }}>
+                Dernière évaluation : {new Date(derniereSante.date_maj).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })} — score moyen : {moyenneSante(derniereSante)}/10
+              </p>
+            )}
+            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              {DIMENSIONS_SANTE.map(([cle, label]) => (
+                <div key={cle}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                    <label style={{ fontSize: 13 }}>{label}</label>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: couleurScore(valeursSante[cle]) }}>{valeursSante[cle]}/10</span>
+                  </div>
+                  <input
+                    type="range" min="0" max="10" value={valeursSante[cle]}
+                    onChange={e => setValeursSante(v => ({ ...v, [cle]: Number(e.target.value) }))}
+                    style={{ width: "100%", accentColor: GOLD }}
+                  />
+                </div>
+              ))}
+            </div>
+            <button
+              className="btn-app"
+              disabled={enregistrementSante}
+              onClick={enregistrerMaSante}
+              style={{ marginTop: 16, padding: "12px 20px", borderRadius: 10, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+            >
+              {enregistrementSante ? "…" : "💾 Enregistrer ma fiche"}
+            </button>
+          </>
+        )}
+      </div>
 
       <div style={{ ...cardStyle, marginBottom: 20 }}>
         <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>Informations</p>
