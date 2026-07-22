@@ -1426,6 +1426,86 @@ function TableauDeBord({ compte }) {
 
 /* ------------------------- Anniversaires à venir ------------------------- */
 
+// Résumé pour les responsables de département/tribu : GEM, rapports de la semaine,
+// GEM en retard (après lundi), membres, taux de présence/absence.
+function ResumePerimetre({ gems, membres, cardStyle }) {
+  const [chargement, setChargement] = useState(true);
+  const [rapportsValides, setRapportsValides] = useState(0);
+  const [gemsEnRetard, setGemsEnRetard] = useState([]);
+  const [tauxPresence, setTauxPresence] = useState(null);
+  const [afficherRetard, setAfficherRetard] = useState(false);
+
+  useEffect(() => { chargerResume(); }, [gems.length, membres.length]);
+
+  async function chargerResume() {
+    setChargement(true);
+    const { data: dernierDimanche } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(1).maybeSingle();
+    if (!dernierDimanche || gems.length === 0) { setChargement(false); return; }
+
+    const idsGems = gems.map(g => g.id);
+    const [{ data: validations }, { data: presencesSemaine }] = await Promise.all([
+      supabase.from("validations_presence").select("gem_id").eq("dimanche_id", dernierDimanche.id).eq("valide", true).in("gem_id", idsGems),
+      supabase.from("presences").select("*").eq("dimanche_id", dernierDimanche.id).in("membre_id", membres.map(m => m.id)),
+    ]);
+
+    const idsGemsValides = new Set((validations || []).map(v => v.gem_id));
+    setRapportsValides(idsGemsValides.size);
+    setGemsEnRetard(gems.filter(g => !idsGemsValides.has(g.id)));
+
+    const slots = membres.length;
+    const presents = (presencesSemaine || []).filter(p => p.present).length;
+    setTauxPresence(slots > 0 ? Math.round((presents / slots) * 100) : null);
+
+    // On ne signale les GEM "en retard" qu'à partir du mardi (le lundi est le dernier
+    // jour normal pour soumettre le rapport du dimanche précédent).
+    const dateDimanche = new Date(dernierDimanche.date + "T00:00:00");
+    const joursEcoules = Math.floor((new Date(new Date().toDateString()) - dateDimanche) / 86400000);
+    setAfficherRetard(joursEcoules >= 2);
+
+    setChargement(false);
+  }
+
+  if (chargement) return <Chargement />;
+
+  return (
+    <div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 20 }}>
+        <div className="card-app" style={cardStyle}>
+          <p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>GEM</p>
+          <p style={{ fontSize: 24, fontWeight: 700 }}><NombreAnime valeur={gems.length} /></p>
+        </div>
+        <div className="card-app" style={cardStyle}>
+          <p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Membres</p>
+          <p style={{ fontSize: 24, fontWeight: 700 }}><NombreAnime valeur={membres.length} /></p>
+        </div>
+        <div className="card-app" style={cardStyle}>
+          <p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Rapports (semaine)</p>
+          <p style={{ fontSize: 24, fontWeight: 700, color: rapportsValides === gems.length ? "#6fcf97" : GOLD_LIGHT }}>
+            <NombreAnime valeur={rapportsValides} /> / {gems.length}
+          </p>
+        </div>
+        <div className="card-app" style={cardStyle}>
+          <p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Présence / Absence</p>
+          <p style={{ fontSize: 18, fontWeight: 700 }}>
+            {tauxPresence !== null ? <><span style={{ color: "#6fcf97" }}>{tauxPresence}%</span> / <span style={{ color: RED_LIGHT }}>{100 - tauxPresence}%</span></> : "—"}
+          </p>
+        </div>
+      </div>
+
+      {afficherRetard && gemsEnRetard.length > 0 && (
+        <div style={{ ...cardStyle, borderColor: RED_LIGHT, marginBottom: 24 }}>
+          <p style={{ fontWeight: 700, fontSize: 13, color: RED_LIGHT, marginBottom: 8 }}>⚠️ GEM n'ayant pas encore soumis leur rapport ({gemsEnRetard.length})</p>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+            {gemsEnRetard.map(g => (
+              <span key={g.id} style={{ fontSize: 12, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "4px 10px" }}>{g.nom}</span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AnniversairesAVenir({ membres, gems, cardStyle }) {
   function nomGem(gemId) {
     return gems.find(g => g.id === gemId)?.nom || "GEM inconnu";
@@ -4821,6 +4901,8 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
         {estDept ? "Mon département" : "Ma tribu"} — {parent?.nom || "…"}
       </h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>{gemsDuPerimetre.length} GEM sous ta responsabilité</p>
+
+      <ResumePerimetre gems={gemsDuPerimetre} membres={membresDuPerimetre} cardStyle={cardStyle} />
 
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
         <button
