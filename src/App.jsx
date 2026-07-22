@@ -759,6 +759,8 @@ function TableauDeBord({ compte }) {
   const [membres, setMembres] = useState([]);
   const [tousLesComptes, setTousLesComptes] = useState([]);
   const [responsablesParGem, setResponsablesParGem] = useState({});
+  const [rapportsPresenceSemaine, setRapportsPresenceSemaine] = useState({ valides: 0, total: 0 });
+  const [rapportsActivitesSemaine, setRapportsActivitesSemaine] = useState({ valides: 0, total: 0 });
   const [regulariteParMembre, setRegulariteParMembre] = useState({});
   const [rappelPointageGlobal, setRappelPointageGlobal] = useState(null);
   const [rechercheGlobale, setRechercheGlobale] = useState("");
@@ -820,6 +822,20 @@ function TableauDeBord({ compte }) {
         if (as.gem_id && c) map[as.gem_id] = c.nom;
       });
       setResponsablesParGem(map);
+
+      const { data: dernierDimanche } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(1).maybeSingle();
+      if (dernierDimanche && g && g.length > 0) {
+        const idsGems = g.map(gg => gg.id);
+        const [{ data: validationsPresence }, { data: activitesValidees }] = await Promise.all([
+          supabase.from("validations_presence").select("gem_id").eq("dimanche_id", dernierDimanche.id).eq("valide", true).in("gem_id", idsGems),
+          supabase.from("activites_semaine").select("gem_id").eq("dimanche_id", dernierDimanche.id).eq("valide", true).in("gem_id", idsGems),
+        ]);
+        setRapportsPresenceSemaine({ valides: (validationsPresence || []).length, total: g.length });
+        setRapportsActivitesSemaine({ valides: (activitesValidees || []).length, total: g.length });
+      } else {
+        setRapportsPresenceSemaine({ valides: 0, total: g?.length || 0 });
+        setRapportsActivitesSemaine({ valides: 0, total: g?.length || 0 });
+      }
     }
     await calculerRegularite(m || []);
     verifierPointageManquant(m || []).then(setRappelPointageGlobal);
@@ -1332,6 +1348,24 @@ function TableauDeBord({ compte }) {
             </div>
             <AnniversairesAVenir membres={membres} gems={gems} cardStyle={cardStyle} />
             <AnniversairesResponsables comptes={tousLesComptes} cardStyle={cardStyle} />
+
+            <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>📋 Rapports de la semaine en cours</p>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 28 }}>
+              <div className="card-app" style={cardStyle}>
+                <p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Présence pointée</p>
+                <p style={{ fontSize: 26, fontWeight: 700, color: rapportsPresenceSemaine.valides === rapportsPresenceSemaine.total && rapportsPresenceSemaine.total > 0 ? "#6fcf97" : GOLD_LIGHT }}>
+                  <NombreAnime valeur={rapportsPresenceSemaine.valides} /> / {rapportsPresenceSemaine.total}
+                </p>
+                <p style={{ fontSize: 11, color: "#a9d6cf" }}>GEM ayant validé leur présence</p>
+              </div>
+              <div className="card-app" style={cardStyle}>
+                <p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Activités validées</p>
+                <p style={{ fontSize: 26, fontWeight: 700, color: rapportsActivitesSemaine.valides === rapportsActivitesSemaine.total && rapportsActivitesSemaine.total > 0 ? "#6fcf97" : GOLD_LIGHT }}>
+                  <NombreAnime valeur={rapportsActivitesSemaine.valides} /> / {rapportsActivitesSemaine.total}
+                </p>
+                <p style={{ fontSize: 11, color: "#a9d6cf" }}>GEM ayant validé leurs activités</p>
+              </div>
+            </div>
             <PrioritesPastorales membres={membres} gems={gems} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
             <div style={{ marginTop: 24 }}>
               <button
