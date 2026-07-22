@@ -538,15 +538,17 @@ function EcranConnexion() {
     if (motDePasse.length < 8) { setErreur("Le mot de passe doit contenir au moins 8 caractères."); setChargement(false); return; }
     if (roleDemande === "gem" && !nomGem.trim()) { setErreur("Merci de donner un nom au GEM souhaité."); setChargement(false); return; }
 
-    // Empêche la création d'un compte en double si ce numéro est déjà inscrit —
-    // Supabase peut renvoyer un "succès" silencieux pour un e-mail déjà existant,
-    // ce qui créait auparavant une fiche compte fantôme.
-    const { data: compteExistant } = await supabase.from("comptes").select("id").eq("telephone", telephone.trim()).maybeSingle();
-    if (compteExistant) {
-      setErreur("Ce numéro est déjà inscrit. Connecte-toi plutôt avec ton mot de passe, ou utilise \"Mot de passe oublié\" si besoin.");
-      setChargement(false);
-      return;
-    }
+    // Empêche la création d'un compte en double si ce numéro est déjà inscrit.
+    // Vérification faite via une fonction sécurisée (la personne n'est pas encore
+    // connectée à ce stade, une requête directe serait bloquée par la sécurité).
+    try {
+      const { data: verifDoublon } = await supabase.functions.invoke("lookup-phone", { body: { telephone: telephone.trim() } });
+      if (verifDoublon?.compte_id) {
+        setErreur("Ce numéro est déjà inscrit. Connecte-toi plutôt avec ton mot de passe, ou utilise \"Mot de passe oublié\" si besoin.");
+        setChargement(false);
+        return;
+      }
+    } catch { /* si la fonction est indisponible, on laisse l'inscription se poursuivre normalement */ }
 
     const { data, error } = await supabase.auth.signUp({ email: emailTechnique(telephone), password: motDePasse });
     if (error) { setErreur(error.message); setChargement(false); return; }
