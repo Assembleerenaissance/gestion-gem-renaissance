@@ -9,8 +9,8 @@ import { LOGO_VH } from "./logoVH";
 
 const TEAL_950 = "#0D5C52", TEAL_900 = "#116A5F", TEAL_850 = "#14776B";
 const TEAL_800 = "#188478", TEAL_700 = "#1F9C8D", TEAL_600 = "#27B3A1";
-const GOLD = "#D0AF1C", GOLD_LIGHT = "#E8CA4A", CREAM = "#FFFFFF";
-const RED_LIGHT = "#e2626d";
+const GOLD = "#E0BE2C", GOLD_LIGHT = "#F5DD5C", CREAM = "#FFFFFF";
+const RED_LIGHT = "#FF7A88";
 
 // Filet de sécurité : si un bug imprévu survient n'importe où dans l'application,
 // on affiche un message clair avec un bouton pour recharger, plutôt qu'un écran blanc.
@@ -943,7 +943,7 @@ function TableauDeBord({ compte }) {
   }
 
   const cardStyle = { backgroundColor: TEAL_850, border: `1px solid ${TEAL_700}`, borderRadius: 16, padding: 20 };
-  const btnStyle = { padding: "10px 16px", borderRadius: 8, fontWeight: 600, fontSize: 15, cursor: "pointer", border: "none" };
+  const btnStyle = { padding: "10px 18px", borderRadius: 8, fontWeight: 700, fontSize: 17, cursor: "pointer", border: "none" };
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: TEAL_950, color: CREAM, fontFamily: "system-ui, sans-serif" }}>
@@ -1147,18 +1147,18 @@ function TableauDeBord({ compte }) {
               function GroupeMenu({ titre, items }) {
                 return (
                   <div style={{ marginBottom: 24 }}>
-                    <p style={{ fontSize: 11, fontWeight: 700, color: GOLD_LIGHT, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>{titre}</p>
+                    <p style={{ fontSize: 13, fontWeight: 700, color: GOLD_LIGHT, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>{titre}</p>
                     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       {items.map(it => (
                         <button
                           key={it.cible}
                           className="btn-app"
                           onClick={it.action || (() => allerA(it.cible))}
-                          style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", borderRadius: 10, backgroundColor: page === it.cible ? "rgba(208,175,28,0.15)" : TEAL_900, border: `1px solid ${page === it.cible ? GOLD : TEAL_700}`, color: page === it.cible ? GOLD_LIGHT : CREAM, fontWeight: 600, fontSize: 14, cursor: "pointer", textAlign: "left" }}
+                          style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 18px", borderRadius: 10, backgroundColor: page === it.cible ? "rgba(208,175,28,0.15)" : TEAL_900, border: `1px solid ${page === it.cible ? GOLD : TEAL_700}`, color: page === it.cible ? GOLD_LIGHT : CREAM, fontWeight: 700, fontSize: 17, cursor: "pointer", textAlign: "left" }}
                         >
                           {it.label}
                           {it.badge > 0 && (
-                            <span style={{ backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 11, fontWeight: 700, minWidth: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px" }}>
+                            <span style={{ backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 13, fontWeight: 700, minWidth: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px" }}>
                               {it.badge}
                             </span>
                           )}
