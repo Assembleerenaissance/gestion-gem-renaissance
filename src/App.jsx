@@ -773,6 +773,7 @@ function TableauDeBord({ compte }) {
   const [membres, setMembres] = useState([]);
   const [tousLesComptes, setTousLesComptes] = useState([]);
   const [responsablesParGem, setResponsablesParGem] = useState({});
+  const [gemDuMois, setGemDuMois] = useState(null);
   const [rapportsPresenceSemaine, setRapportsPresenceSemaine] = useState({ valides: 0, total: 0 });
   const [rapportsActivitesSemaine, setRapportsActivitesSemaine] = useState({ valides: 0, total: 0 });
   const [regulariteParMembre, setRegulariteParMembre] = useState({});
@@ -851,6 +852,7 @@ function TableauDeBord({ compte }) {
         setRapportsActivitesSemaine({ valides: 0, total: g?.length || 0 });
       }
     }
+    calculerGemDuMoisGlobal(g || [], m || [], t || [], d || []).then(setGemDuMois);
     await calculerRegularite(m || []);
     verifierPointageManquant(m || []).then(setRappelPointageGlobal);
     await rafraichirCompteurs();
@@ -1299,6 +1301,7 @@ function TableauDeBord({ compte }) {
             regulariteParMembre={regulariteParMembre}
             membreCible={membreCible}
             onMembreCibleConsomme={() => setMembreCible(null)}
+            gemDuMois={gemDuMois}
             cardStyle={cardStyle}
           />
         ) : !estPasteur ? (
@@ -1316,6 +1319,7 @@ function TableauDeBord({ compte }) {
             regulariteParMembre={regulariteParMembre}
             membreCible={membreCible}
             onMembreCibleConsomme={() => setMembreCible(null)}
+            gemDuMois={gemDuMois}
             cardStyle={cardStyle}
           />
         ) : gemOuvert ? (
@@ -1366,6 +1370,7 @@ function TableauDeBord({ compte }) {
                 <div><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Départements</p><p style={{ fontSize: 28, fontWeight: 700 }}><NombreAnime valeur={departements.length} /></p></div>
               </div>
             </div>
+            <PrixMeilleurGem gagnant={gemDuMois} titre="🏆 GEM du mois" />
             <AnniversairesAVenir membres={membres} gems={gems} cardStyle={cardStyle} />
             <AnniversairesResponsables comptes={tousLesComptes} cardStyle={cardStyle} />
 
@@ -1423,7 +1428,7 @@ function TableauDeBord({ compte }) {
         ) : page === "demandes" ? (
           <PageDemandes tribus={tribus} departements={departements} compte={compte} onTraite={chargerDonnees} cardStyle={cardStyle} />
         ) : page === "rapports" ? (
-          <PageRapports compte={compte} gems={gems} membres={membres} tribus={tribus} departements={departements} cardStyle={cardStyle} />
+          <PageRapports compte={compte} gems={gems} membres={membres} tribus={tribus} departements={departements} responsablesParGem={responsablesParGem} cardStyle={cardStyle} />
         ) : page === "historique" ? (
           <PageHistorique cardStyle={cardStyle} />
         ) : page === "analyse" ? (
@@ -2077,6 +2082,83 @@ function dimancheActuel() {
   d.setDate(d.getDate() - d.getDay()); // recule jusqu'au dimanche de cette semaine
   d.setHours(0, 0, 0, 0);
   return d.toISOString().slice(0, 10); // format YYYY-MM-DD
+}
+
+// Calcule le GEM du mois en cours pour toute l'église — utilisé sur tous les tableaux
+// de bord (pasteur, assistants, responsables GEM, département, tribu).
+async function calculerGemDuMoisGlobal(gems, membres, tribus, departements) {
+  const moisActuel = new Date().toISOString().slice(0, 7); // YYYY-MM
+  const { data: dimanchesTous } = await supabase.from("dimanches").select("*");
+  const dimanchesDuMois = (dimanchesTous || []).filter(d => d.date.slice(0, 7) === moisActuel);
+  if (dimanchesDuMois.length === 0 || gems.length === 0) return null;
+  const idsDimanches = dimanchesDuMois.map(d => d.id);
+
+  const [{ data: presences }, { data: activites }, { data: validationsPresence }, { data: assignationsGem }] = await Promise.all([
+    supabase.from("presences").select("*").in("dimanche_id", idsDimanches),
+    supabase.from("activites_semaine").select("*").in("dimanche_id", idsDimanches).eq("valide", true),
+    supabase.from("validations_presence").select("*").in("dimanche_id", idsDimanches).eq("valide", true),
+    supabase.from("assignations").select("gem_id, compte_id").eq("role_demande", "gem").eq("statut", "actif"),
+  ]);
+
+  const idsComptesResp = [...new Set((assignationsGem || []).map(a => a.compte_id))];
+  let responsablesParGem = {};
+  if (idsComptesResp.length > 0) {
+    const { data: comptesResp } = await supabase.from("comptes").select("id, nom").in("id", idsComptesResp);
+    (assignationsGem || []).forEach(a => {
+      const c = (comptesResp || []).find(cc => cc.id === a.compte_id);
+      if (a.gem_id && c) responsablesParGem[a.gem_id] = c.nom;
+    });
+  }
+
+  const brut = gems.map(g => {
+    const membresGem = membres.filter(m => m.gem_id === g.id);
+    if (membresGem.length === 0) return null;
+    const idsMembres = membresGem.map(m => m.id);
+
+    const slots = dimanchesDuMois.length * membresGem.length;
+    const presents = (presences || []).filter(p => idsMembres.includes(p.membre_id) && p.present).length;
+    const tauxPresence = slots > 0 ? (presents / slots) * 100 : null;
+
+    const activitesGem = (activites || []).filter(a => a.gem_id === g.id);
+    const rapportsPresenceValides = (validationsPresence || []).filter(v => v.gem_id === g.id).length;
+    const tauxRapportPresence = dimanchesDuMois.length > 0 ? (rapportsPresenceValides / dimanchesDuMois.length) * 100 : null;
+    const tauxRapportActivite = dimanchesDuMois.length > 0 ? (activitesGem.length / dimanchesDuMois.length) * 100 : null;
+    const composantesRapport = [tauxRapportPresence, tauxRapportActivite].filter(v => v !== null);
+    const tauxRapport = composantesRapport.length > 0 ? composantesRapport.reduce((a, b) => a + b, 0) / composantesRapport.length : null;
+
+    const nombreActivites = activitesGem.reduce((total, a) => {
+      let n = 0;
+      n += (a.visites_membres || []).length;
+      n += (a.appels_membres || []).length;
+      if (a.jeune && a.jeune.trim()) n += 1;
+      if (a.agape && a.agape.trim()) n += 1;
+      if (a.evangelisation && a.evangelisation.trim()) n += 1;
+      return total + n;
+    }, 0);
+
+    const rattachement = g.tribu_id ? `Tribu de ${tribus.find(t => t.id === g.tribu_id)?.nom || "?"}` : `Département ${departements.find(d => d.id === g.departement_id)?.nom || "?"}`;
+    const nomResponsable = responsablesParGem?.[g.id] || null;
+
+    return { nom: g.nom, gemId: g.id, rattachement, nomResponsable, tauxPresence, tauxRapport, nombreActivites };
+  }).filter(Boolean);
+
+  if (brut.length === 0) return null;
+  const maxActivites = Math.max(1, ...brut.map(g => g.nombreActivites));
+
+  const resultats = brut.map(g => {
+    const scoreActivitesNormalise = (g.nombreActivites / maxActivites) * 100;
+    const composantes = [g.tauxPresence, g.tauxRapport, scoreActivitesNormalise].filter(v => v !== null);
+    const score = composantes.length > 0 ? composantes.reduce((a, b) => a + b, 0) / composantes.length : 0;
+    return {
+      nom: g.nom, gemId: g.gemId, rattachement: g.rattachement, nomResponsable: g.nomResponsable,
+      valeur: Math.round(score),
+      tauxPresence: g.tauxPresence !== null ? Math.round(g.tauxPresence) : null,
+      tauxRapport: g.tauxRapport !== null ? Math.round(g.tauxRapport) : null,
+      nombreActivites: g.nombreActivites,
+    };
+  });
+  resultats.sort((a, b) => b.valeur - a.valeur);
+  return resultats[0] || null;
 }
 
 // Garantit que le numéro utilisé pour WhatsApp comporte bien l'indicatif +225 (Côte d'Ivoire),
@@ -5103,7 +5185,7 @@ function EvolutionPerimetre({ membres, cardStyle }) {
 
 /* ------------------------------- Mon espace (responsable) ------------------------------- */
 
-function MonEspace({ compte, assignationsActives, gems, membres, tribus, departements, gemOuvert, setGemOuvert, onMembreAjoute, onCreerGem, regulariteParMembre, membreCible, onMembreCibleConsomme, cardStyle }) {
+function MonEspace({ compte, assignationsActives, gems, membres, tribus, departements, gemOuvert, setGemOuvert, onMembreAjoute, onCreerGem, regulariteParMembre, membreCible, onMembreCibleConsomme, gemDuMois, cardStyle }) {
   const [nomNouveauGem, setNomNouveauGem] = useState("");
   const [creationOuverte, setCreationOuverte] = useState(false);
   const [sousOnglet, setSousOnglet] = useState("gems");
@@ -5189,6 +5271,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
     return (
       <div>
         {selecteurRole}
+        <PrixMeilleurGem gagnant={gemDuMois} titre="🏆 GEM du mois (toute l'église)" />
         <AnniversairesAVenir membres={membresGem} gems={gems} cardStyle={cardStyle} />
         <DetailGem
           compte={compte}
@@ -5233,6 +5316,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
       </h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>{gemsDuPerimetre.length} GEM sous ta responsabilité</p>
 
+      <PrixMeilleurGem gagnant={gemDuMois} titre="🏆 GEM du mois (toute l'église)" />
       <ResumePerimetre gems={gemsDuPerimetre} membres={membresDuPerimetre} cardStyle={cardStyle} />
 
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
@@ -5629,7 +5713,7 @@ function SousPageCreerCompte({ compte, tribus, departements, onChange, cardStyle
 
 /* ------------------------------- Rapports ------------------------------- */
 
-function PageRapports({ compte, gems, membres, tribus, departements, cardStyle }) {
+function PageRapports({ compte, gems, membres, tribus, departements, responsablesParGem, cardStyle }) {
   const [vue, setVue] = useState("hebdomadaire"); // hebdomadaire | mensuelle | annuelle
 
   const [dimanches, setDimanches] = useState([]);
@@ -5643,12 +5727,14 @@ function PageRapports({ compte, gems, membres, tribus, departements, cardStyle }
   const [presencesMois, setPresencesMois] = useState([]); // toutes les lignes presences du mois
   const [santeMois, setSanteMois] = useState([]);
   const [activitesMois, setActivitesMois] = useState([]);
+  const [validationsPresenceMois, setValidationsPresenceMois] = useState([]);
 
   const [dimanchesAnnee, setDimanchesAnnee] = useState([]);
   const [anneeChoisie, setAnneeChoisie] = useState(null); // "YYYY"
   const [presencesAnnee, setPresencesAnnee] = useState([]);
   const [santeAnnee, setSanteAnnee] = useState([]);
   const [activitesAnnee, setActivitesAnnee] = useState([]);
+  const [validationsPresenceAnnee, setValidationsPresenceAnnee] = useState([]);
 
   const [tauxPrecedentHebdo, setTauxPrecedentHebdo] = useState(null);
   const [tauxPrecedentMois, setTauxPrecedentMois] = useState(null);
@@ -5727,7 +5813,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, cardStyle }
     const idsDimanches = dimanchesFiltres.map(d => d.id);
     const debutMois = `${moisChoisi}-01`;
     const finMois = `${moisChoisi}-31`;
-    const [{ data: pres }, { data: sante }, { data: activites }] = await Promise.all([
+    const [{ data: pres }, { data: sante }, { data: activites }, { data: validationsPres }] = await Promise.all([
       idsDimanches.length > 0
         ? supabase.from("presences").select("*").in("dimanche_id", idsDimanches)
         : Promise.resolve({ data: [] }),
@@ -5735,10 +5821,14 @@ function PageRapports({ compte, gems, membres, tribus, departements, cardStyle }
       idsDimanches.length > 0
         ? supabase.from("activites_semaine").select("*").in("dimanche_id", idsDimanches).eq("valide", true)
         : Promise.resolve({ data: [] }),
+      idsDimanches.length > 0
+        ? supabase.from("validations_presence").select("*").in("dimanche_id", idsDimanches).eq("valide", true)
+        : Promise.resolve({ data: [] }),
     ]);
     setPresencesMois(pres || []);
     setSanteMois(sante || []);
     setActivitesMois(activites || []);
+    setValidationsPresenceMois(validationsPres || []);
 
     // Mois précédent, pour la comparaison
     const [anneeStr, moisStr] = moisChoisi.split("-").map(Number);
@@ -5765,7 +5855,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, cardStyle }
     const idsDimanches = dimanchesFiltres.map(d => d.id);
     const debutAnnee = `${anneeChoisie}-01-01`;
     const finAnnee = `${anneeChoisie}-12-31`;
-    const [{ data: pres }, { data: sante }, { data: activites }] = await Promise.all([
+    const [{ data: pres }, { data: sante }, { data: activites }, { data: validationsPres }] = await Promise.all([
       idsDimanches.length > 0
         ? supabase.from("presences").select("*").in("dimanche_id", idsDimanches)
         : Promise.resolve({ data: [] }),
@@ -5773,10 +5863,14 @@ function PageRapports({ compte, gems, membres, tribus, departements, cardStyle }
       idsDimanches.length > 0
         ? supabase.from("activites_semaine").select("*").in("dimanche_id", idsDimanches).eq("valide", true)
         : Promise.resolve({ data: [] }),
+      idsDimanches.length > 0
+        ? supabase.from("validations_presence").select("*").in("dimanche_id", idsDimanches).eq("valide", true)
+        : Promise.resolve({ data: [] }),
     ]);
     setPresencesAnnee(pres || []);
     setSanteAnnee(sante || []);
     setActivitesAnnee(activites || []);
+    setValidationsPresenceAnnee(validationsPres || []);
 
     // Année précédente, pour la comparaison
     const anneePrecedente = String(Number(anneeChoisie) - 1);
@@ -5938,8 +6032,9 @@ function PageRapports({ compte, gems, membres, tribus, departements, cardStyle }
   const classementDepartementsSanteMois = vue === "mensuelle" ? calculerClassementSante("departement", departements, santeMois) : [];
   const classementMembresMois = vue === "mensuelle" ? calculerClassementMembres(dimanchesDuMois, presencesMois, 10) : [];
   // Meilleur GEM de la période : combine présence, santé spirituelle et activités validées
-  function calculerClassementGems(dimanchesPeriode, presencesPeriode, santePeriode, activitesPeriode) {
-    const resultats = gems.map(g => {
+  function calculerClassementGems(dimanchesPeriode, presencesPeriode, activitesPeriode, validationsPresencePeriode) {
+    // Première passe : valeurs brutes par GEM
+    const brut = gems.map(g => {
       const membresGem = membres.filter(m => m.gem_id === g.id);
       if (membresGem.length === 0 || dimanchesPeriode.length === 0) return null;
       const idsMembres = membresGem.map(m => m.id);
@@ -5948,30 +6043,49 @@ function PageRapports({ compte, gems, membres, tribus, departements, cardStyle }
       const presents = presencesPeriode.filter(p => idsMembres.includes(p.membre_id) && p.present).length;
       const tauxPresence = slots > 0 ? (presents / slots) * 100 : null;
 
-      const scoresSante = santePeriode.filter(s => idsMembres.includes(s.membre_id)).map(s => moyenneSante(s)).filter(s => s !== null);
-      const scoreSante = scoresSante.length > 0 ? (scoresSante.reduce((a, b) => a + b, 0) / scoresSante.length) * 10 : null;
+      const activitesGem = activitesPeriode.filter(a => a.gem_id === g.id);
+      const rapportsPresenceValides = validationsPresencePeriode.filter(v => v.gem_id === g.id).length;
+      const tauxRapportPresence = dimanchesPeriode.length > 0 ? (rapportsPresenceValides / dimanchesPeriode.length) * 100 : null;
+      const tauxRapportActivite = dimanchesPeriode.length > 0 ? (activitesGem.length / dimanchesPeriode.length) * 100 : null;
+      const composantesRapport = [tauxRapportPresence, tauxRapportActivite].filter(v => v !== null);
+      const tauxRapport = composantesRapport.length > 0 ? composantesRapport.reduce((a, b) => a + b, 0) / composantesRapport.length : null;
 
-      const activitesGem = activitesPeriode.filter(a => a.gem_id === g.id).length;
-      const tauxActivite = dimanchesPeriode.length > 0 ? (activitesGem / dimanchesPeriode.length) * 100 : null;
-
-      const composantes = [tauxPresence, scoreSante, tauxActivite].filter(v => v !== null);
-      if (composantes.length === 0) return null;
-      const score = composantes.reduce((a, b) => a + b, 0) / composantes.length;
+      const nombreActivites = activitesGem.reduce((total, a) => {
+        let n = 0;
+        n += (a.visites_membres || []).length;
+        n += (a.appels_membres || []).length;
+        if (a.jeune && a.jeune.trim()) n += 1;
+        if (a.agape && a.agape.trim()) n += 1;
+        if (a.evangelisation && a.evangelisation.trim()) n += 1;
+        return total + n;
+      }, 0);
 
       const rattachement = g.tribu_id ? `Tribu de ${tribus.find(t => t.id === g.tribu_id)?.nom || "?"}` : `Département ${departements.find(d => d.id === g.departement_id)?.nom || "?"}`;
+      const nomResponsable = responsablesParGem?.[g.id] || null;
 
-      return {
-        nom: g.nom, gemId: g.id, valeur: Math.round(score), rattachement,
-        tauxPresence: tauxPresence !== null ? Math.round(tauxPresence) : null,
-        scoreSante: scoreSante !== null ? Math.round(scoreSante / 10 * 10) / 10 : null,
-        tauxActivite: tauxActivite !== null ? Math.round(tauxActivite) : null,
-      };
+      return { nom: g.nom, gemId: g.id, rattachement, nomResponsable, tauxPresence, tauxRapport, nombreActivites };
     }).filter(Boolean);
+
+    // Deuxième passe : normalise le nombre d'activités (relatif au meilleur GEM de la période)
+    const maxActivites = Math.max(1, ...brut.map(g => g.nombreActivites));
+
+    const resultats = brut.map(g => {
+      const scoreActivitesNormalise = (g.nombreActivites / maxActivites) * 100;
+      const composantes = [g.tauxPresence, g.tauxRapport, scoreActivitesNormalise].filter(v => v !== null);
+      const score = composantes.length > 0 ? composantes.reduce((a, b) => a + b, 0) / composantes.length : 0;
+      return {
+        nom: g.nom, gemId: g.gemId, rattachement: g.rattachement, nomResponsable: g.nomResponsable,
+        valeur: Math.round(score),
+        tauxPresence: g.tauxPresence !== null ? Math.round(g.tauxPresence) : null,
+        tauxRapport: g.tauxRapport !== null ? Math.round(g.tauxRapport) : null,
+        nombreActivites: g.nombreActivites,
+      };
+    });
     return resultats.sort((a, b) => b.valeur - a.valeur);
   }
 
-  const classementGemsMois = vue === "mensuelle" ? calculerClassementGems(dimanchesDuMois, presencesMois, santeMois, activitesMois) : [];
-  const classementGemsAnnee = vue === "annuelle" ? calculerClassementGems(dimanchesAnnee, presencesAnnee, santeAnnee, activitesAnnee) : [];
+  const classementGemsMois = vue === "mensuelle" ? calculerClassementGems(dimanchesDuMois, presencesMois, activitesMois, validationsPresenceMois) : [];
+  const classementGemsAnnee = vue === "annuelle" ? calculerClassementGems(dimanchesAnnee, presencesAnnee, activitesAnnee, validationsPresenceAnnee) : [];
   const meilleurGemMois = classementGemsMois[0] || null;
   const meilleurGemAnnee = classementGemsAnnee[0] || null;
 
@@ -6066,25 +6180,6 @@ function PageRapports({ compte, gems, membres, tribus, departements, cardStyle }
       <span style={{ fontSize: 11, fontWeight: 700, color: positif ? "#6fcf97" : RED_LIGHT, marginLeft: 6 }}>
         {positif ? "↑" : "↓"} {positif ? "+" : ""}{difference}% vs {libellePeriode}
       </span>
-    );
-  }
-
-  function PrixMeilleurGem({ gagnant, titre }) {
-    const [confettiActif, setConfettiActif] = useState(false);
-    useEffect(() => { if (gagnant) setConfettiActif(true); }, [gagnant?.gemId]);
-    if (!gagnant) return null;
-    return (
-      <div style={{ background: "linear-gradient(135deg, rgba(208,175,28,0.25), rgba(232,202,74,0.1))", border: `2px solid ${GOLD}`, borderRadius: 16, padding: 20, marginBottom: 28, textAlign: "center" }}>
-        <p style={{ fontSize: 36, marginBottom: 4 }}>🏆</p>
-        <p style={{ fontSize: 12, color: GOLD_LIGHT, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>{titre}</p>
-        <p style={{ fontSize: 22, fontWeight: 700, color: CREAM, marginBottom: 10 }}>{gagnant.nom}</p>
-        <div style={{ display: "flex", justifyContent: "center", gap: 16, flexWrap: "wrap", fontSize: 12, color: "#cdeae4" }}>
-          {gagnant.tauxPresence !== null && <span>📅 Présence : <b style={{ color: GOLD_LIGHT }}>{gagnant.tauxPresence}%</b></span>}
-          {gagnant.scoreSante !== null && <span>🌡️ Santé : <b style={{ color: GOLD_LIGHT }}>{gagnant.scoreSante}/10</b></span>}
-          {gagnant.tauxActivite !== null && <span>📋 Activités : <b style={{ color: GOLD_LIGHT }}>{gagnant.tauxActivite}%</b></span>}
-        </div>
-        <Confettis actif={confettiActif} onFin={() => setConfettiActif(false)} />
-      </div>
     );
   }
 
@@ -6820,6 +6915,31 @@ function GraphiqueCroissance({ donnees, hauteur = 160 }) {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// Trophée du meilleur GEM — réutilisable sur tous les tableaux de bord
+// (pasteur, assistants, responsables GEM, département, tribu).
+function PrixMeilleurGem({ gagnant, titre }) {
+  const [confettiActif, setConfettiActif] = useState(false);
+  useEffect(() => { if (gagnant) setConfettiActif(true); }, [gagnant?.gemId]);
+  if (!gagnant) return null;
+  return (
+    <div style={{ background: "linear-gradient(135deg, rgba(208,175,28,0.25), rgba(232,202,74,0.1))", border: `2px solid ${GOLD}`, borderRadius: 16, padding: 20, marginBottom: 28, textAlign: "center" }}>
+      <p style={{ fontSize: 36, marginBottom: 4 }}>🏆</p>
+      <p style={{ fontSize: 12, color: GOLD_LIGHT, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>{titre}</p>
+      <p style={{ fontSize: 22, fontWeight: 700, color: CREAM, marginBottom: 4 }}>{gagnant.nom}</p>
+      <p style={{ fontSize: 12, color: "#cdeae4", marginBottom: 4 }}>{gagnant.rattachement}</p>
+      {gagnant.nomResponsable && (
+        <p style={{ fontSize: 12, color: GOLD_LIGHT, marginBottom: 10 }}>👤 Responsable : {gagnant.nomResponsable}</p>
+      )}
+      <div style={{ display: "flex", justifyContent: "center", gap: 16, flexWrap: "wrap", fontSize: 12, color: "#cdeae4", marginTop: gagnant.nomResponsable ? 0 : 10 }}>
+        {gagnant.tauxRapport !== null && <span>📋 Rapports : <b style={{ color: GOLD_LIGHT }}>{gagnant.tauxRapport}%</b></span>}
+        {gagnant.tauxPresence !== null && <span>📅 Présence : <b style={{ color: GOLD_LIGHT }}>{gagnant.tauxPresence}%</b></span>}
+        <span>🙏 Activités : <b style={{ color: GOLD_LIGHT }}>{gagnant.nombreActivites}</b></span>
+      </div>
+      <Confettis actif={confettiActif} onFin={() => setConfettiActif(false)} />
     </div>
   );
 }
