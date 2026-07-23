@@ -1100,6 +1100,11 @@ function TableauDeBord({ compte }) {
  onClick={() => { setPage("sante_responsables"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "sante_responsables" ? TEAL_700 : "transparent", color: page === "sante_responsables" ? GOLD_LIGHT : "#cdeae4" }}>
                 🌡️ Santé responsables
               </button>
+              <button
+ className="btn-app"
+ onClick={() => { setPage("nouveaux"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "nouveaux" ? TEAL_700 : "transparent", color: page === "nouveaux" ? GOLD_LIGHT : "#cdeae4" }}>
+                🌱 Nouveaux
+              </button>
               {compte.role === "pasteur" && (
                 <button
  className="btn-app"
@@ -1195,6 +1200,7 @@ function TableauDeBord({ compte }) {
                   { label: "Suppressions", cible: "suppressions", badge: nbDemandesSuppression },
                   { label: "🗑️ Corbeille", cible: "corbeille" },
                   { label: "🌡️ Santé responsables", cible: "sante_responsables" },
+                  { label: "🌱 Nouveaux", cible: "nouveaux" },
                 ];
                 if (compte.role === "pasteur") groupeGestion.push({ label: "Rôles & Accès", cible: "assistants" });
                 if (compte.role !== "pasteur") groupeGestion.push({ label: "➕ Rôle supplémentaire", cible: "demande_role_supp" });
@@ -1370,7 +1376,7 @@ function TableauDeBord({ compte }) {
                 <div><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Départements</p><p style={{ fontSize: 28, fontWeight: 700 }}><NombreAnime valeur={departements.length} /></p></div>
               </div>
             </div>
-            <PrixMeilleurGem gagnant={gemDuMois} titre="🏆 GEM du mois" />
+            <PrixMeilleurGem gagnant={gemDuMois} titre="🏆 GEM du Mois" />
             <AnniversairesAVenir membres={membres} gems={gems} cardStyle={cardStyle} />
             <AnniversairesResponsables comptes={tousLesComptes} cardStyle={cardStyle} />
 
@@ -1441,6 +1447,8 @@ function TableauDeBord({ compte }) {
           <PageCorbeille compte={compte} gems={gems} cardStyle={cardStyle} onTraite={chargerDonnees} />
         ) : page === "sante_responsables" ? (
           <PageSanteResponsables tousLesComptes={tousLesComptes} gems={gems} tribus={tribus} departements={departements} responsablesParGem={responsablesParGem} cardStyle={cardStyle} />
+        ) : page === "nouveaux" ? (
+          <PageNouveaux membres={membres} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
         ) : (
           <PageAssistants compte={compte} tribus={tribus} departements={departements} gems={gems} onChange={chargerDonnees} cardStyle={cardStyle} />
         )}
@@ -3747,6 +3755,109 @@ function PageAide({ estPasteur, cardStyle }) {
 
 /* --------------------------- Santé spirituelle des responsables (pasteur) --------------------------- */
 
+/* --------------------------- Suivi des nouveaux convertis (pasteur) --------------------------- */
+
+const LIBELLES_ETAPES_SUIVI = { accueil: "Accueil", classe: "Classe de baptême", baptise: "Baptisé(e)", integre: "Intégré(e)" };
+
+function PageNouveaux({ membres, gems, tribus, departements, cardStyle }) {
+  const [chargement, setChargement] = useState(true);
+  const [santeParMembre, setSanteParMembre] = useState({});
+  const [recherche, setRecherche] = useState("");
+  const [filtreEtape, setFiltreEtape] = useState("");
+
+  const nouveaux = membres.filter(m => m.nouveau_converti);
+
+  useEffect(() => { chargerSante(); }, [nouveaux.length]);
+
+  async function chargerSante() {
+    setChargement(true);
+    if (nouveaux.length === 0) { setSanteParMembre({}); setChargement(false); return; }
+    const { data } = await supabase.from("sante_spirituelle").select("*").in("membre_id", nouveaux.map(m => m.id)).order("date_maj", { ascending: false });
+    const map = {};
+    (data || []).forEach(s => { if (!map[s.membre_id]) map[s.membre_id] = s; });
+    setSanteParMembre(map);
+    setChargement(false);
+  }
+
+  function nomGem(gemId) {
+    return gems.find(g => g.id === gemId)?.nom || "GEM inconnu";
+  }
+
+  function rattachement(gemId) {
+    const g = gems.find(gg => gg.id === gemId);
+    if (!g) return "";
+    if (g.tribu_id) return `Tribu de ${tribus.find(t => t.id === g.tribu_id)?.nom || "?"}`;
+    if (g.departement_id) return `Département ${departements.find(d => d.id === g.departement_id)?.nom || "?"}`;
+    return "";
+  }
+
+  const resultats = nouveaux
+    .filter(m => m.nom.toLowerCase().includes(recherche.toLowerCase()))
+    .filter(m => !filtreEtape || (m.etape_conversion || "accueil") === filtreEtape);
+
+  const repartition = ["accueil", "classe", "baptise", "integre"].map(etape => ({
+    etape, nb: nouveaux.filter(m => (m.etape_conversion || "accueil") === etape).length,
+  }));
+
+  if (chargement) return <Chargement />;
+
+  return (
+    <div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>🌱 Suivi des nouveaux convertis</h2>
+      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>{nouveaux.length} nouveau(x) converti(s) suivis à travers toute l'église.</p>
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
+        {repartition.map(r => (
+          <button
+            key={r.etape}
+            className="btn-app card-app"
+            onClick={() => setFiltreEtape(filtreEtape === r.etape ? "" : r.etape)}
+            style={{ ...cardStyle, cursor: "pointer", border: filtreEtape === r.etape ? `2px solid ${GOLD}` : cardStyle.border, textAlign: "left" }}
+          >
+            <p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>{LIBELLES_ETAPES_SUIVI[r.etape]}</p>
+            <p style={{ fontSize: 22, fontWeight: 700, color: GOLD_LIGHT }}>{r.nb}</p>
+          </button>
+        ))}
+      </div>
+
+      <input
+        value={recherche}
+        onChange={e => setRecherche(e.target.value)}
+        placeholder="🔍 Rechercher un nouveau converti..."
+        style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_850, color: CREAM, border: `1px solid ${TEAL_700}`, marginBottom: 16, width: "100%", maxWidth: 320 }}
+      />
+
+      {resultats.length === 0 ? (
+        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun nouveau converti trouvé.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {resultats.map(m => {
+            const moyenne = moyenneSante(santeParMembre[m.id]);
+            return (
+              <div key={m.id} className="card-app" style={cardStyle}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
+                  <div>
+                    <p style={{ fontWeight: 700, marginBottom: 2 }}>{m.nom}</p>
+                    <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomGem(m.gem_id)} — {rattachement(m.gem_id)}</p>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, borderRadius: 999, padding: "4px 10px" }}>
+                      🌱 {LIBELLES_ETAPES_SUIVI[m.etape_conversion || "accueil"]}
+                    </span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: moyenne !== null ? couleurScore(moyenne) : "#a9d6cf", backgroundColor: TEAL_900, borderRadius: 999, padding: "4px 10px" }}>
+                      🌡️ {moyenne !== null ? `${moyenne}/10` : "Non évaluée"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PageSanteResponsables({ tousLesComptes, gems, tribus, departements, responsablesParGem, cardStyle }) {
   const [chargement, setChargement] = useState(true);
   const [santeParCompte, setSanteParCompte] = useState({}); // { compte_id: derniereFiche }
@@ -5271,7 +5382,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
     return (
       <div>
         {selecteurRole}
-        <PrixMeilleurGem gagnant={gemDuMois} titre="🏆 GEM du mois (toute l'église)" />
+        <PrixMeilleurGem gagnant={gemDuMois} titre="🏆 GEM du Mois (toute l'église)" />
         <AnniversairesAVenir membres={membresGem} gems={gems} cardStyle={cardStyle} />
         <DetailGem
           compte={compte}
@@ -5316,7 +5427,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
       </h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>{gemsDuPerimetre.length} GEM sous ta responsabilité</p>
 
-      <PrixMeilleurGem gagnant={gemDuMois} titre="🏆 GEM du mois (toute l'église)" />
+      <PrixMeilleurGem gagnant={gemDuMois} titre="🏆 GEM du Mois (toute l'église)" />
       <ResumePerimetre gems={gemsDuPerimetre} membres={membresDuPerimetre} cardStyle={cardStyle} />
 
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
@@ -6450,7 +6561,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                 </div>
               )}
 
-              <PrixMeilleurGem gagnant={meilleurGemMois} titre="Meilleur GEM du mois" />
+              <PrixMeilleurGem gagnant={meilleurGemMois} titre="🏆 GEM du Mois" />
               <Classement titre="🏅 Classement complet des GEM" liste={classementGemsMois} suffixe=" pts" maxValeur={100} />
 
               <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>🏆 Classement par régularité (présence)</p>
@@ -6525,7 +6636,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                 </div>
               )}
 
-              <PrixMeilleurGem gagnant={meilleurGemAnnee} titre="Meilleur GEM de l'année" />
+              <PrixMeilleurGem gagnant={meilleurGemAnnee} titre="🏆 GEM de l'Année" />
               <Classement titre="🏅 Classement complet des GEM" liste={classementGemsAnnee} suffixe=" pts" maxValeur={100} />
 
               <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>🏆 Classement annuel par régularité (présence)</p>
