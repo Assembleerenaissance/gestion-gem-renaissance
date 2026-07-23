@@ -3759,13 +3759,14 @@ function PageAide({ estPasteur, cardStyle }) {
 
 const LIBELLES_ETAPES_SUIVI = { accueil: "Accueil", classe: "Classe de baptême", baptise: "Baptisé(e)", integre: "Intégré(e)" };
 
-function PageNouveaux({ membres, gems, tribus, departements, cardStyle }) {
+function PageNouveaux({ membres, gems, tribus, departements, gemsAutorises, cardStyle }) {
   const [chargement, setChargement] = useState(true);
   const [santeParMembre, setSanteParMembre] = useState({});
   const [recherche, setRecherche] = useState("");
   const [filtreEtape, setFiltreEtape] = useState("");
 
-  const nouveaux = membres.filter(m => m.nouveau_converti);
+  const membresDuPerimetre = gemsAutorises ? membres.filter(m => gemsAutorises.includes(m.gem_id)) : membres;
+  const nouveaux = membresDuPerimetre.filter(m => m.nouveau_converti);
 
   useEffect(() => { chargerSante(); }, [nouveaux.length]);
 
@@ -5443,6 +5444,9 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
         <button
  className="btn-app"
  onClick={() => setSousOnglet("activites")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "activites" ? GOLD : TEAL_900, color: sousOnglet === "activites" ? TEAL_950 : "#cdeae4" }}>📋 Activités de la semaine</button>
+        <button
+ className="btn-app"
+ onClick={() => setSousOnglet("nouveaux")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "nouveaux" ? GOLD : TEAL_900, color: sousOnglet === "nouveaux" ? TEAL_950 : "#cdeae4" }}>🌱 Nouveaux</button>
       </div>
 
       {sousOnglet === "rapports" ? (
@@ -5451,6 +5455,8 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
         <EvolutionPerimetre membres={membresDuPerimetre} cardStyle={cardStyle} />
       ) : sousOnglet === "activites" ? (
         <ActivitesSemainePerimetre gems={gemsDuPerimetre} membres={membresDuPerimetre} cardStyle={cardStyle} />
+      ) : sousOnglet === "nouveaux" ? (
+        <PageNouveaux membres={membresDuPerimetre} gems={gemsDuPerimetre} tribus={tribus} departements={departements} gemsAutorises={gemsDuPerimetre.map(g => g.id)} cardStyle={cardStyle} />
       ) : (
         <>
           <AnniversairesAVenir membres={membresDuPerimetre} gems={gems} cardStyle={cardStyle} />
