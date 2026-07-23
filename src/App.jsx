@@ -1380,10 +1380,10 @@ function TableauDeBord({ compte }) {
                 <div><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Départements</p><p style={{ fontSize: 28, fontWeight: 700 }}><NombreAnime valeur={departements.length} /></p></div>
               </div>
             </div>
-            <PrixMeilleurGem gagnant={gemDuMois} titre="🏆 GEM du Mois" />
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
-              <PrixTribuDeptDuMois gagnant={tribuDeptDuMois.tribu} titre="🏛️ Tribu du Mois" icone="🏛️" />
-              <PrixTribuDeptDuMois gagnant={tribuDeptDuMois.departement} titre="🏢 Département du Mois" icone="🏢" />
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+              <ClassementTop3 items={gemDuMois} titre="🏆 Top 3 GEM du Mois" sousLibelle={item => `${item.valeur}%`} />
+              <ClassementTop3 items={tribuDeptDuMois.tribu} titre="🏛️ Top 3 Tribus du Mois" sousLibelle={item => `${item.valeur}%`} />
+              <ClassementTop3 items={tribuDeptDuMois.departement} titre="🏢 Top 3 Départements du Mois" sousLibelle={item => `${item.valeur}%`} />
             </div>
             <AnniversairesAVenir membres={membres} gems={gems} cardStyle={cardStyle} />
             <AnniversairesResponsables comptes={tousLesComptes} cardStyle={cardStyle} />
@@ -2106,7 +2106,7 @@ async function calculerGemDuMoisGlobal(gems, membres, tribus, departements) {
   const moisActuel = new Date().toISOString().slice(0, 7); // YYYY-MM
   const { data: dimanchesTous } = await supabase.from("dimanches").select("*");
   const dimanchesDuMois = (dimanchesTous || []).filter(d => d.date.slice(0, 7) === moisActuel);
-  if (dimanchesDuMois.length === 0 || gems.length === 0) return null;
+  if (dimanchesDuMois.length === 0 || gems.length === 0) return [];
   const idsDimanches = dimanchesDuMois.map(d => d.id);
 
   const [{ data: presences }, { data: activites }, { data: validationsPresence }, { data: assignationsGem }] = await Promise.all([
@@ -2158,7 +2158,7 @@ async function calculerGemDuMoisGlobal(gems, membres, tribus, departements) {
     return { nom: g.nom, gemId: g.id, rattachement, nomResponsable, tauxPresence, tauxRapport, nombreActivites };
   }).filter(Boolean);
 
-  if (brut.length === 0) return null;
+  if (brut.length === 0) return [];
   const maxActivites = Math.max(1, ...brut.map(g => g.nombreActivites));
 
   const resultats = brut.map(g => {
@@ -2174,7 +2174,7 @@ async function calculerGemDuMoisGlobal(gems, membres, tribus, departements) {
     };
   });
   resultats.sort((a, b) => b.valeur - a.valeur);
-  return resultats[0] || null;
+  return resultats.slice(0, 3);
 }
 
 // Calcule la Tribu du Mois et le Département du Mois pour toute l'église —
@@ -2235,7 +2235,7 @@ async function calculerTribuDeptDuMoisGlobal(gems, membres, tribus, departements
       return { nom: item.nom, id: item.id, tauxPresence, tauxRapport, tauxSuiviNouveaux, nombreActivites, nbGems: idsGems.length };
     }).filter(Boolean);
 
-    if (brut.length === 0) return null;
+    if (brut.length === 0) return [];
     const maxActivites = Math.max(1, ...brut.map(x => x.nombreActivites));
     const resultats = brut.map(x => {
       const scoreActivitesNorm = (x.nombreActivites / maxActivites) * 100;
@@ -2250,7 +2250,7 @@ async function calculerTribuDeptDuMoisGlobal(gems, membres, tribus, departements
       };
     });
     resultats.sort((a, b) => b.valeur - a.valeur);
-    return resultats[0] || null;
+    return resultats.slice(0, 3);
   }
 
   return {
@@ -5473,7 +5473,9 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
     return (
       <div>
         {selecteurRole}
-        <PrixMeilleurGem gagnant={gemDuMois} titre="🏆 GEM du Mois (toute l'église)" />
+        <ClassementTop3 items={gemDuMois} titre="🏆 Top 3 GEM du Mois (toute l'église)" sousLibelle={item => `${item.valeur}%`} />
+        <ClassementTop3 items={tribuDeptDuMois?.tribu} titre="🏛️ Top 3 Tribus du Mois" sousLibelle={item => `${item.valeur}%`} />
+        <ClassementTop3 items={tribuDeptDuMois?.departement} titre="🏢 Top 3 Départements du Mois" sousLibelle={item => `${item.valeur}%`} />
         <AnniversairesAVenir membres={membresGem} gems={gems} cardStyle={cardStyle} />
         <DetailGem
           compte={compte}
@@ -5518,10 +5520,10 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
       </h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>{gemsDuPerimetre.length} GEM sous ta responsabilité</p>
 
-      <PrixMeilleurGem gagnant={gemDuMois} titre="🏆 GEM du Mois (toute l'église)" />
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
-        <PrixTribuDeptDuMois gagnant={tribuDeptDuMois?.tribu} titre="🏛️ Tribu du Mois" icone="🏛️" />
-        <PrixTribuDeptDuMois gagnant={tribuDeptDuMois?.departement} titre="🏢 Département du Mois" icone="🏢" />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+        <ClassementTop3 items={gemDuMois} titre="🏆 Top 3 GEM du Mois" sousLibelle={item => `${item.valeur}%`} />
+        <ClassementTop3 items={tribuDeptDuMois?.tribu} titre="🏛️ Top 3 Tribus du Mois" sousLibelle={item => `${item.valeur}%`} />
+        <ClassementTop3 items={tribuDeptDuMois?.departement} titre="🏢 Top 3 Départements du Mois" sousLibelle={item => `${item.valeur}%`} />
       </div>
       <ResumePerimetre gems={gemsDuPerimetre} membres={membresDuPerimetre} cardStyle={cardStyle} />
 
@@ -6297,8 +6299,8 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
 
   const classementGemsMois = vue === "mensuelle" ? calculerClassementGems(dimanchesDuMois, presencesMois, activitesMois, validationsPresenceMois) : [];
   const classementGemsAnnee = vue === "annuelle" ? calculerClassementGems(dimanchesAnnee, presencesAnnee, activitesAnnee, validationsPresenceAnnee) : [];
-  const meilleurGemMois = classementGemsMois[0] || null;
-  const meilleurGemAnnee = classementGemsAnnee[0] || null;
+  const meilleurGemMois = classementGemsMois.slice(0, 3);
+  const meilleurGemAnnee = classementGemsAnnee.slice(0, 3);
 
   const classementTribusAmes = (vue === "mensuelle" || vue === "annuelle") ? calculerClassementAmes("tribu", tribus) : [];
   const classementDepartementsAmes = (vue === "mensuelle" || vue === "annuelle") ? calculerClassementAmes("departement", departements) : [];
@@ -6661,7 +6663,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                 </div>
               )}
 
-              <PrixMeilleurGem gagnant={meilleurGemMois} titre="🏆 GEM du Mois" />
+              <ClassementTop3 items={meilleurGemMois} titre="🏆 Top 3 GEM du Mois" sousLibelle={item => `${item.valeur}%`} />
               <Classement titre="🏅 Classement complet des GEM" liste={classementGemsMois} suffixe=" pts" maxValeur={100} />
 
               <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>🏆 Classement par régularité (présence)</p>
@@ -6736,7 +6738,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                 </div>
               )}
 
-              <PrixMeilleurGem gagnant={meilleurGemAnnee} titre="🏆 GEM de l'Année" />
+              <ClassementTop3 items={meilleurGemAnnee} titre="🏆 Top 3 GEM de l'Année" sousLibelle={item => `${item.valeur}%`} />
               <Classement titre="🏅 Classement complet des GEM" liste={classementGemsAnnee} suffixe=" pts" maxValeur={100} />
 
               <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>🏆 Classement annuel par régularité (présence)</p>
@@ -7133,46 +7135,21 @@ function GraphiqueCroissance({ donnees, hauteur = 160 }) {
 // Trophée du meilleur GEM — réutilisable sur tous les tableaux de bord
 // (pasteur, assistants, responsables GEM, département, tribu).
 // Trophée Tribu/Département du mois — mêmes critères étendus (rapport, présence, suivi des nouveaux, activités)
-function PrixTribuDeptDuMois({ gagnant, titre, icone }) {
-  const [confettiActif, setConfettiActif] = useState(false);
-  useEffect(() => { if (gagnant) setConfettiActif(true); }, [gagnant?.id]);
-  if (!gagnant) return null;
+// Classement Top 3 compact — réutilisé pour GEM, tribu et département du mois.
+function ClassementTop3({ items, titre, sousLibelle }) {
+  if (!items || items.length === 0) return null;
+  const medailles = ["🥇", "🥈", "🥉"];
   return (
-    <div style={{ background: "linear-gradient(135deg, rgba(208,175,28,0.25), rgba(232,202,74,0.1))", border: `2px solid ${GOLD}`, borderRadius: 16, padding: 20, marginBottom: 28, textAlign: "center" }}>
-      <p style={{ fontSize: 36, marginBottom: 4 }}>{icone}</p>
-      <p style={{ fontSize: 12, color: GOLD_LIGHT, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>{titre}</p>
-      <p style={{ fontSize: 22, fontWeight: 700, color: CREAM, marginBottom: 4 }}>{gagnant.nom}</p>
-      <p style={{ fontSize: 12, color: "#cdeae4", marginBottom: 10 }}>{gagnant.nbGems} GEM</p>
-      <div style={{ display: "flex", justifyContent: "center", gap: 14, flexWrap: "wrap", fontSize: 12, color: "#cdeae4" }}>
-        {gagnant.tauxRapport !== null && <span>📋 Rapports : <b style={{ color: GOLD_LIGHT }}>{gagnant.tauxRapport}%</b></span>}
-        {gagnant.tauxPresence !== null && <span>📅 Présence : <b style={{ color: GOLD_LIGHT }}>{gagnant.tauxPresence}%</b></span>}
-        {gagnant.tauxSuiviNouveaux !== null && <span>🌱 Nouveaux : <b style={{ color: GOLD_LIGHT }}>{gagnant.tauxSuiviNouveaux}%</b></span>}
-        <span>🙏 Activités : <b style={{ color: GOLD_LIGHT }}>{gagnant.nombreActivites}</b></span>
+    <div style={{ backgroundColor: TEAL_900, border: `1px solid ${GOLD}`, borderRadius: 12, padding: 14, marginBottom: 16 }}>
+      <p style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>{titre}</p>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        {items.map((item, i) => (
+          <div key={item.gemId || item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13 }}>
+            <span style={{ color: CREAM }}>{medailles[i]} {item.nom}</span>
+            <span style={{ color: GOLD_LIGHT, fontWeight: 700 }}>{sousLibelle(item)}</span>
+          </div>
+        ))}
       </div>
-      <Confettis actif={confettiActif} onFin={() => setConfettiActif(false)} />
-    </div>
-  );
-}
-
-function PrixMeilleurGem({ gagnant, titre }) {
-  const [confettiActif, setConfettiActif] = useState(false);
-  useEffect(() => { if (gagnant) setConfettiActif(true); }, [gagnant?.gemId]);
-  if (!gagnant) return null;
-  return (
-    <div style={{ background: "linear-gradient(135deg, rgba(208,175,28,0.25), rgba(232,202,74,0.1))", border: `2px solid ${GOLD}`, borderRadius: 16, padding: 20, marginBottom: 28, textAlign: "center" }}>
-      <p style={{ fontSize: 36, marginBottom: 4 }}>🏆</p>
-      <p style={{ fontSize: 12, color: GOLD_LIGHT, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>{titre}</p>
-      <p style={{ fontSize: 22, fontWeight: 700, color: CREAM, marginBottom: 4 }}>{gagnant.nom}</p>
-      <p style={{ fontSize: 12, color: "#cdeae4", marginBottom: 4 }}>{gagnant.rattachement}</p>
-      {gagnant.nomResponsable && (
-        <p style={{ fontSize: 12, color: GOLD_LIGHT, marginBottom: 10 }}>👤 Responsable : {gagnant.nomResponsable}</p>
-      )}
-      <div style={{ display: "flex", justifyContent: "center", gap: 16, flexWrap: "wrap", fontSize: 12, color: "#cdeae4", marginTop: gagnant.nomResponsable ? 0 : 10 }}>
-        {gagnant.tauxRapport !== null && <span>📋 Rapports : <b style={{ color: GOLD_LIGHT }}>{gagnant.tauxRapport}%</b></span>}
-        {gagnant.tauxPresence !== null && <span>📅 Présence : <b style={{ color: GOLD_LIGHT }}>{gagnant.tauxPresence}%</b></span>}
-        <span>🙏 Activités : <b style={{ color: GOLD_LIGHT }}>{gagnant.nombreActivites}</b></span>
-      </div>
-      <Confettis actif={confettiActif} onFin={() => setConfettiActif(false)} />
     </div>
   );
 }
