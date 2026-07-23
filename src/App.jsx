@@ -1380,11 +1380,7 @@ function TableauDeBord({ compte }) {
                 <div><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Départements</p><p style={{ fontSize: 28, fontWeight: 700 }}><NombreAnime valeur={departements.length} /></p></div>
               </div>
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-              <ClassementTop3 items={gemDuMois} titre="🏆 Top 3 GEM du Mois" sousLibelle={item => `${item.valeur}%`} />
-              <ClassementTop3 items={tribuDeptDuMois.tribu} titre="🏛️ Top 3 Tribus du Mois" sousLibelle={item => `${item.valeur}%`} />
-              <ClassementTop3 items={tribuDeptDuMois.departement} titre="🏢 Top 3 Départements du Mois" sousLibelle={item => `${item.valeur}%`} />
-            </div>
+            <ClassementsDuMois gemDuMois={gemDuMois} tribuDeptDuMois={tribuDeptDuMois} />
             <AnniversairesAVenir membres={membres} gems={gems} cardStyle={cardStyle} />
             <AnniversairesResponsables comptes={tousLesComptes} cardStyle={cardStyle} />
 
@@ -5473,9 +5469,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
     return (
       <div>
         {selecteurRole}
-        <ClassementTop3 items={gemDuMois} titre="🏆 Top 3 GEM du Mois (toute l'église)" sousLibelle={item => `${item.valeur}%`} />
-        <ClassementTop3 items={tribuDeptDuMois?.tribu} titre="🏛️ Top 3 Tribus du Mois" sousLibelle={item => `${item.valeur}%`} />
-        <ClassementTop3 items={tribuDeptDuMois?.departement} titre="🏢 Top 3 Départements du Mois" sousLibelle={item => `${item.valeur}%`} />
+        <ClassementsDuMois gemDuMois={gemDuMois} tribuDeptDuMois={tribuDeptDuMois} />
         <AnniversairesAVenir membres={membresGem} gems={gems} cardStyle={cardStyle} />
         <DetailGem
           compte={compte}
@@ -5520,11 +5514,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
       </h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>{gemsDuPerimetre.length} GEM sous ta responsabilité</p>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
-        <ClassementTop3 items={gemDuMois} titre="🏆 Top 3 GEM du Mois" sousLibelle={item => `${item.valeur}%`} />
-        <ClassementTop3 items={tribuDeptDuMois?.tribu} titre="🏛️ Top 3 Tribus du Mois" sousLibelle={item => `${item.valeur}%`} />
-        <ClassementTop3 items={tribuDeptDuMois?.departement} titre="🏢 Top 3 Départements du Mois" sousLibelle={item => `${item.valeur}%`} />
-      </div>
+      <ClassementsDuMois gemDuMois={gemDuMois} tribuDeptDuMois={tribuDeptDuMois} />
       <ResumePerimetre gems={gemsDuPerimetre} membres={membresDuPerimetre} cardStyle={cardStyle} />
 
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
@@ -6663,7 +6653,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                 </div>
               )}
 
-              <ClassementTop3 items={meilleurGemMois} titre="🏆 Top 3 GEM du Mois" sousLibelle={item => `${item.valeur}%`} />
+              <ClassementsDuMois gemDuMois={meilleurGemMois} tribuDeptDuMois={null} />
               <Classement titre="🏅 Classement complet des GEM" liste={classementGemsMois} suffixe=" pts" maxValeur={100} />
 
               <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>🏆 Classement par régularité (présence)</p>
@@ -6738,7 +6728,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                 </div>
               )}
 
-              <ClassementTop3 items={meilleurGemAnnee} titre="🏆 Top 3 GEM de l'Année" sousLibelle={item => `${item.valeur}%`} />
+              <ClassementsDuMois gemDuMois={meilleurGemAnnee} tribuDeptDuMois={null} />
               <Classement titre="🏅 Classement complet des GEM" liste={classementGemsAnnee} suffixe=" pts" maxValeur={100} />
 
               <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>🏆 Classement annuel par régularité (présence)</p>
@@ -7136,17 +7126,50 @@ function GraphiqueCroissance({ donnees, hauteur = 160 }) {
 // (pasteur, assistants, responsables GEM, département, tribu).
 // Trophée Tribu/Département du mois — mêmes critères étendus (rapport, présence, suivi des nouveaux, activités)
 // Classement Top 3 compact — réutilisé pour GEM, tribu et département du mois.
-function ClassementTop3({ items, titre, sousLibelle }) {
-  if (!items || items.length === 0) return null;
+// Classements du mois — un seul encart compact avec onglets (GEM / Tribu / Département),
+// chaque ligne affichant le rang, le nom, et les statistiques clés en petites puces.
+function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
+  const [ongletActif, setOngletActif] = useState("gem");
   const medailles = ["🥇", "🥈", "🥉"];
+
+  const onglets = [
+    { cle: "gem", label: "GEM", items: gemDuMois, cles: [["tauxRapport", "📋"], ["tauxPresence", "📅"], ["nombreActivites", "🙏"]] },
+    { cle: "tribu", label: "Tribus", items: tribuDeptDuMois?.tribu, cles: [["tauxRapport", "📋"], ["tauxPresence", "📅"], ["tauxSuiviNouveaux", "🌱"], ["nombreActivites", "🙏"]] },
+    { cle: "departement", label: "Départements", items: tribuDeptDuMois?.departement, cles: [["tauxRapport", "📋"], ["tauxPresence", "📅"], ["tauxSuiviNouveaux", "🌱"], ["nombreActivites", "🙏"]] },
+  ];
+
+  const disponibles = onglets.filter(o => o.items && o.items.length > 0);
+  if (disponibles.length === 0) return null;
+  const actif = onglets.find(o => o.cle === ongletActif) && disponibles.some(o => o.cle === ongletActif) ? onglets.find(o => o.cle === ongletActif) : disponibles[0];
+
+  function afficherValeur(cle, valeur) {
+    if (valeur === null || valeur === undefined) return null;
+    return cle === "nombreActivites" ? `${valeur}` : `${valeur}%`;
+  }
+
   return (
-    <div style={{ backgroundColor: TEAL_900, border: `1px solid ${GOLD}`, borderRadius: 12, padding: 14, marginBottom: 16 }}>
-      <p style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>{titre}</p>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-        {items.map((item, i) => (
-          <div key={item.gemId || item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 13 }}>
-            <span style={{ color: CREAM }}>{medailles[i]} {item.nom}</span>
-            <span style={{ color: GOLD_LIGHT, fontWeight: 700 }}>{sousLibelle(item)}</span>
+    <div style={{ backgroundColor: TEAL_900, border: `1px solid ${GOLD}`, borderRadius: 12, padding: 12, marginBottom: 20 }}>
+      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
+        {disponibles.map(o => (
+          <button
+            key={o.cle}
+            className="btn-app"
+            onClick={() => setOngletActif(o.cle)}
+            style={{ flex: 1, padding: "6px 8px", borderRadius: 8, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: actif.cle === o.cle ? GOLD : TEAL_850, color: actif.cle === o.cle ? TEAL_950 : "#cdeae4" }}
+          >
+            🏆 {o.label}
+          </button>
+        ))}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+        {actif.items.slice(0, 3).map((item, i) => (
+          <div key={item.gemId || item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, padding: "3px 0" }}>
+            <span style={{ color: CREAM, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 110 }}>{medailles[i]} {item.nom}</span>
+            <div style={{ display: "flex", gap: 6, flexWrap: "nowrap" }}>
+              {actif.cles.map(([cle, icone]) => afficherValeur(cle, item[cle]) !== null && (
+                <span key={cle} style={{ color: GOLD_LIGHT, fontWeight: 700, fontSize: 11, whiteSpace: "nowrap" }}>{icone}{afficherValeur(cle, item[cle])}</span>
+              ))}
+            </div>
           </div>
         ))}
       </div>
