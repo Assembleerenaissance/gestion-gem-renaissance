@@ -774,6 +774,7 @@ function TableauDeBord({ compte }) {
   const [tousLesComptes, setTousLesComptes] = useState([]);
   const [responsablesParGem, setResponsablesParGem] = useState({});
   const [gemDuMois, setGemDuMois] = useState(null);
+  const [tribuDeptDuMois, setTribuDeptDuMois] = useState({ tribu: null, departement: null });
   const [rapportsPresenceSemaine, setRapportsPresenceSemaine] = useState({ valides: 0, total: 0 });
   const [rapportsActivitesSemaine, setRapportsActivitesSemaine] = useState({ valides: 0, total: 0 });
   const [regulariteParMembre, setRegulariteParMembre] = useState({});
@@ -853,6 +854,7 @@ function TableauDeBord({ compte }) {
       }
     }
     calculerGemDuMoisGlobal(g || [], m || [], t || [], d || []).then(setGemDuMois);
+    calculerTribuDeptDuMoisGlobal(g || [], m || [], t || [], d || []).then(setTribuDeptDuMois);
     await calculerRegularite(m || []);
     verifierPointageManquant(m || []).then(setRappelPointageGlobal);
     await rafraichirCompteurs();
@@ -1308,6 +1310,7 @@ function TableauDeBord({ compte }) {
             membreCible={membreCible}
             onMembreCibleConsomme={() => setMembreCible(null)}
             gemDuMois={gemDuMois}
+            tribuDeptDuMois={tribuDeptDuMois}
             cardStyle={cardStyle}
           />
         ) : !estPasteur ? (
@@ -1326,6 +1329,7 @@ function TableauDeBord({ compte }) {
             membreCible={membreCible}
             onMembreCibleConsomme={() => setMembreCible(null)}
             gemDuMois={gemDuMois}
+            tribuDeptDuMois={tribuDeptDuMois}
             cardStyle={cardStyle}
           />
         ) : gemOuvert ? (
@@ -1377,6 +1381,10 @@ function TableauDeBord({ compte }) {
               </div>
             </div>
             <PrixMeilleurGem gagnant={gemDuMois} titre="🏆 GEM du Mois" />
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 16 }}>
+              <PrixTribuDeptDuMois gagnant={tribuDeptDuMois.tribu} titre="🏛️ Tribu du Mois" icone="🏛️" />
+              <PrixTribuDeptDuMois gagnant={tribuDeptDuMois.departement} titre="🏢 Département du Mois" icone="🏢" />
+            </div>
             <AnniversairesAVenir membres={membres} gems={gems} cardStyle={cardStyle} />
             <AnniversairesResponsables comptes={tousLesComptes} cardStyle={cardStyle} />
 
@@ -2167,6 +2175,88 @@ async function calculerGemDuMoisGlobal(gems, membres, tribus, departements) {
   });
   resultats.sort((a, b) => b.valeur - a.valeur);
   return resultats[0] || null;
+}
+
+// Calcule la Tribu du Mois et le Département du Mois pour toute l'église —
+// critères : taux de rapport rempli (présence + santé + activités), taux de
+// présence au culte, suivi/intégration des nouveaux, activités effectuées.
+async function calculerTribuDeptDuMoisGlobal(gems, membres, tribus, departements) {
+  const moisActuel = new Date().toISOString().slice(0, 7);
+  const debutMois = `${moisActuel}-01`;
+  const finMois = `${moisActuel}-31`;
+  const { data: dimanchesTous } = await supabase.from("dimanches").select("*");
+  const dimanchesDuMois = (dimanchesTous || []).filter(d => d.date.slice(0, 7) === moisActuel);
+  if (dimanchesDuMois.length === 0) return { tribu: null, departement: null };
+  const idsDimanches = dimanchesDuMois.map(d => d.id);
+
+  const [{ data: presences }, { data: activites }, { data: validationsPresence }, { data: sante }] = await Promise.all([
+    supabase.from("presences").select("*").in("dimanche_id", idsDimanches),
+    supabase.from("activites_semaine").select("*").in("dimanche_id", idsDimanches).eq("valide", true),
+    supabase.from("validations_presence").select("*").in("dimanche_id", idsDimanches).eq("valide", true),
+    supabase.from("sante_spirituelle").select("*").gte("date_maj", debutMois).lte("date_maj", finMois + "T23:59:59"),
+  ]);
+
+  function calculerPour(type, items) {
+    const brut = items.map(item => {
+      const gemsItem = gems.filter(g => type === "tribu" ? g.tribu_id === item.id : g.departement_id === item.id);
+      const idsGems = gemsItem.map(g => g.id);
+      const membresItem = membres.filter(m => idsGems.includes(m.gem_id));
+      if (membresItem.length === 0) return null;
+      const idsMembres = membresItem.map(m => m.id);
+
+      const slots = dimanchesDuMois.length * membresItem.length;
+      const presents = (presences || []).filter(p => idsMembres.includes(p.membre_id) && p.present).length;
+      const tauxPresence = slots > 0 ? (presents / slots) * 100 : null;
+
+      const rapportsPresenceValides = (validationsPresence || []).filter(v => idsGems.includes(v.gem_id)).length;
+      const rapportsActiviteValides = (activites || []).filter(a => idsGems.includes(a.gem_id)).length;
+      const membresAvecSante = new Set((sante || []).filter(s => idsMembres.includes(s.membre_id)).map(s => s.membre_id)).size;
+      const tauxRapportPresence = dimanchesDuMois.length > 0 ? (rapportsPresenceValides / (dimanchesDuMois.length * idsGems.length || 1)) * 100 : null;
+      const tauxRapportActivite = dimanchesDuMois.length > 0 ? (rapportsActiviteValides / (dimanchesDuMois.length * idsGems.length || 1)) * 100 : null;
+      const tauxSante = membresItem.length > 0 ? (membresAvecSante / membresItem.length) * 100 : null;
+      const composantesRapport = [tauxRapportPresence, tauxRapportActivite, tauxSante].filter(v => v !== null);
+      const tauxRapport = composantesRapport.length > 0 ? composantesRapport.reduce((a, b) => a + b, 0) / composantesRapport.length : null;
+
+      const nouveauxItem = membresItem.filter(m => m.nouveau_converti);
+      const nouveauxProgresses = nouveauxItem.filter(m => (m.etape_conversion || "accueil") !== "accueil").length;
+      const tauxSuiviNouveaux = nouveauxItem.length > 0 ? (nouveauxProgresses / nouveauxItem.length) * 100 : null;
+
+      const activitesItem = (activites || []).filter(a => idsGems.includes(a.gem_id));
+      const nombreActivites = activitesItem.reduce((total, a) => {
+        let n = 0;
+        n += (a.visites_membres || []).length;
+        n += (a.appels_membres || []).length;
+        if (a.jeune && a.jeune.trim()) n += 1;
+        if (a.agape && a.agape.trim()) n += 1;
+        if (a.evangelisation && a.evangelisation.trim()) n += 1;
+        return total + n;
+      }, 0);
+
+      return { nom: item.nom, id: item.id, tauxPresence, tauxRapport, tauxSuiviNouveaux, nombreActivites, nbGems: idsGems.length };
+    }).filter(Boolean);
+
+    if (brut.length === 0) return null;
+    const maxActivites = Math.max(1, ...brut.map(x => x.nombreActivites));
+    const resultats = brut.map(x => {
+      const scoreActivitesNorm = (x.nombreActivites / maxActivites) * 100;
+      const composantes = [x.tauxPresence, x.tauxRapport, x.tauxSuiviNouveaux, scoreActivitesNorm].filter(v => v !== null);
+      const score = composantes.length > 0 ? composantes.reduce((a, b) => a + b, 0) / composantes.length : 0;
+      return {
+        nom: x.nom, id: x.id, valeur: Math.round(score), nbGems: x.nbGems,
+        tauxPresence: x.tauxPresence !== null ? Math.round(x.tauxPresence) : null,
+        tauxRapport: x.tauxRapport !== null ? Math.round(x.tauxRapport) : null,
+        tauxSuiviNouveaux: x.tauxSuiviNouveaux !== null ? Math.round(x.tauxSuiviNouveaux) : null,
+        nombreActivites: x.nombreActivites,
+      };
+    });
+    resultats.sort((a, b) => b.valeur - a.valeur);
+    return resultats[0] || null;
+  }
+
+  return {
+    tribu: calculerPour("tribu", tribus),
+    departement: calculerPour("departement", departements),
+  };
 }
 
 // Garantit que le numéro utilisé pour WhatsApp comporte bien l'indicatif +225 (Côte d'Ivoire),
@@ -5297,7 +5387,7 @@ function EvolutionPerimetre({ membres, cardStyle }) {
 
 /* ------------------------------- Mon espace (responsable) ------------------------------- */
 
-function MonEspace({ compte, assignationsActives, gems, membres, tribus, departements, gemOuvert, setGemOuvert, onMembreAjoute, onCreerGem, regulariteParMembre, membreCible, onMembreCibleConsomme, gemDuMois, cardStyle }) {
+function MonEspace({ compte, assignationsActives, gems, membres, tribus, departements, gemOuvert, setGemOuvert, onMembreAjoute, onCreerGem, regulariteParMembre, membreCible, onMembreCibleConsomme, gemDuMois, tribuDeptDuMois, cardStyle }) {
   const [nomNouveauGem, setNomNouveauGem] = useState("");
   const [creationOuverte, setCreationOuverte] = useState(false);
   const [sousOnglet, setSousOnglet] = useState("gems");
@@ -5429,6 +5519,10 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>{gemsDuPerimetre.length} GEM sous ta responsabilité</p>
 
       <PrixMeilleurGem gagnant={gemDuMois} titre="🏆 GEM du Mois (toute l'église)" />
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 16 }}>
+        <PrixTribuDeptDuMois gagnant={tribuDeptDuMois?.tribu} titre="🏛️ Tribu du Mois" icone="🏛️" />
+        <PrixTribuDeptDuMois gagnant={tribuDeptDuMois?.departement} titre="🏢 Département du Mois" icone="🏢" />
+      </div>
       <ResumePerimetre gems={gemsDuPerimetre} membres={membresDuPerimetre} cardStyle={cardStyle} />
 
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
@@ -7038,6 +7132,28 @@ function GraphiqueCroissance({ donnees, hauteur = 160 }) {
 
 // Trophée du meilleur GEM — réutilisable sur tous les tableaux de bord
 // (pasteur, assistants, responsables GEM, département, tribu).
+// Trophée Tribu/Département du mois — mêmes critères étendus (rapport, présence, suivi des nouveaux, activités)
+function PrixTribuDeptDuMois({ gagnant, titre, icone }) {
+  const [confettiActif, setConfettiActif] = useState(false);
+  useEffect(() => { if (gagnant) setConfettiActif(true); }, [gagnant?.id]);
+  if (!gagnant) return null;
+  return (
+    <div style={{ background: "linear-gradient(135deg, rgba(208,175,28,0.25), rgba(232,202,74,0.1))", border: `2px solid ${GOLD}`, borderRadius: 16, padding: 20, marginBottom: 28, textAlign: "center" }}>
+      <p style={{ fontSize: 36, marginBottom: 4 }}>{icone}</p>
+      <p style={{ fontSize: 12, color: GOLD_LIGHT, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1, marginBottom: 4 }}>{titre}</p>
+      <p style={{ fontSize: 22, fontWeight: 700, color: CREAM, marginBottom: 4 }}>{gagnant.nom}</p>
+      <p style={{ fontSize: 12, color: "#cdeae4", marginBottom: 10 }}>{gagnant.nbGems} GEM</p>
+      <div style={{ display: "flex", justifyContent: "center", gap: 14, flexWrap: "wrap", fontSize: 12, color: "#cdeae4" }}>
+        {gagnant.tauxRapport !== null && <span>📋 Rapports : <b style={{ color: GOLD_LIGHT }}>{gagnant.tauxRapport}%</b></span>}
+        {gagnant.tauxPresence !== null && <span>📅 Présence : <b style={{ color: GOLD_LIGHT }}>{gagnant.tauxPresence}%</b></span>}
+        {gagnant.tauxSuiviNouveaux !== null && <span>🌱 Nouveaux : <b style={{ color: GOLD_LIGHT }}>{gagnant.tauxSuiviNouveaux}%</b></span>}
+        <span>🙏 Activités : <b style={{ color: GOLD_LIGHT }}>{gagnant.nombreActivites}</b></span>
+      </div>
+      <Confettis actif={confettiActif} onFin={() => setConfettiActif(false)} />
+    </div>
+  );
+}
+
 function PrixMeilleurGem({ gagnant, titre }) {
   const [confettiActif, setConfettiActif] = useState(false);
   useEffect(() => { if (gagnant) setConfettiActif(true); }, [gagnant?.gemId]);
