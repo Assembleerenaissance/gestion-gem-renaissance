@@ -7161,15 +7161,22 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
           </button>
         ))}
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {actif.items.slice(0, 3).map((item, i) => (
-          <div key={item.gemId || item.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12, padding: "3px 0" }}>
-            <span style={{ color: CREAM, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 110 }}>{medailles[i]} {item.nom}</span>
-            <div style={{ display: "flex", gap: 6, flexWrap: "nowrap" }}>
-              {actif.cles.map(([cle, icone]) => afficherValeur(cle, item[cle]) !== null && (
-                <span key={cle} style={{ color: GOLD_LIGHT, fontWeight: 700, fontSize: 11, whiteSpace: "nowrap" }}>{icone}{afficherValeur(cle, item[cle])}</span>
-              ))}
+          <div key={item.gemId || item.id} style={{ borderBottom: i < 2 ? `1px solid ${TEAL_800}` : "none", paddingBottom: i < 2 ? 6 : 0 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
+              <span style={{ color: CREAM, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 130 }}>{medailles[i]} {item.nom}</span>
+              <div style={{ display: "flex", gap: 6, flexWrap: "nowrap" }}>
+                {actif.cles.map(([cle, icone]) => afficherValeur(cle, item[cle]) !== null && (
+                  <span key={cle} style={{ color: GOLD_LIGHT, fontWeight: 700, fontSize: 11, whiteSpace: "nowrap" }}>{icone}{afficherValeur(cle, item[cle])}</span>
+                ))}
+              </div>
             </div>
+            {actif.cle === "gem" && (item.nomResponsable || item.rattachement) && (
+              <p style={{ fontSize: 10, color: "#a9d6cf", margin: "2px 0 0 18px" }}>
+                {item.nomResponsable ? `👤 ${item.nomResponsable}` : "Aucun responsable"}{item.rattachement ? ` — ${item.rattachement}` : ""}
+              </p>
+            )}
           </div>
         ))}
       </div>
