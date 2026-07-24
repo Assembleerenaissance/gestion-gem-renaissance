@@ -1609,17 +1609,27 @@ function AnniversairesAVenir({ membres, gems, cardStyle }) {
     return { date: anniv, diffJours };
   }
 
-  const anniversaires = membres
+  const anniversairesBrut = membres
     .filter(m => m.date_naissance)
     .map(m => ({ membre: m, ...prochainAnniversaire(m.date_naissance) }))
-    .filter(x => x.diffJours >= 0 && x.diffJours <= 14)
+    .filter(x => x.diffJours >= 0 && x.diffJours <= 3)
     .sort((a, b) => a.diffJours - b.diffJours);
+
+  // Un même membre peut apparaître dans plusieurs GEM à la fois — on ne le
+  // garde qu'une seule fois (nom + date de naissance identiques).
+  const dejaVus = new Set();
+  const anniversaires = anniversairesBrut.filter(x => {
+    const cle = `${x.membre.nom.trim().toLowerCase()}|${x.membre.date_naissance}`;
+    if (dejaVus.has(cle)) return false;
+    dejaVus.add(cle);
+    return true;
+  });
 
   if (anniversaires.length === 0) return null;
 
   return (
     <div style={{ marginBottom: 28 }}>
-      <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>🎂 Anniversaires à venir (14 prochains jours)</p>
+      <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>🎂 Anniversaires à venir (3 prochains jours)</p>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {anniversaires.map(({ membre, date, diffJours }) => (
           <div key={membre.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
