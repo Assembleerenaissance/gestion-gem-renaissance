@@ -4820,17 +4820,27 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
         <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucune personne trouvée.</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {resultats.map(p => (
-            <button key={p.id} className="btn-app card-app" onClick={() => setPersonneOuverte(p)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-              <div>
-                <p style={{ fontWeight: 700, margin: 0 }}>{p.nom}</p>
-                <p style={{ fontSize: 11, color: "#a9d6cf", margin: 0 }}>{libelleRoles(p)}</p>
-              </div>
-              {p.types.includes("membre") && (absencesRecentes[p.membreId]?.absences || 0) >= 2 && (
-                <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "3px 9px" }}>⚠️ {absencesRecentes[p.membreId].absences}/{absencesRecentes[p.membreId].total} absences</span>
-              )}
-            </button>
-          ))}
+          {resultats.map(p => {
+            const tauxReg = p.types.includes("membre") ? regulariteParMembre?.[p.membreId]?.tauxRegularite : null;
+            return (
+              <button key={p.id} className="btn-app card-app" onClick={() => setPersonneOuverte(p)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                <div>
+                  <p style={{ fontWeight: 700, margin: 0 }}>{p.nom}</p>
+                  <p style={{ fontSize: 11, color: "#a9d6cf", margin: 0 }}>{libelleRoles(p)}</p>
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  {tauxReg !== null && tauxReg !== undefined && (
+                    <span style={{ fontSize: 11, fontWeight: 700, color: tauxReg >= 70 ? "#6fcf97" : tauxReg >= 40 ? GOLD_LIGHT : RED_LIGHT, backgroundColor: TEAL_900, borderRadius: 999, padding: "4px 10px" }}>
+                      📊 {tauxReg}%
+                    </span>
+                  )}
+                  {p.types.includes("membre") && (absencesRecentes[p.membreId]?.absences || 0) >= 2 && (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "3px 9px" }}>⚠️ {absencesRecentes[p.membreId].absences}/{absencesRecentes[p.membreId].total} absences</span>
+                  )}
+                </div>
+              </button>
+            );
+          })}
         </div>
       )}
     </div>
