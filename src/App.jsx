@@ -1712,8 +1712,10 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
   const [recherche, setRecherche] = useState("");
   const [creationPour, setCreationPour] = useState(null);
   const [nomNouveauGem, setNomNouveauGem] = useState("");
-  const [responsablesParParent, setResponsablesParParent] = useState({}); // { parentId: { nom, telephone } }
+  const [responsablesParParent, setResponsablesParParent] = useState({}); // { parentId: { compte, assignationId } }
   const [responsablesParGem, setResponsablesParGem] = useState({}); // { gemId: { nom, telephone } }
+  const [editionResponsableParent, setEditionResponsableParent] = useState(null); // { parentId, compte }
+  const [retraitResponsableParent, setRetraitResponsableParent] = useState(null); // { parentId, assignationId, compte }
 
   useEffect(() => { chargerResponsables(); }, [type, gems.length]);
 
@@ -1732,7 +1734,7 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
     const mapParent = {};
     (assignationsParent || []).forEach(a => {
       const parentId = type === "tribu" ? a.tribu_id : a.departement_id;
-      if (parentId && comptesMap[a.compte_id]) mapParent[parentId] = comptesMap[a.compte_id];
+      if (parentId && comptesMap[a.compte_id]) mapParent[parentId] = { compte: comptesMap[a.compte_id], assignationId: a.id };
     });
     setResponsablesParParent(mapParent);
 
@@ -1741,6 +1743,15 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
       if (a.gem_id && comptesMap[a.compte_id]) mapGem[a.gem_id] = comptesMap[a.compte_id];
     });
     setResponsablesParGem(mapGem);
+  }
+
+  async function retirerResponsableParent() {
+    if (!retraitResponsableParent) return;
+    const { error } = await supabase.from("assignations").delete().eq("id", retraitResponsableParent.assignationId);
+    if (error) { toast("Impossible de retirer ce responsable : " + error.message, "erreur"); return; }
+    toast(`${retraitResponsableParent.compte.nom} n'est plus responsable.`, "succes");
+    setRetraitResponsableParent(null);
+    chargerResponsables();
   }
 
   const filtres = items.filter(it => it.nom.toLowerCase().includes(recherche.toLowerCase()));
@@ -1776,9 +1787,17 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
                 </button>
               </div>
               {responsable ? (
-                <p style={{ fontSize: 11, color: GOLD_LIGHT, marginBottom: 10 }}>
-                  {type === "tribu" ? "Patriarche/Matriarche" : "Responsable"} : {responsable.nom}
-                </p>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 6 }}>
+                  <p style={{ fontSize: 11, color: GOLD_LIGHT, margin: 0 }}>
+                    {type === "tribu" ? "Patriarche/Matriarche" : "Responsable"} : {responsable.compte.nom}
+                  </p>
+                  {estPasteur && (
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button className="btn-app" onClick={() => setEditionResponsableParent({ parentId: it.id, compte: responsable.compte })} style={{ fontSize: 10, fontWeight: 700, color: GOLD_LIGHT, background: "none", border: `1px solid ${TEAL_600}`, borderRadius: 6, padding: "3px 8px", cursor: "pointer" }}>✏️</button>
+                      <button className="btn-app" onClick={() => setRetraitResponsableParent({ parentId: it.id, assignationId: responsable.assignationId, compte: responsable.compte })} style={{ fontSize: 10, fontWeight: 700, color: RED_LIGHT, background: "none", border: `1px solid ${RED_LIGHT}`, borderRadius: 6, padding: "3px 8px", cursor: "pointer" }}>🗑️</button>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <p style={{ fontSize: 11, color: "#a9d6cf", fontStyle: "italic", marginBottom: 10 }}>Aucun responsable désigné</p>
               )}
@@ -1817,6 +1836,25 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
           );
         })}
       </div>
+
+      {editionResponsableParent && (
+        <EditionResponsableGem
+          compteResponsable={editionResponsableParent.compte}
+          onFerme={() => setEditionResponsableParent(null)}
+          onEnregistre={() => { setEditionResponsableParent(null); chargerResponsables(); }}
+        />
+      )}
+
+      {retraitResponsableParent && (
+        <BoiteConfirmation
+          titre="Retirer ce responsable ?"
+          message={`Es-tu sûr de vouloir retirer "${retraitResponsableParent.compte.nom}" de cette responsabilité ? Son compte de connexion restera actif, mais il perdra cet accès.`}
+          texteConfirmer="Retirer"
+          dangereux
+          onConfirmer={retirerResponsableParent}
+          onAnnuler={() => setRetraitResponsableParent(null)}
+        />
+      )}
     </div>
   );
 }
@@ -1887,6 +1925,18 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
     const membre = membreAConfirmer;
     setMembreAConfirmer(null);
     setSuppressionEnCours(membre.id);
+
+    if (estPasteur) {
+      // Le pasteur et ses assistants suppriment directement (après confirmation),
+      // sans passer par la file d'attente de validation.
+      const { error } = await supabase.from("membres").delete().eq("id", membre.id);
+      setSuppressionEnCours(null);
+      if (error) { toast("Suppression impossible : " + error.message, "erreur"); return; }
+      toast(`${membre.nom} a été supprimé.`, "succes");
+      if (onChange) onChange();
+      return;
+    }
+
     const { error } = await supabase.from("demandes_suppression_membre").insert({
       membre_id: membre.id,
       membre_nom: membre.nom,
@@ -2067,11 +2117,22 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
       )}
 
       {membreAConfirmer && (
-        <BoiteDemandeSuppression
-          nomMembre={membreAConfirmer.nom}
-          onEnvoyer={envoyerDemandeSuppression}
-          onAnnuler={() => setMembreAConfirmer(null)}
-        />
+        estPasteur ? (
+          <BoiteConfirmation
+            titre="Supprimer ce membre ?"
+            message={`Es-tu sûr de vouloir supprimer définitivement "${membreAConfirmer.nom}" ? Cette action est irréversible (présence, santé spirituelle et visites seront aussi supprimées).`}
+            texteConfirmer={suppressionEnCours ? "…" : "Supprimer définitivement"}
+            dangereux
+            onConfirmer={() => envoyerDemandeSuppression(null)}
+            onAnnuler={() => setMembreAConfirmer(null)}
+          />
+        ) : (
+          <BoiteDemandeSuppression
+            nomMembre={membreAConfirmer.nom}
+            onEnvoyer={envoyerDemandeSuppression}
+            onAnnuler={() => setMembreAConfirmer(null)}
+          />
+        )
       )}
       {gemAConfirmerSuppression && (
         <BoiteConfirmation
@@ -2339,6 +2400,51 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
   const [rappelPointage, setRappelPointage] = useState(null);
   const [sousOnglet, setSousOnglet] = useState("membres"); // membres | activites
   const [dimanchesDisponibles, setDimanchesDisponibles] = useState([]);
+  const [responsableGem, setResponsableGem] = useState(null); // { assignationId, compte }
+  const [chargementResponsable, setChargementResponsable] = useState(true);
+  const [presenceResponsable, setPresenceResponsable] = useState(false);
+  const [editionResponsableOuverte, setEditionResponsableOuverte] = useState(false);
+  const [confirmerRetraitResponsable, setConfirmerRetraitResponsable] = useState(false);
+
+  const estAdmin = compte.role === "pasteur" || compte.assistant === true;
+
+  useEffect(() => { chargerResponsableGem(); }, [gem.id]);
+  useEffect(() => { chargerPresenceResponsable(); }, [dimancheId, responsableGem?.compte?.id]);
+
+  async function chargerResponsableGem() {
+    setChargementResponsable(true);
+    const { data } = await supabase.from("assignations").select("id, compte_id").eq("gem_id", gem.id).eq("role_demande", "gem").eq("statut", "actif").limit(1).maybeSingle();
+    if (!data) { setResponsableGem(null); setChargementResponsable(false); return; }
+    const { data: c } = await supabase.from("comptes").select("*").eq("id", data.compte_id).maybeSingle();
+    setResponsableGem(c ? { assignationId: data.id, compte: c } : null);
+    setChargementResponsable(false);
+  }
+
+  async function chargerPresenceResponsable() {
+    if (!dimancheId || !responsableGem?.compte?.id) { setPresenceResponsable(false); return; }
+    const { data } = await supabase.from("presences_responsables_gem").select("*").eq("compte_id", responsableGem.compte.id).eq("dimanche_id", dimancheId).maybeSingle();
+    setPresenceResponsable(!!data?.present);
+  }
+
+  async function basculerPresenceResponsable() {
+    if (!responsableGem?.compte?.id || !dimancheId) return;
+    const nouvelEtat = !presenceResponsable;
+    setPresenceResponsable(nouvelEtat);
+    const { error } = await supabase.from("presences_responsables_gem").upsert(
+      { compte_id: responsableGem.compte.id, gem_id: gem.id, dimanche_id: dimancheId, present: nouvelEtat },
+      { onConflict: "compte_id,dimanche_id" }
+    );
+    if (error) { toast("⚠️ Présence du responsable non enregistrée : " + error.message, "erreur"); setPresenceResponsable(!nouvelEtat); }
+  }
+
+  async function retirerResponsable() {
+    if (!responsableGem) return;
+    const { error } = await supabase.from("assignations").delete().eq("id", responsableGem.assignationId);
+    setConfirmerRetraitResponsable(false);
+    if (error) { toast("Impossible de retirer ce responsable : " + error.message, "erreur"); return; }
+    toast(`${responsableGem.compte.nom} n'est plus responsable de ce GEM.`, "succes");
+    setResponsableGem(null);
+  }
 
   useEffect(() => { initialiserPresences(); chargerSante(); verifierPointageManquant(membres).then(setRappelPointage); }, [membres.length]);
   useEffect(() => { chargerPresences(); }, [dimancheId]);
@@ -2594,6 +2700,27 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
         </select>
         <p style={{ fontSize: 11, color: "#a9d6cf", marginBottom: 12 }}>Coche chaque membre présent au culte de ce dimanche.</p>
 
+        {!chargementResponsable && responsableGem && (
+          <div style={{ border: `2px solid ${GOLD}`, borderRadius: 8, padding: "10px 14px", marginBottom: 12, backgroundColor: "rgba(208,175,28,0.08)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: dimancheId ? "pointer" : "default" }}>
+                <input type="checkbox" checked={presenceResponsable} onChange={basculerPresenceResponsable} disabled={!dimancheId} style={{ width: 18, height: 18, accentColor: GOLD }} />
+                <span>
+                  <span style={{ fontWeight: 700 }}>{responsableGem.compte.nom}</span>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, borderRadius: 999, padding: "2px 8px", marginLeft: 8 }}>👤 Responsable</span>
+                </span>
+              </label>
+              {estAdmin && (
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button className="btn-app" onClick={() => setEditionResponsableOuverte(true)} style={{ fontSize: 11, fontWeight: 700, color: GOLD_LIGHT, background: "none", border: `1px solid ${TEAL_600}`, borderRadius: 6, padding: "5px 10px", cursor: "pointer" }}>✏️ Infos</button>
+                  <button className="btn-app" onClick={() => setConfirmerRetraitResponsable(true)} style={{ fontSize: 11, fontWeight: 700, color: RED_LIGHT, background: "none", border: `1px solid ${RED_LIGHT}`, borderRadius: 6, padding: "5px 10px", cursor: "pointer" }}>🗑️ Retirer</button>
+                </div>
+              )}
+            </div>
+            <p style={{ fontSize: 11, color: "#a9d6cf", marginTop: 4 }}>{responsableGem.compte.telephone}{responsableGem.compte.quartier ? ` · ${responsableGem.compte.quartier}` : ""}</p>
+          </div>
+        )}
+
         {chargementPresences ? (
           <p style={{ color: "#a9d6cf", fontSize: 13 }}>Chargement…</p>
         ) : membres.length === 0 ? (
@@ -2703,6 +2830,77 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
           </div>
         </div>
       )}
+
+      {editionResponsableOuverte && responsableGem && (
+        <EditionResponsableGem
+          compteResponsable={responsableGem.compte}
+          onFerme={() => setEditionResponsableOuverte(false)}
+          onEnregistre={(c) => { setResponsableGem(r => ({ ...r, compte: c })); setEditionResponsableOuverte(false); }}
+        />
+      )}
+
+      {confirmerRetraitResponsable && responsableGem && (
+        <BoiteConfirmation
+          titre="Retirer ce responsable ?"
+          message={`Es-tu sûr de vouloir retirer "${responsableGem.compte.nom}" de la responsabilité de ce GEM ? Son compte de connexion restera actif, mais il n'aura plus accès à ce GEM.`}
+          texteConfirmer="Retirer"
+          dangereux
+          onConfirmer={retirerResponsable}
+          onAnnuler={() => setConfirmerRetraitResponsable(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+function EditionResponsableGem({ compteResponsable, onFerme, onEnregistre }) {
+  const [nom, setNom] = useState(compteResponsable.nom);
+  const [telephone, setTelephone] = useState(compteResponsable.telephone);
+  const [quartier, setQuartier] = useState(compteResponsable.quartier || "");
+  const [dateNaissance, setDateNaissance] = useState(compteResponsable.date_naissance || "");
+  const [enregistrement, setEnregistrement] = useState(false);
+
+  async function enregistrer() {
+    if (!nom.trim() || !telephone.trim()) { toast("Le nom et le téléphone ne peuvent pas être vides.", "erreur"); return; }
+    setEnregistrement(true);
+    const { data, error } = await supabase.from("comptes").update({
+      nom: nom.trim(), telephone: telephone.trim(), quartier: quartier.trim() || null, date_naissance: dateNaissance || null,
+    }).eq("id", compteResponsable.id).select().single();
+    setEnregistrement(false);
+    if (error) { toast("Impossible d'enregistrer : " + error.message, "erreur"); return; }
+    toast("✓ Informations du responsable mises à jour.", "succes");
+    onEnregistre(data);
+  }
+
+  return (
+    <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(5,20,18,0.75)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div style={{ backgroundColor: TEAL_950, border: `1px solid ${GOLD}`, borderRadius: 14, padding: 22, maxWidth: 400, width: "100%" }}>
+        <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>✏️ Modifier le responsable</p>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div>
+            <label style={{ fontSize: 11, color: "#a9d6cf", display: "block", marginBottom: 4 }}>Nom</label>
+            <input value={nom} onChange={e => setNom(e.target.value)} style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#a9d6cf", display: "block", marginBottom: 4 }}>Téléphone</label>
+            <input value={telephone} onChange={e => setTelephone(e.target.value)} style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#a9d6cf", display: "block", marginBottom: 4 }}>Quartier</label>
+            <input value={quartier} onChange={e => setQuartier(e.target.value)} style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "#a9d6cf", display: "block", marginBottom: 4 }}>🎂 Date de naissance (jour et mois)</label>
+            <SelecteurJourMois value={dateNaissance} onChange={setDateNaissance} />
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
+          <button className="btn-app" onClick={onFerme} style={{ flex: 1, padding: "10px 0", borderRadius: 8, backgroundColor: "transparent", color: "#cdeae4", border: `1px solid ${TEAL_600}`, cursor: "pointer" }}>Annuler</button>
+          <button className="btn-app" disabled={enregistrement} onClick={enregistrer} style={{ flex: 1, padding: "10px 0", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>
+            {enregistrement ? "…" : "Enregistrer"}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
@@ -2966,6 +3164,16 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
 
   async function envoyerDemandeSuppression(motif) {
     setDemandeSuppressionOuverte(false);
+    const estAdmin = compte.role === "pasteur" || compte.assistant === true;
+
+    if (estAdmin) {
+      const { error } = await supabase.from("membres").delete().eq("id", membre.id);
+      if (error) { toast("Suppression impossible : " + error.message, "erreur"); return; }
+      toast(`${membre.nom} a été supprimé.`, "succes");
+      if (onMisAJour) onMisAJour();
+      return;
+    }
+
     const { error } = await supabase.from("demandes_suppression_membre").insert({
       membre_id: membre.id,
       membre_nom: membre.nom,
@@ -3338,11 +3546,22 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
         </div>
       )}
       {demandeSuppressionOuverte && (
-        <BoiteDemandeSuppression
-          nomMembre={membre.nom}
-          onEnvoyer={envoyerDemandeSuppression}
-          onAnnuler={() => setDemandeSuppressionOuverte(false)}
-        />
+        (compte.role === "pasteur" || compte.assistant === true) ? (
+          <BoiteConfirmation
+            titre="Supprimer ce membre ?"
+            message={`Es-tu sûr de vouloir supprimer définitivement "${membre.nom}" ? Cette action est irréversible (présence, santé spirituelle et visites seront aussi supprimées).`}
+            texteConfirmer="Supprimer définitivement"
+            dangereux
+            onConfirmer={() => envoyerDemandeSuppression(null)}
+            onAnnuler={() => setDemandeSuppressionOuverte(false)}
+          />
+        ) : (
+          <BoiteDemandeSuppression
+            nomMembre={membre.nom}
+            onEnvoyer={envoyerDemandeSuppression}
+            onAnnuler={() => setDemandeSuppressionOuverte(false)}
+          />
+        )
       )}
       <Confettis actif={confettiActif} onFin={() => setConfettiActif(false)} />
     </div>
