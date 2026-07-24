@@ -1107,6 +1107,11 @@ function TableauDeBord({ compte }) {
  onClick={() => { setPage("nouveaux"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "nouveaux" ? TEAL_700 : "transparent", color: page === "nouveaux" ? GOLD_LIGHT : "#cdeae4" }}>
                 🌱 Nouveaux
               </button>
+              <button
+ className="btn-app"
+ onClick={() => { setPage("membres"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "membres" ? TEAL_700 : "transparent", color: page === "membres" ? GOLD_LIGHT : "#cdeae4" }}>
+                👥 Membres
+              </button>
               {compte.role === "pasteur" && (
                 <button
  className="btn-app"
@@ -1203,6 +1208,7 @@ function TableauDeBord({ compte }) {
                   { label: "🗑️ Corbeille", cible: "corbeille" },
                   { label: "🌡️ Santé responsables", cible: "sante_responsables" },
                   { label: "🌱 Nouveaux", cible: "nouveaux" },
+                  { label: "👥 Membres", cible: "membres" },
                 ];
                 if (compte.role === "pasteur") groupeGestion.push({ label: "Rôles & Accès", cible: "assistants" });
                 if (compte.role !== "pasteur") groupeGestion.push({ label: "➕ Rôle supplémentaire", cible: "demande_role_supp" });
@@ -1453,6 +1459,8 @@ function TableauDeBord({ compte }) {
           <PageSanteResponsables tousLesComptes={tousLesComptes} gems={gems} tribus={tribus} departements={departements} responsablesParGem={responsablesParGem} cardStyle={cardStyle} />
         ) : page === "nouveaux" ? (
           <PageNouveaux membres={membres} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
+        ) : page === "membres" ? (
+          <PageMembres membres={membres} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
         ) : (
           <PageAssistants compte={compte} tribus={tribus} departements={departements} gems={gems} onChange={chargerDonnees} cardStyle={cardStyle} />
         )}
@@ -4064,6 +4072,229 @@ function PageAide({ estPasteur, cardStyle }) {
 
 const LIBELLES_ETAPES_SUIVI = { accueil: "Accueil", classe: "Classe de baptême", baptise: "Baptisé(e)", integre: "Intégré(e)" };
 
+/* --------------------------- Page Membres (tous, unifiée) --------------------------- */
+
+function PageMembres({ membres, gems, tribus, departements, gemsAutorises, cardStyle }) {
+  const [chargement, setChargement] = useState(true);
+  const [tousLesComptes, setTousLesComptes] = useState([]);
+  const [assignationsActives, setAssignationsActives] = useState([]);
+  const [santeMembres, setSanteMembres] = useState({});
+  const [santeResponsables, setSanteResponsables] = useState({});
+  const [absencesRecentes, setAbsencesRecentes] = useState({}); // { membre_id: nb absences sur 4 derniers dimanches }
+  const [recherche, setRecherche] = useState("");
+  const [filtreIrreguliers, setFiltreIrreguliers] = useState(false);
+  const [filtreRole, setFiltreRole] = useState(""); // "" | membre | gem | departement_resp | tribu_resp
+  const [personneOuverte, setPersonneOuverte] = useState(null);
+
+  const membresDuPerimetre = gemsAutorises ? membres.filter(m => gemsAutorises.includes(m.gem_id)) : membres;
+
+  useEffect(() => { chargerTout(); }, [membresDuPerimetre.length]);
+
+  async function chargerTout() {
+    setChargement(true);
+    const [{ data: comptes }, { data: assignations }, { data: dimanchesRecents }] = await Promise.all([
+      supabase.from("comptes").select("*"),
+      supabase.from("assignations").select("*").eq("statut", "actif"),
+      supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(4),
+    ]);
+    setTousLesComptes(comptes || []);
+    setAssignationsActives(assignations || []);
+
+    if (membresDuPerimetre.length > 0) {
+      const { data: sante } = await supabase.from("sante_spirituelle").select("*").in("membre_id", membresDuPerimetre.map(m => m.id)).order("date_maj", { ascending: false });
+      const mapS = {};
+      (sante || []).forEach(s => { if (!mapS[s.membre_id]) mapS[s.membre_id] = s; });
+      setSanteMembres(mapS);
+
+      if (dimanchesRecents && dimanchesRecents.length > 0) {
+        const { data: presencesRecentes } = await supabase.from("presences").select("*").in("dimanche_id", dimanchesRecents.map(d => d.id)).in("membre_id", membresDuPerimetre.map(m => m.id));
+        const mapAbs = {};
+        membresDuPerimetre.forEach(m => {
+          const pointages = (presencesRecentes || []).filter(p => p.membre_id === m.id);
+          const absences = dimanchesRecents.filter(d => {
+            const p = pointages.find(pp => pp.dimanche_id === d.id);
+            return !p || !p.present;
+          }).length;
+          mapAbs[m.id] = absences;
+        });
+        setAbsencesRecentes(mapAbs);
+      }
+    }
+
+    const idsComptesResp = (comptes || []).filter(c => (assignations || []).some(a => a.compte_id === c.id && a.role_demande === "gem")).map(c => c.id);
+    if (idsComptesResp.length > 0) {
+      const { data: santeResp } = await supabase.from("sante_spirituelle_responsables").select("*").in("compte_id", idsComptesResp).order("date_maj", { ascending: false });
+      const mapSR = {};
+      (santeResp || []).forEach(s => { if (!mapSR[s.compte_id]) mapSR[s.compte_id] = s; });
+      setSanteResponsables(mapSR);
+    }
+
+    setChargement(false);
+  }
+
+  function gemDe(gemId) { return gems.find(g => g.id === gemId); }
+  function nomTribuOuDept(gem) {
+    if (!gem) return "";
+    if (gem.tribu_id) return `Tribu de ${tribus.find(t => t.id === gem.tribu_id)?.nom || "?"}`;
+    if (gem.departement_id) return `Département ${departements.find(d => d.id === gem.departement_id)?.nom || "?"}`;
+    return "";
+  }
+
+  // Construit la liste unifiée : membres + responsables (GEM, département, tribu)
+  const idsGemsAutorises = gemsAutorises ? new Set(gemsAutorises) : null;
+
+  const personnesMembres = membresDuPerimetre.map(m => ({
+    type: "membre", id: m.id, nom: m.nom, telephone: m.telephone, quartier: m.quartier,
+    photo: m.photo, dateNaissance: m.date_naissance, gem: gemDe(m.gem_id), data: m,
+  }));
+
+  const personnesResponsables = assignationsActives
+    .filter(a => ["gem", "departement_resp", "tribu_resp"].includes(a.role_demande))
+    .filter(a => {
+      if (!idsGemsAutorises) return true; // pasteur/assistant : tout le monde
+      if (a.role_demande === "gem") return idsGemsAutorises.has(a.gem_id);
+      // Pour dépt/tribu : on limite aux responsables du même périmètre que la personne connectée
+      const gemsCorrespondants = gems.filter(g => idsGemsAutorises.has(g.id));
+      if (a.role_demande === "departement_resp") return gemsCorrespondants.some(g => g.departement_id === a.departement_id);
+      if (a.role_demande === "tribu_resp") return gemsCorrespondants.some(g => g.tribu_id === a.tribu_id);
+      return false;
+    })
+    .map(a => {
+      const c = tousLesComptes.find(cc => cc.id === a.compte_id);
+      if (!c) return null;
+      const gem = a.role_demande === "gem" ? gemDe(a.gem_id) : null;
+      return {
+        type: a.role_demande, id: `${a.id}`, nom: c.nom, telephone: c.telephone, quartier: c.quartier,
+        photo: null, dateNaissance: c.date_naissance, gem,
+        tribuNom: a.tribu_id ? tribus.find(t => t.id === a.tribu_id)?.nom : null,
+        deptNom: a.departement_id ? departements.find(d => d.id === a.departement_id)?.nom : null,
+        data: c,
+      };
+    }).filter(Boolean);
+
+  const toutesLesPersonnes = [...personnesMembres, ...personnesResponsables];
+
+  function libelleRole(type) {
+    if (type === "membre") return "Membre";
+    if (type === "gem") return "Responsable GEM";
+    if (type === "departement_resp") return "Responsable Département";
+    if (type === "tribu_resp") return "Patriarche/Matriarche";
+    return type;
+  }
+
+  const resultats = toutesLesPersonnes
+    .filter(p => p.nom.toLowerCase().includes(recherche.toLowerCase()))
+    .filter(p => !filtreRole || p.type === filtreRole)
+    .filter(p => !filtreIrreguliers || (p.type === "membre" && (absencesRecentes[p.id] || 0) >= 2));
+
+  if (chargement) return <Chargement />;
+
+  if (personneOuverte) {
+    const p = personneOuverte;
+    const numeroWhatsApp = numeroPourWhatsApp(p.telephone);
+    const sante = p.type === "membre" ? santeMembres[p.id] : (p.type === "gem" ? santeResponsables[p.data.id] : null);
+    const moyenne = sante ? moyenneSante(sante) : null;
+    return (
+      <div>
+        <button className="btn-app" onClick={() => setPersonneOuverte(null)} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 16, fontSize: 13 }}>← Retour à la liste</button>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+          {p.photo ? (
+            <img src={p.photo} alt={p.nom} style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover", border: `2px solid ${GOLD}` }} />
+          ) : (
+            <div style={{ width: 64, height: 64, borderRadius: "50%", backgroundColor: TEAL_700, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 700, color: GOLD_LIGHT, border: `2px solid ${GOLD}` }}>
+              {p.nom.split(" ").filter(Boolean).slice(0, 2).map(x => x[0]).join("").toUpperCase()}
+            </div>
+          )}
+          <div>
+            <p style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{p.nom}</p>
+            <p style={{ fontSize: 12, color: GOLD_LIGHT, margin: 0 }}>{libelleRole(p.type)}</p>
+          </div>
+        </div>
+
+        <div style={{ ...cardStyle, marginBottom: 16 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>Téléphone</span><span style={{ fontSize: 13, fontWeight: 600 }}>{p.telephone || "—"}</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>Quartier</span><span style={{ fontSize: 13, fontWeight: 600 }}>{p.quartier || "—"}</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "#a9d6cf", fontSize: 13 }}>🎂 Anniversaire</span>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>{p.dateNaissance ? new Date(p.dateNaissance + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : "—"}</span>
+            </div>
+            {p.type === "membre" && (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>GEM</span><span style={{ fontSize: 13, fontWeight: 600 }}>{p.gem?.nom || "—"}</span></div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>Rattachement</span><span style={{ fontSize: 13, fontWeight: 600 }}>{nomTribuOuDept(p.gem) || "—"}</span></div>
+                <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>Absences (4 derniers dimanches)</span><span style={{ fontSize: 13, fontWeight: 700, color: (absencesRecentes[p.id] || 0) >= 2 ? RED_LIGHT : "#6fcf97" }}>{absencesRecentes[p.id] || 0} / 4</span></div>
+              </>
+            )}
+            {p.type === "gem" && (
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>Responsable de</span><span style={{ fontSize: 13, fontWeight: 600 }}>{p.gem?.nom || "—"}{p.gem ? ` (${nomTribuOuDept(p.gem)})` : ""}</span></div>
+            )}
+            {p.type === "departement_resp" && (
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>Département</span><span style={{ fontSize: 13, fontWeight: 600 }}>{p.deptNom || "—"}</span></div>
+            )}
+            {p.type === "tribu_resp" && (
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>Tribu</span><span style={{ fontSize: 13, fontWeight: 600 }}>{p.tribuNom || "—"}</span></div>
+            )}
+            {moyenne !== null && (
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>🌡️ Santé spirituelle</span><span style={{ fontSize: 13, fontWeight: 700, color: couleurScore(moyenne) }}>{moyenne}/10</span></div>
+            )}
+          </div>
+        </div>
+
+        {p.telephone && (
+          <div style={{ display: "flex", gap: 10 }}>
+            <a href={`tel:${p.telephone}`} style={{ flex: 1, textAlign: "center", padding: "12px 0", borderRadius: 10, backgroundColor: GOLD_LIGHT, color: TEAL_950, fontWeight: 700, textDecoration: "none", fontSize: 14 }}>📞 Appeler</a>
+            <a href={`https://wa.me/${numeroWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, textAlign: "center", padding: "12px 0", borderRadius: 10, backgroundColor: "#25D366", color: "#fff", fontWeight: 700, textDecoration: "none", fontSize: 14 }}>💬 WhatsApp</a>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>👥 Membres</h2>
+      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>{toutesLesPersonnes.length} personne(s) — membres et responsables confondus.</p>
+
+      <input
+        value={recherche}
+        onChange={e => setRecherche(e.target.value)}
+        placeholder="🔍 Rechercher par nom..."
+        style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_850, color: CREAM, border: `1px solid ${TEAL_700}`, marginBottom: 12, width: "100%", maxWidth: 320 }}
+      />
+
+      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+        <button className="btn-app" onClick={() => setFiltreIrreguliers(v => !v)} style={{ padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${RED_LIGHT}`, cursor: "pointer", backgroundColor: filtreIrreguliers ? RED_LIGHT : "transparent", color: filtreIrreguliers ? "#fff" : RED_LIGHT }}>
+          ⚠️ Membres irréguliers (2+ absences / 4 dimanches)
+        </button>
+        {["", "membre", "gem", "departement_resp", "tribu_resp"].map(r => (
+          <button key={r} className="btn-app" onClick={() => setFiltreRole(r)} style={{ padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${TEAL_600}`, cursor: "pointer", backgroundColor: filtreRole === r ? GOLD : "transparent", color: filtreRole === r ? TEAL_950 : "#cdeae4" }}>
+            {r === "" ? "Tous" : libelleRole(r)}
+          </button>
+        ))}
+      </div>
+
+      {resultats.length === 0 ? (
+        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucune personne trouvée.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {resultats.map(p => (
+            <button key={p.type + p.id} className="btn-app card-app" onClick={() => setPersonneOuverte(p)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+              <div>
+                <p style={{ fontWeight: 700, margin: 0 }}>{p.nom}</p>
+                <p style={{ fontSize: 11, color: "#a9d6cf", margin: 0 }}>{libelleRole(p.type)}{p.gem ? ` — ${p.gem.nom}` : ""}</p>
+              </div>
+              {p.type === "membre" && (absencesRecentes[p.id] || 0) >= 2 && (
+                <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "3px 9px" }}>⚠️ {absencesRecentes[p.id]}/4 absences</span>
+              )}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PageNouveaux({ membres, gems, tribus, departements, gemsAutorises, cardStyle }) {
   const [chargement, setChargement] = useState(true);
   const [santeParMembre, setSanteParMembre] = useState({});
@@ -5752,6 +5983,9 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
         <button
  className="btn-app"
  onClick={() => setSousOnglet("nouveaux")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "nouveaux" ? GOLD : TEAL_900, color: sousOnglet === "nouveaux" ? TEAL_950 : "#cdeae4" }}>🌱 Nouveaux</button>
+        <button
+ className="btn-app"
+ onClick={() => setSousOnglet("membres")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "membres" ? GOLD : TEAL_900, color: sousOnglet === "membres" ? TEAL_950 : "#cdeae4" }}>👥 Membres</button>
       </div>
 
       {sousOnglet === "rapports" ? (
@@ -5762,6 +5996,8 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
         <ActivitesSemainePerimetre gems={gemsDuPerimetre} membres={membresDuPerimetre} cardStyle={cardStyle} />
       ) : sousOnglet === "nouveaux" ? (
         <PageNouveaux membres={membresDuPerimetre} gems={gemsDuPerimetre} tribus={tribus} departements={departements} gemsAutorises={gemsDuPerimetre.map(g => g.id)} cardStyle={cardStyle} />
+      ) : sousOnglet === "membres" ? (
+        <PageMembres membres={membres} gems={gems} tribus={tribus} departements={departements} gemsAutorises={gemsDuPerimetre.map(g => g.id)} cardStyle={cardStyle} />
       ) : (
         <>
           <AnniversairesAVenir membres={membresDuPerimetre} gems={gems} cardStyle={cardStyle} />
