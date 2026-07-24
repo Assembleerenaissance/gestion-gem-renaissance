@@ -4686,8 +4686,8 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
     groupesTelephone[cle].push(m);
   });
 
-  const listeBoss = Object.values(groupesTelephone)
-    .map(fiches => {
+  const listeBoss = Object.entries(groupesTelephone)
+    .map(([cle, fiches]) => {
       const fichesDept = fiches.filter(m => gems.find(g => g.id === m.gem_id)?.type === "departement");
       if (fichesDept.length === 0) return null;
 
