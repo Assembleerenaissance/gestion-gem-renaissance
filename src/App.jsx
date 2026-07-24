@@ -1493,7 +1493,7 @@ function TableauDeBord({ compte }) {
         ) : page === "nouveaux" ? (
           <PageNouveaux membres={membres} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
         ) : page === "membres" ? (
-          <PageMembres membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
+          <PageMembres membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} estPasteur={true} cardStyle={cardStyle} />
         ) : page === "absences" ? (
           <PageAbsences membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
         ) : (
@@ -1774,8 +1774,6 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
   const [nomNouveauGem, setNomNouveauGem] = useState("");
   const [responsablesParParent, setResponsablesParParent] = useState({}); // { parentId: { compte, assignationId } }
   const [responsablesParGem, setResponsablesParGem] = useState({}); // { gemId: { nom, telephone } }
-  const [editionResponsableParent, setEditionResponsableParent] = useState(null); // { parentId, compte }
-  const [retraitResponsableParent, setRetraitResponsableParent] = useState(null); // { parentId, assignationId, compte }
 
   useEffect(() => { chargerResponsables(); }, [type, gems.length]);
 
@@ -1803,15 +1801,6 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
       if (a.gem_id && comptesMap[a.compte_id]) mapGem[a.gem_id] = comptesMap[a.compte_id];
     });
     setResponsablesParGem(mapGem);
-  }
-
-  async function retirerResponsableParent() {
-    if (!retraitResponsableParent) return;
-    const { error } = await supabase.from("assignations").delete().eq("id", retraitResponsableParent.assignationId);
-    if (error) { toast("Impossible de retirer ce responsable : " + error.message, "erreur"); return; }
-    toast(`${retraitResponsableParent.compte.nom} n'est plus responsable.`, "succes");
-    setRetraitResponsableParent(null);
-    chargerResponsables();
   }
 
   const filtres = items.filter(it => it.nom.toLowerCase().includes(recherche.toLowerCase()));
@@ -1847,17 +1836,9 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
                 </button>
               </div>
               {responsable ? (
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 6 }}>
-                  <p style={{ fontSize: 11, color: GOLD_LIGHT, margin: 0 }}>
-                    {type === "tribu" ? "Patriarche/Matriarche" : "Responsable"} : {responsable.compte.nom}
-                  </p>
-                  {estPasteur && (
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button className="btn-app" onClick={() => setEditionResponsableParent({ parentId: it.id, compte: responsable.compte })} style={{ fontSize: 10, fontWeight: 700, color: GOLD_LIGHT, background: "none", border: `1px solid ${TEAL_600}`, borderRadius: 6, padding: "3px 8px", cursor: "pointer" }}>✏️</button>
-                      <button className="btn-app" onClick={() => setRetraitResponsableParent({ parentId: it.id, assignationId: responsable.assignationId, compte: responsable.compte })} style={{ fontSize: 10, fontWeight: 700, color: RED_LIGHT, background: "none", border: `1px solid ${RED_LIGHT}`, borderRadius: 6, padding: "3px 8px", cursor: "pointer" }}>🗑️</button>
-                    </div>
-                  )}
-                </div>
+                <p style={{ fontSize: 11, color: GOLD_LIGHT, marginBottom: 10 }}>
+                  {type === "tribu" ? "Patriarche/Matriarche" : "Responsable"} : {responsable.compte.nom}
+                </p>
               ) : (
                 <p style={{ fontSize: 11, color: "#a9d6cf", fontStyle: "italic", marginBottom: 10 }}>Aucun responsable désigné</p>
               )}
@@ -1896,25 +1877,6 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
           );
         })}
       </div>
-
-      {editionResponsableParent && (
-        <EditionResponsableGem
-          compteResponsable={editionResponsableParent.compte}
-          onFerme={() => setEditionResponsableParent(null)}
-          onEnregistre={() => { setEditionResponsableParent(null); chargerResponsables(); }}
-        />
-      )}
-
-      {retraitResponsableParent && (
-        <BoiteConfirmation
-          titre="Retirer ce responsable ?"
-          message={`Es-tu sûr de vouloir retirer "${retraitResponsableParent.compte.nom}" de cette responsabilité ? Son compte de connexion restera actif, mais il perdra cet accès.`}
-          texteConfirmer="Retirer"
-          dangereux
-          onConfirmer={retirerResponsableParent}
-          onAnnuler={() => setRetraitResponsableParent(null)}
-        />
-      )}
     </div>
   );
 }
@@ -4562,7 +4524,7 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
 }
 
 
-function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regulariteParMembre, cardStyle }) {
+function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regulariteParMembre, estPasteur, cardStyle }) {
   const [chargement, setChargement] = useState(true);
   const [tousLesComptes, setTousLesComptes] = useState([]);
   const [assignationsActives, setAssignationsActives] = useState([]);
@@ -4577,6 +4539,9 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
   const [vueBoss, setVueBoss] = useState(false);
   const [filtreBossIrreguliers, setFiltreBossIrreguliers] = useState(false);
   const [bossOuvert, setBossOuvert] = useState(null);
+  const [editionResponsableOuverte, setEditionResponsableOuverte] = useState(false);
+  const [confirmerRetraitResponsable, setConfirmerRetraitResponsable] = useState(false);
+  const [retraitEnCours, setRetraitEnCours] = useState(false);
 
   const membresDuPerimetre = gemsAutorises ? membres.filter(m => gemsAutorises.includes(m.gem_id)) : membres;
 
@@ -4674,6 +4639,7 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
     if (!parCompte[c.id]) parCompte[c.id] = { compte: c, roles: [] };
     parCompte[c.id].roles.push({
       type: a.role_demande,
+      assignationId: a.id,
       gem: a.role_demande === "gem" ? gemDe(a.gem_id) : null,
       tribuNom: a.tribu_id ? tribus.find(t => t.id === a.tribu_id)?.nom : null,
       deptNom: a.departement_id ? departements.find(d => d.id === a.departement_id)?.nom : null,
@@ -4858,6 +4824,20 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
     const sante = estMembre ? santeMembres[p.membreId] : (estRespGem ? santeResponsables[p.compteId] : null);
     const moyenne = sante ? moyenneSante(sante) : null;
     const regularite = estMembre ? regulariteParMembre[p.membreId] : null;
+    const roleAGerer = (p.roles || []).find(r => r.type === "departement_resp" || r.type === "tribu_resp");
+
+    async function retirerCetteResponsabilite() {
+      if (!roleAGerer) return;
+      setRetraitEnCours(true);
+      const { error } = await supabase.from("assignations").delete().eq("id", roleAGerer.assignationId);
+      setRetraitEnCours(false);
+      setConfirmerRetraitResponsable(false);
+      if (error) { toast("Impossible de retirer cette responsabilité : " + error.message, "erreur"); return; }
+      toast(`${p.nom} n'est plus ${roleAGerer.type === "tribu_resp" ? "patriarche/matriarche" : "responsable de département"}.`, "succes");
+      setPersonneOuverte(null);
+      chargerTout();
+    }
+
     return (
       <div>
         <button className="btn-app" onClick={() => setPersonneOuverte(null)} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 16, fontSize: 13 }}>← Retour à la liste</button>
@@ -4916,10 +4896,36 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
         </div>
 
         {p.telephone && (
-          <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ display: "flex", gap: 10, marginBottom: estPasteur && roleAGerer ? 10 : 0 }}>
             <a href={`tel:${p.telephone}`} style={{ flex: 1, textAlign: "center", padding: "12px 0", borderRadius: 10, backgroundColor: GOLD_LIGHT, color: TEAL_950, fontWeight: 700, textDecoration: "none", fontSize: 14 }}>📞 Appeler</a>
             <a href={`https://wa.me/${numeroWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, textAlign: "center", padding: "12px 0", borderRadius: 10, backgroundColor: "#25D366", color: "#fff", fontWeight: 700, textDecoration: "none", fontSize: 14 }}>💬 WhatsApp</a>
           </div>
+        )}
+
+        {estPasteur && roleAGerer && (
+          <div style={{ display: "flex", gap: 10 }}>
+            <button className="btn-app" onClick={() => setEditionResponsableOuverte(true)} style={{ flex: 1, padding: "12px 0", borderRadius: 10, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>✏️ Modifier ses infos</button>
+            <button className="btn-app" onClick={() => setConfirmerRetraitResponsable(true)} style={{ flex: 1, padding: "12px 0", borderRadius: 10, backgroundColor: RED_LIGHT, color: "#fff", border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>🗑️ Retirer cette responsabilité</button>
+          </div>
+        )}
+
+        {editionResponsableOuverte && (
+          <EditionResponsableGem
+            compteResponsable={p.data}
+            onFerme={() => setEditionResponsableOuverte(false)}
+            onEnregistre={() => { setEditionResponsableOuverte(false); setPersonneOuverte(null); chargerTout(); }}
+          />
+        )}
+
+        {confirmerRetraitResponsable && (
+          <BoiteConfirmation
+            titre="Retirer cette responsabilité ?"
+            message={`Es-tu sûr de vouloir retirer "${p.nom}" de ${roleAGerer?.type === "tribu_resp" ? "sa responsabilité de patriarche/matriarche" : "sa responsabilité de département"} ? Son compte de connexion restera actif, mais il perdra cet accès.`}
+            texteConfirmer={retraitEnCours ? "…" : "Retirer"}
+            dangereux
+            onConfirmer={retirerCetteResponsabilite}
+            onAnnuler={() => setConfirmerRetraitResponsable(false)}
+          />
         )}
       </div>
     );
@@ -6732,7 +6738,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
       ) : sousOnglet === "nouveaux" ? (
         <PageNouveaux membres={membresDuPerimetre} gems={gemsDuPerimetre} tribus={tribus} departements={departements} gemsAutorises={gemsDuPerimetre.map(g => g.id)} cardStyle={cardStyle} />
       ) : sousOnglet === "membres" ? (
-        <PageMembres membres={membres} gems={gems} tribus={tribus} departements={departements} gemsAutorises={gemsDuPerimetre.map(g => g.id)} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
+        <PageMembres membres={membres} gems={gems} tribus={tribus} departements={departements} gemsAutorises={gemsDuPerimetre.map(g => g.id)} regulariteParMembre={regulariteParMembre} estPasteur={compte.role === "pasteur" || compte.assistant === true} cardStyle={cardStyle} />
       ) : sousOnglet === "absences" ? (
         <PageAbsences membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} gemsAutorises={gemsDuPerimetre.map(g => g.id)} cardStyle={cardStyle} />
       ) : (
