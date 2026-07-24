@@ -1495,7 +1495,7 @@ function TableauDeBord({ compte }) {
         ) : page === "membres" ? (
           <PageMembres membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
         ) : page === "absences" ? (
-          <PageAbsences membres={membres} gems={gems} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
+          <PageAbsences membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
         ) : (
           <PageAssistants compte={compte} tribus={tribus} departements={departements} gems={gems} onChange={chargerDonnees} cardStyle={cardStyle} />
         )}
@@ -4118,7 +4118,7 @@ const LIBELLES_ETAPES_SUIVI = { accueil: "Accueil", classe: "Classe de baptême"
 
 /* --------------------------- Page Absences (détail du dimanche) --------------------------- */
 
-function PageAbsences({ membres, gems, regulariteParMembre, gemsAutorises, cardStyle }) {
+function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre, gemsAutorises, cardStyle }) {
   const [chargement, setChargement] = useState(true);
   const [dimancheRecent, setDimancheRecent] = useState(null);
   const [motifsParMembre, setMotifsParMembre] = useState({});
@@ -4154,6 +4154,13 @@ function PageAbsences({ membres, gems, regulariteParMembre, gemsAutorises, cardS
   }
 
   function nomGem(gemId) { return gems.find(g => g.id === gemId)?.nom || "GEM inconnu"; }
+  function provenance(gemId) {
+    const g = gems.find(gg => gg.id === gemId);
+    if (!g) return "";
+    if (g.tribu_id) return `Tribu de ${tribus?.find(t => t.id === g.tribu_id)?.nom || "?"}`;
+    if (g.departement_id) return `Département ${departements?.find(d => d.id === g.departement_id)?.nom || "?"}`;
+    return "";
+  }
 
   // Un membre est "absent" pour ce dimanche s'il n'a pas été pointé présent
   // (non pointé du tout = considéré absent aussi).
@@ -4180,7 +4187,7 @@ function PageAbsences({ membres, gems, regulariteParMembre, gemsAutorises, cardS
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
                 <div>
                   <p style={{ fontWeight: 700, marginBottom: 2 }}>{membre.nom}</p>
-                  <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomGem(membre.gem_id)}</p>
+                  <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomGem(membre.gem_id)}{provenance(membre.gem_id) ? ` — ${provenance(membre.gem_id)}` : ""}</p>
                   {motif && <p style={{ fontSize: 12, color: GOLD_LIGHT, marginTop: 4 }}>Motif : {motif}</p>}
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -6193,7 +6200,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
       ) : sousOnglet === "membres" ? (
         <PageMembres membres={membres} gems={gems} tribus={tribus} departements={departements} gemsAutorises={gemsDuPerimetre.map(g => g.id)} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
       ) : sousOnglet === "absences" ? (
-        <PageAbsences membres={membres} gems={gems} regulariteParMembre={regulariteParMembre} gemsAutorises={gemsDuPerimetre.map(g => g.id)} cardStyle={cardStyle} />
+        <PageAbsences membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} gemsAutorises={gemsDuPerimetre.map(g => g.id)} cardStyle={cardStyle} />
       ) : (
         <>
           <AnniversairesAVenir membres={membresDuPerimetre} gems={gems} cardStyle={cardStyle} />
