@@ -856,9 +856,14 @@ function TableauDeBord({ compte }) {
 
       if (dernierDimanche && m && m.length > 0) {
         const { data: presencesSemaine } = await supabase.from("presences").select("membre_id, present").eq("dimanche_id", dernierDimanche.id).in("membre_id", m.map(mm => mm.id));
-        const idsPresents = new Set((presencesSemaine || []).filter(p => p.present).map(p => p.membre_id));
-        const nbAbsents = m.filter(mm => !idsPresents.has(mm.id)).length;
-        setAbsencesSemaine({ nombre: nbAbsents, pourcentage: Math.round((nbAbsents / m.length) * 100) });
+        if (presencesSemaine && presencesSemaine.length > 0) {
+          const idsPresents = new Set(presencesSemaine.filter(p => p.present).map(p => p.membre_id));
+          const nbAbsents = m.filter(mm => !idsPresents.has(mm.id)).length;
+          setAbsencesSemaine({ nombre: nbAbsents, pourcentage: Math.round((nbAbsents / m.length) * 100) });
+        } else {
+          // Ce dimanche n'a encore aucun pointage — pas encore de données à afficher.
+          setAbsencesSemaine({ nombre: 0, pourcentage: 0 });
+        }
       } else {
         setAbsencesSemaine({ nombre: 0, pourcentage: 0 });
       }
@@ -880,12 +885,17 @@ function TableauDeBord({ compte }) {
     const idsDimanches = dimanchesRecents.map(d => d.id);
     const { data: presencesRecentes } = await supabase.from("presences").select("*").in("dimanche_id", idsDimanches);
 
+    // Ignore les dimanches où personne n'a été pointé du tout — ce ne sont pas de
+    // vraies absences, juste des semaines jamais réellement traitées.
+    const idsDimanchesReellementPointes = new Set((presencesRecentes || []).map(p => p.dimanche_id));
+    const dimanchesReels = dimanchesRecents.filter(d => idsDimanchesReellementPointes.has(d.id));
+
     const map = {};
     listeMembres.forEach(membre => {
       const dateArrivee = membre.created_at ? membre.created_at.slice(0, 10) : null;
       let absencesConsecutives = 0, presencesConsecutives = 0, enCours = true;
       let dimanchesApplicables = 0, dimanchesPresents = 0;
-      for (const dim of dimanchesRecents) {
+      for (const dim of dimanchesReels) {
         // Ce dimanche précède (ou coïncide avec) l'arrivée du membre : on n'y était pas encore suivi, on arrête ici.
         if (dateArrivee && dim.date <= dateArrivee) break;
         const pointage = (presencesRecentes || []).find(p => p.membre_id === membre.id && p.dimanche_id === dim.id);
@@ -1483,7 +1493,7 @@ function TableauDeBord({ compte }) {
         ) : page === "nouveaux" ? (
           <PageNouveaux membres={membres} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
         ) : page === "membres" ? (
-          <PageMembres membres={membres} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
+          <PageMembres membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
         ) : page === "absences" ? (
           <PageAbsences membres={membres} gems={gems} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
         ) : (
@@ -1526,9 +1536,14 @@ function ResumePerimetre({ gems, membres, onVoirAbsences, cardStyle }) {
     setGemsEnRetard(gems.filter(g => !idsGemsValides.has(g.id)));
 
     const slots = membres.length;
-    const presents = (presencesSemaine || []).filter(p => p.present).length;
-    setTauxPresence(slots > 0 ? Math.round((presents / slots) * 100) : null);
-    setAbsencesCount(Math.max(0, slots - presents));
+    if (presencesSemaine && presencesSemaine.length > 0) {
+      const presents = presencesSemaine.filter(p => p.present).length;
+      setTauxPresence(slots > 0 ? Math.round((presents / slots) * 100) : null);
+      setAbsencesCount(Math.max(0, slots - presents));
+    } else {
+      setTauxPresence(null);
+      setAbsencesCount(0);
+    }
 
     // On ne signale les GEM "en retard" qu'à partir du mardi (le lundi est le dernier
     // jour normal pour soumettre le rapport du dimanche précédent).
@@ -4115,13 +4130,20 @@ function PageAbsences({ membres, gems, regulariteParMembre, gemsAutorises, cardS
 
   async function chargerDonnees() {
     setChargement(true);
-    const { data: dim } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(1).maybeSingle();
-    setDimancheRecent(dim || null);
+    // Cherche le dimanche le plus récent qui a réellement été pointé (au moins
+    // une présence enregistrée) — pas juste la ligne "dimanches" la plus récente,
+    // qui peut être une semaine créée automatiquement sans aucun pointage.
+    const { data: dimanchesRecents } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(8);
+    let dim = null, pres = [];
+    for (const d of dimanchesRecents || []) {
+      const { data: p } = await supabase.from("presences").select("*").eq("dimanche_id", d.id).in("membre_id", membresDuPerimetre.map(m => m.id));
+      if (p && p.length > 0) { dim = d; pres = p; break; }
+    }
+    setDimancheRecent(dim);
     if (dim && membresDuPerimetre.length > 0) {
-      const { data: pres } = await supabase.from("presences").select("*").eq("dimanche_id", dim.id).in("membre_id", membresDuPerimetre.map(m => m.id));
       const mapMotifs = {};
       const presents = new Set();
-      (pres || []).forEach(p => {
+      pres.forEach(p => {
         if (p.present) presents.add(p.membre_id);
         else if (p.motif) mapMotifs[p.membre_id] = p.motif;
       });
@@ -4189,7 +4211,7 @@ function PageAbsences({ membres, gems, regulariteParMembre, gemsAutorises, cardS
   );
 }
 
-function PageMembres({ membres, gems, tribus, departements, gemsAutorises, cardStyle }) {
+function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regulariteParMembre, cardStyle }) {
   const [chargement, setChargement] = useState(true);
   const [tousLesComptes, setTousLesComptes] = useState([]);
   const [assignationsActives, setAssignationsActives] = useState([]);
@@ -4223,14 +4245,18 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, cardS
 
       if (dimanchesRecents && dimanchesRecents.length > 0) {
         const { data: presencesRecentes } = await supabase.from("presences").select("*").in("dimanche_id", dimanchesRecents.map(d => d.id)).in("membre_id", membresDuPerimetre.map(m => m.id));
+        // Ne compte que les dimanches réellement pointés (au moins une présence enregistrée
+        // ce jour-là) — un dimanche sans aucun pointage n'est pas compté comme "absence".
+        const idsDimanchesPointes = new Set((presencesRecentes || []).map(p => p.dimanche_id));
+        const dimanchesReels = dimanchesRecents.filter(d => idsDimanchesPointes.has(d.id));
         const mapAbs = {};
         membresDuPerimetre.forEach(m => {
           const pointages = (presencesRecentes || []).filter(p => p.membre_id === m.id);
-          const absences = dimanchesRecents.filter(d => {
+          const absences = dimanchesReels.filter(d => {
             const p = pointages.find(pp => pp.dimanche_id === d.id);
             return !p || !p.present;
           }).length;
-          mapAbs[m.id] = absences;
+          mapAbs[m.id] = { absences, total: dimanchesReels.length };
         });
         setAbsencesRecentes(mapAbs);
       }
@@ -4255,39 +4281,67 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, cardS
     return "";
   }
 
-  // Construit la liste unifiée : membres + responsables (GEM, département, tribu)
+  // Construit la liste unifiée : membres + responsables (GEM, département, tribu),
+  // en FUSIONNANT une même personne (compte) qui aurait plusieurs rôles/GEM en une seule fiche.
   const idsGemsAutorises = gemsAutorises ? new Set(gemsAutorises) : null;
 
   const personnesMembres = membresDuPerimetre.map(m => ({
-    type: "membre", id: m.id, nom: m.nom, telephone: m.telephone, quartier: m.quartier,
-    photo: m.photo, dateNaissance: m.date_naissance, gem: gemDe(m.gem_id), data: m,
+    typePrincipal: "membre", types: ["membre"], id: `membre-${m.id}`, membreId: m.id, nom: m.nom, telephone: m.telephone, quartier: m.quartier,
+    photo: m.photo, dateNaissance: m.date_naissance, roles: [{ type: "membre", gem: gemDe(m.gem_id) }], data: m,
   }));
 
-  const personnesResponsables = assignationsActives
+  const assignationsFiltrees = assignationsActives
     .filter(a => ["gem", "departement_resp", "tribu_resp"].includes(a.role_demande))
     .filter(a => {
       if (!idsGemsAutorises) return true; // pasteur/assistant : tout le monde
       if (a.role_demande === "gem") return idsGemsAutorises.has(a.gem_id);
-      // Pour dépt/tribu : on limite aux responsables du même périmètre que la personne connectée
       const gemsCorrespondants = gems.filter(g => idsGemsAutorises.has(g.id));
       if (a.role_demande === "departement_resp") return gemsCorrespondants.some(g => g.departement_id === a.departement_id);
       if (a.role_demande === "tribu_resp") return gemsCorrespondants.some(g => g.tribu_id === a.tribu_id);
       return false;
-    })
-    .map(a => {
-      const c = tousLesComptes.find(cc => cc.id === a.compte_id);
-      if (!c) return null;
-      const gem = a.role_demande === "gem" ? gemDe(a.gem_id) : null;
-      return {
-        type: a.role_demande, id: `${a.id}`, nom: c.nom, telephone: c.telephone, quartier: c.quartier,
-        photo: null, dateNaissance: c.date_naissance, gem,
-        tribuNom: a.tribu_id ? tribus.find(t => t.id === a.tribu_id)?.nom : null,
-        deptNom: a.departement_id ? departements.find(d => d.id === a.departement_id)?.nom : null,
-        data: c,
-      };
-    }).filter(Boolean);
+    });
 
-  const toutesLesPersonnes = [...personnesMembres, ...personnesResponsables];
+  const parCompte = {};
+  assignationsFiltrees.forEach(a => {
+    const c = tousLesComptes.find(cc => cc.id === a.compte_id);
+    if (!c) return;
+    if (!parCompte[c.id]) parCompte[c.id] = { compte: c, roles: [] };
+    parCompte[c.id].roles.push({
+      type: a.role_demande,
+      gem: a.role_demande === "gem" ? gemDe(a.gem_id) : null,
+      tribuNom: a.tribu_id ? tribus.find(t => t.id === a.tribu_id)?.nom : null,
+      deptNom: a.departement_id ? departements.find(d => d.id === a.departement_id)?.nom : null,
+    });
+  });
+
+  const personnesResponsables = Object.values(parCompte).map(({ compte: c, roles }) => ({
+    typePrincipal: roles[0].type, types: roles.map(r => r.type), id: `compte-${c.id}`, compteId: c.id,
+    nom: c.nom, telephone: c.telephone, quartier: c.quartier, photo: null, dateNaissance: c.date_naissance,
+    roles, data: c,
+  }));
+
+  // Fusionne une même personne présente à la fois comme membre suivi ET comme
+  // responsable (même numéro de téléphone), pour n'avoir qu'une seule fiche.
+  function chiffresNumero(tel) { return (tel || "").replace(/[^\d]/g, "").slice(-8); }
+  const toutesLesPersonnes = [];
+  const responsablesUtilises = new Set();
+  personnesMembres.forEach(pm => {
+    const correspondant = personnesResponsables.find(pr => !responsablesUtilises.has(pr.id) && chiffresNumero(pr.telephone) && chiffresNumero(pr.telephone) === chiffresNumero(pm.telephone));
+    if (correspondant) {
+      responsablesUtilises.add(correspondant.id);
+      toutesLesPersonnes.push({
+        ...pm,
+        types: [...pm.types, ...correspondant.types],
+        roles: [...pm.roles, ...correspondant.roles],
+        compteId: correspondant.compteId,
+        quartier: pm.quartier || correspondant.quartier,
+        dateNaissance: pm.dateNaissance || correspondant.dateNaissance,
+      });
+    } else {
+      toutesLesPersonnes.push(pm);
+    }
+  });
+  personnesResponsables.forEach(pr => { if (!responsablesUtilises.has(pr.id)) toutesLesPersonnes.push(pr); });
 
   function libelleRole(type) {
     if (type === "membre") return "Membre";
@@ -4297,18 +4351,30 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, cardS
     return type;
   }
 
+  function libelleRoles(personne) {
+    return personne.roles.map(r => {
+      if (r.type === "gem") return `Responsable GEM${r.gem ? ` (${r.gem.nom})` : ""}`;
+      if (r.type === "departement_resp") return `Responsable Département${r.deptNom ? ` (${r.deptNom})` : ""}`;
+      if (r.type === "tribu_resp") return `Patriarche/Matriarche${r.tribuNom ? ` (${r.tribuNom})` : ""}`;
+      return "Membre";
+    }).join(" · ");
+  }
+
   const resultats = toutesLesPersonnes
     .filter(p => p.nom.toLowerCase().includes(recherche.toLowerCase()))
-    .filter(p => !filtreRole || p.type === filtreRole)
-    .filter(p => !filtreIrreguliers || (p.type === "membre" && (absencesRecentes[p.id] || 0) >= 2));
+    .filter(p => !filtreRole || p.types.includes(filtreRole))
+    .filter(p => !filtreIrreguliers || (p.types.includes("membre") && (absencesRecentes[p.membreId]?.absences || 0) >= 2));
 
   if (chargement) return <Chargement />;
 
   if (personneOuverte) {
     const p = personneOuverte;
     const numeroWhatsApp = numeroPourWhatsApp(p.telephone);
-    const sante = p.type === "membre" ? santeMembres[p.id] : (p.type === "gem" ? santeResponsables[p.data.id] : null);
+    const estMembre = p.types.includes("membre");
+    const estRespGem = p.types.includes("gem");
+    const sante = estMembre ? santeMembres[p.membreId] : (estRespGem ? santeResponsables[p.compteId] : null);
     const moyenne = sante ? moyenneSante(sante) : null;
+    const regularite = estMembre ? regulariteParMembre[p.membreId] : null;
     return (
       <div>
         <button className="btn-app" onClick={() => setPersonneOuverte(null)} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 16, fontSize: 13 }}>← Retour à la liste</button>
@@ -4322,7 +4388,7 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, cardS
           )}
           <div>
             <p style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{p.nom}</p>
-            <p style={{ fontSize: 12, color: GOLD_LIGHT, margin: 0 }}>{libelleRole(p.type)}</p>
+            <p style={{ fontSize: 12, color: GOLD_LIGHT, margin: 0 }}>{libelleRoles(p)}</p>
           </div>
         </div>
 
@@ -4334,21 +4400,31 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, cardS
               <span style={{ color: "#a9d6cf", fontSize: 13 }}>🎂 Anniversaire</span>
               <span style={{ fontSize: 13, fontWeight: 600 }}>{p.dateNaissance ? new Date(p.dateNaissance + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : "—"}</span>
             </div>
-            {p.type === "membre" && (
-              <>
-                <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>GEM</span><span style={{ fontSize: 13, fontWeight: 600 }}>{p.gem?.nom || "—"}</span></div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>Rattachement</span><span style={{ fontSize: 13, fontWeight: 600 }}>{nomTribuOuDept(p.gem) || "—"}</span></div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>Absences (4 derniers dimanches)</span><span style={{ fontSize: 13, fontWeight: 700, color: (absencesRecentes[p.id] || 0) >= 2 ? RED_LIGHT : "#6fcf97" }}>{absencesRecentes[p.id] || 0} / 4</span></div>
-              </>
+
+            {p.roles.map((r, i) => (
+              <div key={i} style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "#a9d6cf", fontSize: 13 }}>
+                  {r.type === "membre" ? "GEM" : r.type === "gem" ? "Responsable de" : r.type === "departement_resp" ? "Département" : "Tribu"}
+                </span>
+                <span style={{ fontSize: 13, fontWeight: 600 }}>
+                  {r.type === "membre" ? (r.gem?.nom || "—") + (nomTribuOuDept(r.gem) ? ` (${nomTribuOuDept(r.gem)})` : "") :
+                    r.type === "gem" ? (r.gem?.nom || "—") + (r.gem && nomTribuOuDept(r.gem) ? ` (${nomTribuOuDept(r.gem)})` : "") :
+                    r.type === "departement_resp" ? (r.deptNom || "—") : (r.tribuNom || "—")}
+                </span>
+              </div>
+            ))}
+
+            {estMembre && (
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "#a9d6cf", fontSize: 13 }}>Absences (dimanches pointés)</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: (absencesRecentes[p.membreId]?.absences || 0) >= 2 ? RED_LIGHT : "#6fcf97" }}>{absencesRecentes[p.membreId]?.absences || 0} / {absencesRecentes[p.membreId]?.total || 0}</span>
+              </div>
             )}
-            {p.type === "gem" && (
-              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>Responsable de</span><span style={{ fontSize: 13, fontWeight: 600 }}>{p.gem?.nom || "—"}{p.gem ? ` (${nomTribuOuDept(p.gem)})` : ""}</span></div>
-            )}
-            {p.type === "departement_resp" && (
-              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>Département</span><span style={{ fontSize: 13, fontWeight: 600 }}>{p.deptNom || "—"}</span></div>
-            )}
-            {p.type === "tribu_resp" && (
-              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>Tribu</span><span style={{ fontSize: 13, fontWeight: 600 }}>{p.tribuNom || "—"}</span></div>
+            {estMembre && regularite && regularite.tauxRegularite !== null && (
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "#a9d6cf", fontSize: 13 }}>📊 Taux de régularité au culte</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: regularite.tauxRegularite >= 70 ? "#6fcf97" : regularite.tauxRegularite >= 40 ? GOLD_LIGHT : RED_LIGHT }}>{regularite.tauxRegularite}%</span>
+              </div>
             )}
             {moyenne !== null && (
               <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>🌡️ Santé spirituelle</span><span style={{ fontSize: 13, fontWeight: 700, color: couleurScore(moyenne) }}>{moyenne}/10</span></div>
@@ -4394,13 +4470,13 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, cardS
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {resultats.map(p => (
-            <button key={p.type + p.id} className="btn-app card-app" onClick={() => setPersonneOuverte(p)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+            <button key={p.id} className="btn-app card-app" onClick={() => setPersonneOuverte(p)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
               <div>
                 <p style={{ fontWeight: 700, margin: 0 }}>{p.nom}</p>
-                <p style={{ fontSize: 11, color: "#a9d6cf", margin: 0 }}>{libelleRole(p.type)}{p.gem ? ` — ${p.gem.nom}` : ""}</p>
+                <p style={{ fontSize: 11, color: "#a9d6cf", margin: 0 }}>{libelleRoles(p)}</p>
               </div>
-              {p.type === "membre" && (absencesRecentes[p.id] || 0) >= 2 && (
-                <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "3px 9px" }}>⚠️ {absencesRecentes[p.id]}/4 absences</span>
+              {p.types.includes("membre") && (absencesRecentes[p.membreId]?.absences || 0) >= 2 && (
+                <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "3px 9px" }}>⚠️ {absencesRecentes[p.membreId].absences}/{absencesRecentes[p.membreId].total} absences</span>
               )}
             </button>
           ))}
@@ -6115,7 +6191,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
       ) : sousOnglet === "nouveaux" ? (
         <PageNouveaux membres={membresDuPerimetre} gems={gemsDuPerimetre} tribus={tribus} departements={departements} gemsAutorises={gemsDuPerimetre.map(g => g.id)} cardStyle={cardStyle} />
       ) : sousOnglet === "membres" ? (
-        <PageMembres membres={membres} gems={gems} tribus={tribus} departements={departements} gemsAutorises={gemsDuPerimetre.map(g => g.id)} cardStyle={cardStyle} />
+        <PageMembres membres={membres} gems={gems} tribus={tribus} departements={departements} gemsAutorises={gemsDuPerimetre.map(g => g.id)} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
       ) : sousOnglet === "absences" ? (
         <PageAbsences membres={membres} gems={gems} regulariteParMembre={regulariteParMembre} gemsAutorises={gemsDuPerimetre.map(g => g.id)} cardStyle={cardStyle} />
       ) : (
