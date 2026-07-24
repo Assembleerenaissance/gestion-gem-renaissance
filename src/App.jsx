@@ -4210,25 +4210,41 @@ const LIBELLES_ETAPES_SUIVI = { accueil: "Accueil", classe: "Classe de baptême"
 /* --------------------------- Page Absences (détail du dimanche) --------------------------- */
 
 function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre, gemsAutorises, cardStyle }) {
+  const [vueAbsences, setVueAbsences] = useState("hebdomadaire"); // hebdomadaire | mensuelle | annuelle
   const [chargement, setChargement] = useState(true);
   const [dimancheRecent, setDimancheRecent] = useState(null);
   const [motifsParMembre, setMotifsParMembre] = useState({});
   const [presentsIds, setPresentsIds] = useState(new Set());
+  const [courbeHebdo, setCourbeHebdo] = useState([]); // 12 derniers dimanches réellement pointés
+  const [chargementMois, setChargementMois] = useState(true);
+  const [presencesMoisCourant, setPresencesMoisCourant] = useState([]);
+  const [dimanchesMoisCourant, setDimanchesMoisCourant] = useState([]);
+  const [courbeMensuelle, setCourbeMensuelle] = useState([]); // 12 derniers mois
+  const [chargementAnnee, setChargementAnnee] = useState(true);
+  const [presencesAnneeCourante, setPresencesAnneeCourante] = useState([]);
+  const [dimanchesAnneeCourante, setDimanchesAnneeCourante] = useState([]);
+  const [courbeAnnuelle, setCourbeAnnuelle] = useState([]); // par année
 
   const membresDuPerimetre = gemsAutorises ? membres.filter(m => gemsAutorises.includes(m.gem_id)) : membres;
 
   useEffect(() => { chargerDonnees(); }, [membresDuPerimetre.length]);
+  useEffect(() => { if (vueAbsences === "mensuelle") chargerMensuel(); }, [vueAbsences, membresDuPerimetre.length]);
+  useEffect(() => { if (vueAbsences === "annuelle") chargerAnnuel(); }, [vueAbsences, membresDuPerimetre.length]);
 
   async function chargerDonnees() {
     setChargement(true);
     // Cherche le dimanche le plus récent qui a réellement été pointé (au moins
     // une présence enregistrée) — pas juste la ligne "dimanches" la plus récente,
     // qui peut être une semaine créée automatiquement sans aucun pointage.
-    const { data: dimanchesRecents } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(8);
+    const { data: dimanchesRecents } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(12);
     let dim = null, pres = [];
+    const dimanchesReellementPointes = [];
     for (const d of dimanchesRecents || []) {
       const { data: p } = await supabase.from("presences").select("*").eq("dimanche_id", d.id).in("membre_id", membresDuPerimetre.map(m => m.id));
-      if (p && p.length > 0) { dim = d; pres = p; break; }
+      if (p && p.length > 0) {
+        dimanchesReellementPointes.push({ dimanche: d, presences: p });
+        if (!dim) { dim = d; pres = p; }
+      }
     }
     setDimancheRecent(dim);
     if (dim && membresDuPerimetre.length > 0) {
@@ -4241,10 +4257,92 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
       setMotifsParMembre(mapMotifs);
       setPresentsIds(presents);
     }
+
+    // Courbe hebdomadaire : taux d'absence sur les 12 derniers dimanches réellement pointés
+    const courbe = dimanchesReellementPointes.reverse().map(({ dimanche, presences: pres2 }) => {
+      const idsPresents = new Set(pres2.filter(p => p.present).map(p => p.membre_id));
+      const nbAbsents = membresDuPerimetre.filter(m => !idsPresents.has(m.id)).length;
+      const taux = membresDuPerimetre.length > 0 ? Math.round((nbAbsents / membresDuPerimetre.length) * 100) : 0;
+      return { date: dimanche.date, taux };
+    });
+    setCourbeHebdo(courbe);
+
     setChargement(false);
   }
 
+  async function chargerMensuel() {
+    setChargementMois(true);
+    const moisActuel = new Date().toISOString().slice(0, 7);
+    const { data: dimanchesTous } = await supabase.from("dimanches").select("*").order("date", { ascending: true });
+    const idsMembres = membresDuPerimetre.map(m => m.id);
+
+    // Regroupe tous les dimanches par mois, sur les 12 derniers mois où il y a des données
+    const parMois = {};
+    (dimanchesTous || []).forEach(d => {
+      const cle = d.date.slice(0, 7);
+      if (!parMois[cle]) parMois[cle] = [];
+      parMois[cle].push(d.id);
+    });
+    const moisTries = Object.keys(parMois).sort().slice(-12);
+
+    const courbe = [];
+    for (const mois of moisTries) {
+      const idsDim = parMois[mois];
+      const { data: pres } = await supabase.from("presences").select("*").in("dimanche_id", idsDim).in("membre_id", idsMembres);
+      if (!pres || pres.length === 0) continue; // mois jamais réellement pointé, on l'ignore
+      const idsDimPointes = new Set(pres.map(p => p.dimanche_id));
+      const nbDimPointes = idsDim.filter(id => idsDimPointes.has(id)).length;
+      const slots = nbDimPointes * membresDuPerimetre.length;
+      const presents = pres.filter(p => p.present).length;
+      const taux = slots > 0 ? Math.round(((slots - presents) / slots) * 100) : 0;
+      courbe.push({ mois, taux });
+      if (mois === moisActuel) {
+        setPresencesMoisCourant(pres);
+        setDimanchesMoisCourant((dimanchesTous || []).filter(d => idsDim.includes(d.id)));
+      }
+    }
+    setCourbeMensuelle(courbe);
+    if (!courbe.some(c => c.mois === moisActuel)) { setPresencesMoisCourant([]); setDimanchesMoisCourant([]); }
+    setChargementMois(false);
+  }
+
+  async function chargerAnnuel() {
+    setChargementAnnee(true);
+    const anneeActuelle = new Date().getFullYear().toString();
+    const { data: dimanchesTous } = await supabase.from("dimanches").select("*").order("date", { ascending: true });
+    const idsMembres = membresDuPerimetre.map(m => m.id);
+
+    const parAnnee = {};
+    (dimanchesTous || []).forEach(d => {
+      const cle = d.date.slice(0, 4);
+      if (!parAnnee[cle]) parAnnee[cle] = [];
+      parAnnee[cle].push(d.id);
+    });
+    const anneesTriees = Object.keys(parAnnee).sort();
+
+    const courbe = [];
+    for (const annee of anneesTriees) {
+      const idsDim = parAnnee[annee];
+      const { data: pres } = await supabase.from("presences").select("*").in("dimanche_id", idsDim).in("membre_id", idsMembres);
+      if (!pres || pres.length === 0) continue;
+      const idsDimPointes = new Set(pres.map(p => p.dimanche_id));
+      const nbDimPointes = idsDim.filter(id => idsDimPointes.has(id)).length;
+      const slots = nbDimPointes * membresDuPerimetre.length;
+      const presents = pres.filter(p => p.present).length;
+      const taux = slots > 0 ? Math.round(((slots - presents) / slots) * 100) : 0;
+      courbe.push({ annee, taux });
+      if (annee === anneeActuelle) {
+        setPresencesAnneeCourante(pres);
+        setDimanchesAnneeCourante((dimanchesTous || []).filter(d => idsDim.includes(d.id)));
+      }
+    }
+    setCourbeAnnuelle(courbe);
+    if (!courbe.some(c => c.annee === anneeActuelle)) { setPresencesAnneeCourante([]); setDimanchesAnneeCourante([]); }
+    setChargementAnnee(false);
+  }
+
   function nomGem(gemId) { return gems.find(g => g.id === gemId)?.nom || "GEM inconnu"; }
+  function gemDe(gemId) { return gems.find(g => g.id === gemId); }
   function provenance(gemId) {
     const g = gems.find(gg => gg.id === gemId);
     if (!g) return "";
@@ -4252,62 +4350,219 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
     if (g.departement_id) return `Département ${departements?.find(d => d.id === g.departement_id)?.nom || "?"}`;
     return "";
   }
+  function nomTribuOuDept(gemId) {
+    const g = gemDe(gemId);
+    if (!g) return "Sans rattachement";
+    if (g.tribu_id) return tribus?.find(t => t.id === g.tribu_id)?.nom || "?";
+    if (g.departement_id) return departements?.find(d => d.id === g.departement_id)?.nom || "?";
+    return "Sans rattachement";
+  }
 
   // Un membre est "absent" pour ce dimanche s'il n'a pas été pointé présent
   // (non pointé du tout = considéré absent aussi).
   const absents = membresDuPerimetre
     .filter(m => !presentsIds.has(m.id))
-    .map(m => ({ membre: m, absencesConsecutives: regulariteParMembre[m.id]?.absencesConsecutives || 0, motif: motifsParMembre[m.id] || "" }))
-    .sort((a, b) => b.absencesConsecutives - a.absencesConsecutives);
+    .map(m => ({ membre: m, absencesConsecutives: regulariteParMembre[m.id]?.absencesConsecutives || 0, motif: motifsParMembre[m.id] || "" }));
+
+  // Regroupement hiérarchique : tribu/département (alphabétique) → GEM (alphabétique) →
+  // membres de ce GEM (les plus en absence répétée en premier). Deux personnes du
+  // même GEM se suivent ainsi toujours dans la liste.
+  const absentsGroupes = [...absents].sort((a, b) => {
+    const provA = nomTribuOuDept(a.membre.gem_id), provB = nomTribuOuDept(b.membre.gem_id);
+    if (provA !== provB) return provA.localeCompare(provB);
+    const gemA = nomGem(a.membre.gem_id), gemB = nomGem(b.membre.gem_id);
+    if (gemA !== gemB) return gemA.localeCompare(gemB);
+    return b.absencesConsecutives - a.absencesConsecutives;
+  });
+
+  // --- GEM / tribu / département avec le plus grand taux d'absence (semaine en cours) ---
+  function pireEntite(cle) {
+    const groupes = {};
+    membresDuPerimetre.forEach(m => {
+      const id = cle === "gem" ? m.gem_id : null;
+      const nomEntite = cle === "gem" ? nomGem(m.gem_id) : nomTribuOuDept(m.gem_id);
+      if (!nomEntite) return;
+      if (!groupes[nomEntite]) groupes[nomEntite] = { total: 0, absents: 0 };
+      groupes[nomEntite].total++;
+      if (!presentsIds.has(m.id)) groupes[nomEntite].absents++;
+    });
+    const liste = Object.entries(groupes)
+      .map(([nom, v]) => ({ nom, taux: v.total > 0 ? Math.round((v.absents / v.total) * 100) : 0, total: v.total }))
+      .filter(x => x.total >= 1)
+      .sort((a, b) => b.taux - a.taux);
+    return liste[0] || null;
+  }
+  const pireGem = pireEntite("gem");
+  const pireProvenance = pireEntite("provenance");
 
   if (chargement) return <Chargement />;
 
   return (
     <div>
       <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>🚫 Absences</h2>
-      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>
-        {dimancheRecent ? `Dimanche ${new Date(dimancheRecent.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}` : "Aucun dimanche enregistré"} — {absents.length} absent(s) sur {membresDuPerimetre.length}
-      </p>
 
-      {absents.length === 0 ? (
-        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun absent pour l'instant — tout le monde est pointé présent. 🙏</p>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {absents.map(({ membre, absencesConsecutives, motif }) => (
-            <div key={membre.id} style={{ ...cardStyle, borderColor: absencesConsecutives >= 2 ? RED_LIGHT : TEAL_700 }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
-                <div>
-                  <p style={{ fontWeight: 700, marginBottom: 2 }}>{membre.nom}</p>
-                  <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomGem(membre.gem_id)}{provenance(membre.gem_id) ? ` — ${provenance(membre.gem_id)}` : ""}</p>
-                  {motif && <p style={{ fontSize: 12, color: GOLD_LIGHT, marginTop: 4 }}>Motif : {motif}</p>}
+      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+        {[["hebdomadaire", "Hebdomadaire"], ["mensuelle", "Mensuelle"], ["annuelle", "Annuelle"]].map(([cle, label]) => (
+          <button key={cle} className="btn-app" onClick={() => setVueAbsences(cle)} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vueAbsences === cle ? GOLD : TEAL_900, color: vueAbsences === cle ? TEAL_950 : "#cdeae4" }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {vueAbsences === "hebdomadaire" && (
+        <>
+          <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>
+            {dimancheRecent ? `Dimanche ${new Date(dimancheRecent.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}` : "Aucun dimanche enregistré"} — {absents.length} absent(s) sur {membresDuPerimetre.length}
+          </p>
+
+          {(pireGem || pireProvenance) && (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginBottom: 20 }}>
+              {pireGem && pireGem.taux > 0 && (
+                <div style={{ ...cardStyle, borderColor: RED_LIGHT }}>
+                  <p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>GEM le plus touché</p>
+                  <p style={{ fontSize: 16, fontWeight: 700 }}>{pireGem.nom}</p>
+                  <p style={{ fontSize: 20, fontWeight: 700, color: RED_LIGHT }}>{pireGem.taux}% d'absence</p>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                  {absencesConsecutives >= 1 && (
-                    <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", backgroundColor: absencesConsecutives >= 2 ? RED_LIGHT : TEAL_700, borderRadius: 999, padding: "5px 10px" }}>
-                      {absencesConsecutives} dimanche{absencesConsecutives > 1 ? "s" : ""} consécutif{absencesConsecutives > 1 ? "s" : ""}
-                    </span>
-                  )}
-                  {membre.telephone && (
-                    <>
-                      <a title="Appeler" href={`tel:${membre.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}>📞</a>
-                      <a
-                        title="WhatsApp"
-                        href={`https://wa.me/${numeroPourWhatsApp(membre.telephone)}?text=${encodeURIComponent(`Bonjour ${membre.nom}, tu nous as manqué au culte. Est-ce que tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏`)}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}
-                      >💬</a>
-                    </>
-                  )}
+              )}
+              {pireProvenance && pireProvenance.taux > 0 && (
+                <div style={{ ...cardStyle, borderColor: RED_LIGHT }}>
+                  <p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Tribu/Département le plus touché</p>
+                  <p style={{ fontSize: 16, fontWeight: 700 }}>{pireProvenance.nom}</p>
+                  <p style={{ fontSize: 20, fontWeight: 700, color: RED_LIGHT }}>{pireProvenance.taux}% d'absence</p>
                 </div>
-              </div>
+              )}
             </div>
-          ))}
-        </div>
+          )}
+
+          {courbeHebdo.length >= 2 && (
+            <div style={{ ...cardStyle, marginBottom: 20 }}>
+              <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>📈 Évolution du taux d'absence — semaine après semaine</p>
+              <GraphiqueBarres
+                donnees={courbeHebdo.map(c => ({
+                  libelle: new Date(c.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }),
+                  valeur: c.taux,
+                  texteAffiche: `${c.taux}%`,
+                  couleur: c.taux >= 40 ? RED_LIGHT : GOLD_LIGHT,
+                  infoBulle: `${new Date(c.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })} : ${c.taux}% d'absence`,
+                }))}
+              />
+            </div>
+          )}
+
+          {absents.length === 0 ? (
+            <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun absent pour l'instant — tout le monde est pointé présent. 🙏</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {absentsGroupes.map(({ membre, absencesConsecutives, motif }, i) => {
+                const nouveauGroupe = i === 0 || nomTribuOuDept(membre.gem_id) !== nomTribuOuDept(absentsGroupes[i - 1].membre.gem_id) || nomGem(membre.gem_id) !== nomGem(absentsGroupes[i - 1].membre.gem_id);
+                return (
+                  <div key={membre.id}>
+                    {nouveauGroupe && (
+                      <p style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, marginTop: i === 0 ? 0 : 14, marginBottom: 6 }}>
+                        {nomGem(membre.gem_id)} — {provenance(membre.gem_id)}
+                      </p>
+                    )}
+                    <div style={{ ...cardStyle, borderColor: absencesConsecutives >= 2 ? RED_LIGHT : TEAL_700 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
+                        <div>
+                          <p style={{ fontWeight: 700, marginBottom: 2 }}>{membre.nom}</p>
+                          {motif && <p style={{ fontSize: 12, color: GOLD_LIGHT, marginTop: 4 }}>Motif : {motif}</p>}
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                          {absencesConsecutives >= 1 && (
+                            <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", backgroundColor: absencesConsecutives >= 2 ? RED_LIGHT : TEAL_700, borderRadius: 999, padding: "5px 10px" }}>
+                              {absencesConsecutives} dimanche{absencesConsecutives > 1 ? "s" : ""} consécutif{absencesConsecutives > 1 ? "s" : ""}
+                            </span>
+                          )}
+                          {membre.telephone && (
+                            <>
+                              <a title="Appeler" href={`tel:${membre.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}>📞</a>
+                              <a
+                                title="WhatsApp"
+                                href={`https://wa.me/${numeroPourWhatsApp(membre.telephone)}?text=${encodeURIComponent(`Bonjour ${membre.nom}, tu nous as manqué au culte. Est-ce que tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏`)}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}
+                              >💬</a>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {vueAbsences === "mensuelle" && (
+        chargementMois ? <Chargement /> : (
+          <>
+            <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>
+              {dimanchesMoisCourant.length} dimanche(s) pointé(s) ce mois-ci
+            </p>
+            {courbeMensuelle.length >= 2 ? (
+              <div style={{ ...cardStyle, marginBottom: 20 }}>
+                <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>📈 Évolution du taux d'absence — mois après mois</p>
+                <GraphiqueBarres
+                  donnees={courbeMensuelle.map(c => {
+                    const [annee, mois] = c.mois.split("-");
+                    return {
+                      libelle: new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "short" }),
+                      valeur: c.taux,
+                      texteAffiche: `${c.taux}%`,
+                      couleur: c.taux >= 40 ? RED_LIGHT : GOLD_LIGHT,
+                      infoBulle: `${new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })} : ${c.taux}% d'absence`,
+                    };
+                  })}
+                />
+              </div>
+            ) : (
+              <p style={{ color: "#a9d6cf", fontSize: 13, marginBottom: 20 }}>Pas encore assez de mois pointés pour tracer une courbe.</p>
+            )}
+            <CommentaireIntelligent
+              titre="🧠 Analyse intelligente du mois"
+              stats={{ tauxPresence: courbeMensuelle.length > 0 ? 100 - courbeMensuelle[courbeMensuelle.length - 1].taux : null }}
+            />
+          </>
+        )
+      )}
+
+      {vueAbsences === "annuelle" && (
+        chargementAnnee ? <Chargement /> : (
+          <>
+            <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>
+              {dimanchesAnneeCourante.length} dimanche(s) pointé(s) cette année
+            </p>
+            {courbeAnnuelle.length >= 2 ? (
+              <div style={{ ...cardStyle, marginBottom: 20 }}>
+                <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>📈 Évolution du taux d'absence — année après année</p>
+                <GraphiqueBarres
+                  donnees={courbeAnnuelle.map(c => ({
+                    libelle: c.annee,
+                    valeur: c.taux,
+                    texteAffiche: `${c.taux}%`,
+                    couleur: c.taux >= 40 ? RED_LIGHT : GOLD_LIGHT,
+                    infoBulle: `${c.annee} : ${c.taux}% d'absence`,
+                  }))}
+                />
+              </div>
+            ) : (
+              <p style={{ color: "#a9d6cf", fontSize: 13, marginBottom: 20 }}>Pas encore assez d'années pointées pour tracer une courbe.</p>
+            )}
+            <CommentaireIntelligent
+              titre="🧠 Analyse intelligente de l'année"
+              stats={{ tauxPresence: courbeAnnuelle.length > 0 ? 100 - courbeAnnuelle[courbeAnnuelle.length - 1].taux : null }}
+            />
+          </>
+        )
       )}
     </div>
   );
 }
+
 
 function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regulariteParMembre, cardStyle }) {
   const [chargement, setChargement] = useState(true);
