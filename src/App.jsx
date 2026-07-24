@@ -1439,6 +1439,21 @@ function TableauDeBord({ compte }) {
                 </p>
                 <p style={{ fontSize: 11, color: "#a9d6cf" }}>Clique pour voir le détail</p>
               </button>
+              {(() => {
+                const listeBossDashboard = calculerListeBoss(membres, gems, tribus, departements, regulariteParMembre);
+                const bossIrreguliersDashboard = listeBossDashboard.filter(b => b.absencesConsecutives >= 2);
+                return (
+                  <button className="btn-app card-app" onClick={() => { setPage("membres"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...cardStyle, cursor: "pointer", textAlign: "left", borderColor: bossIrreguliersDashboard.length > 0 ? RED_LIGHT : GOLD }}>
+                    <p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>🌟 BOSS</p>
+                    <p style={{ fontSize: 26, fontWeight: 700, color: GOLD_LIGHT }}>
+                      <NombreAnime valeur={listeBossDashboard.length} />
+                    </p>
+                    <p style={{ fontSize: 11, color: bossIrreguliersDashboard.length > 0 ? RED_LIGHT : "#a9d6cf" }}>
+                      {bossIrreguliersDashboard.length > 0 ? `⚠️ ${bossIrreguliersDashboard.length} irrégulier(s)` : "Voir dans Membres"}
+                    </p>
+                  </button>
+                );
+              })()}
             </div>
             <PrioritesPastorales membres={membres} gems={gems} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
             <div style={{ marginTop: 24 }}>
@@ -3151,6 +3166,61 @@ function moyenneSante(s) {
   return Math.round((valeurs.reduce((a, b) => a + b, 0) / valeurs.length) * 10) / 10;
 }
 
+// Calcule la liste des BOSS ("Bon Ouvrier au Service du Seigneur") — toute
+// personne inscrite dans au moins un GEM de type "département". Regroupe une
+// même personne à travers plusieurs départements (par numéro de téléphone),
+// en ne lui attribuant qu'une seule tribu (celle de son GEM de type "tribu").
+function calculerListeBoss(membres, gems, tribus, departements, regulariteParMembre) {
+  function chiffresNumero(tel) { return (tel || "").replace(/[^\d]/g, "").slice(-8); }
+
+  const groupesTelephone = {};
+  membres.forEach(m => {
+    const cle = chiffresNumero(m.telephone) || `sans-numero-${m.id}`;
+    if (!groupesTelephone[cle]) groupesTelephone[cle] = [];
+    groupesTelephone[cle].push(m);
+  });
+
+  return Object.entries(groupesTelephone)
+    .map(([cle, fiches]) => {
+      const fichesDept = fiches.filter(m => gems.find(g => g.id === m.gem_id)?.type === "departement");
+      if (fichesDept.length === 0) return null;
+
+      const ficheTribu = fiches.find(m => gems.find(g => g.id === m.gem_id)?.type === "tribu");
+      const nomTribu = ficheTribu ? tribus.find(t => t.id === gems.find(g => g.id === ficheTribu.gem_id)?.tribu_id)?.nom : null;
+
+      const servicesUniques = [];
+      const nomsDejaVus = new Set();
+      fichesDept.forEach(m => {
+        const g = gems.find(gg => gg.id === m.gem_id);
+        const nomDept = departements.find(d => d.id === g?.departement_id)?.nom || "Département inconnu";
+        if (!nomsDejaVus.has(nomDept)) { nomsDejaVus.add(nomDept); servicesUniques.push({ nom: nomDept, gemNom: g?.nom || "" }); }
+      });
+
+      const regularites = fiches.map(m => regulariteParMembre?.[m.id]).filter(Boolean);
+      const tauxMoyen = regularites.length > 0
+        ? Math.round(regularites.reduce((a, r) => a + (r.tauxRegularite || 0), 0) / regularites.length)
+        : null;
+      const maxAbsencesConsecutives = Math.max(0, ...regularites.map(r => r.absencesConsecutives || 0));
+
+      const reference = ficheTribu || fichesDept[0];
+      return {
+        id: `boss-${cle}`,
+        nom: reference.nom,
+        telephone: reference.telephone,
+        quartier: reference.quartier,
+        dateNaissance: reference.date_naissance,
+        photo: reference.photo,
+        nomTribu,
+        services: servicesUniques,
+        tauxMoyen,
+        absencesConsecutives: maxAbsencesConsecutives,
+        fiches,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.nom.localeCompare(b.nom));
+}
+
 function couleurScore(score) {
   if (score === null) return "#a9d6cf";
   if (score >= 7) return GOLD_LIGHT;
@@ -4675,59 +4745,8 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
   });
   personnesResponsables.forEach(pr => { if (!responsablesUtilises.has(pr.id)) toutesLesPersonnes.push(pr); });
 
-  // --- BOSS ("Bon Ouvrier au Service du Seigneur") : toute personne inscrite
-  // dans au moins un GEM de type "département". Une même personne peut servir
-  // dans plusieurs départements (regroupés par numéro de téléphone), mais n'a
-  // qu'une seule tribu — celle de son GEM de type "tribu", si elle en a un.
-  const groupesTelephone = {};
-  membresDuPerimetre.forEach(m => {
-    const cle = chiffresNumero(m.telephone) || `sans-numero-${m.id}`;
-    if (!groupesTelephone[cle]) groupesTelephone[cle] = [];
-    groupesTelephone[cle].push(m);
-  });
-
-  const listeBoss = Object.entries(groupesTelephone)
-    .map(([cle, fiches]) => {
-      const fichesDept = fiches.filter(m => gems.find(g => g.id === m.gem_id)?.type === "departement");
-      if (fichesDept.length === 0) return null;
-
-      const ficheTribu = fiches.find(m => gems.find(g => g.id === m.gem_id)?.type === "tribu");
-      const nomTribu = ficheTribu ? tribus.find(t => t.id === gems.find(g => g.id === ficheTribu.gem_id)?.tribu_id)?.nom : null;
-
-      const servicesUniques = [];
-      const nomsDejaVus = new Set();
-      fichesDept.forEach(m => {
-        const g = gems.find(gg => gg.id === m.gem_id);
-        const nomDept = departements.find(d => d.id === g?.departement_id)?.nom || "Département inconnu";
-        if (!nomsDejaVus.has(nomDept)) { nomsDejaVus.add(nomDept); servicesUniques.push({ nom: nomDept, gemNom: g?.nom || "" }); }
-      });
-
-      // Régularité et irrégularité : on regarde toutes ses fiches (tribu + départements)
-      const regularites = fiches.map(m => regulariteParMembre?.[m.id]).filter(Boolean);
-      const tauxMoyen = regularites.length > 0
-        ? Math.round(regularites.reduce((a, r) => a + (r.tauxRegularite || 0), 0) / regularites.length)
-        : null;
-      const maxAbsencesConsecutives = Math.max(0, ...regularites.map(r => r.absencesConsecutives || 0));
-      const ficheIrreguliere = fiches.find(m => (regulariteParMembre?.[m.id]?.absencesConsecutives || 0) >= 2);
-
-      const reference = ficheTribu || fichesDept[0];
-      return {
-        id: `boss-${cle}`,
-        nom: reference.nom,
-        telephone: reference.telephone,
-        quartier: reference.quartier,
-        dateNaissance: reference.date_naissance,
-        photo: reference.photo,
-        nomTribu,
-        services: servicesUniques,
-        tauxMoyen,
-        absencesConsecutives: maxAbsencesConsecutives,
-        motif: ficheIrreguliere ? "" : null,
-        fiches,
-      };
-    })
-    .filter(Boolean)
-    .sort((a, b) => a.nom.localeCompare(b.nom));
+  // --- BOSS ("Bon Ouvrier au Service du Seigneur") ---
+  const listeBoss = calculerListeBoss(membresDuPerimetre, gems, tribus, departements, regulariteParMembre);
 
   const bossIrreguliers = listeBoss.filter(b => b.absencesConsecutives >= 2).sort((a, b) => b.absencesConsecutives - a.absencesConsecutives);
 
