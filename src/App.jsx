@@ -7147,8 +7147,14 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
     return cle === "nombreActivites" ? `${valeur}` : `${valeur}%`;
   }
 
+  const LEGENDES = {
+    "📋": "Rapports remplis", "📅": "Présence au culte", "🌱": "Suivi des nouveaux", "🙏": "Activités effectuées",
+  };
+  const iconesUtilisees = [...new Set(actif.cles.map(([, icone]) => icone))];
+
   return (
     <div style={{ backgroundColor: TEAL_900, border: `1px solid ${GOLD}`, borderRadius: 12, padding: 12, marginBottom: 20 }}>
+      <p style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>🏆 Classement — Top 3 du mois</p>
       <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
         {disponibles.map(o => (
           <button
@@ -7157,7 +7163,7 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
             onClick={() => setOngletActif(o.cle)}
             style={{ flex: 1, padding: "6px 8px", borderRadius: 8, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: actif.cle === o.cle ? GOLD : TEAL_850, color: actif.cle === o.cle ? TEAL_950 : "#cdeae4" }}
           >
-            🏆 {o.label}
+            {o.label}
           </button>
         ))}
       </div>
@@ -7178,6 +7184,11 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
               </p>
             )}
           </div>
+        ))}
+      </div>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10, paddingTop: 8, borderTop: `1px solid ${TEAL_800}` }}>
+        {iconesUtilisees.map(icone => (
+          <span key={icone} style={{ fontSize: 10, color: "#a9d6cf" }}>{icone} {LEGENDES[icone]}</span>
         ))}
       </div>
     </div>
