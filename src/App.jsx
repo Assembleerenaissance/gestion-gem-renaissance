@@ -4569,10 +4569,14 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
   const [santeMembres, setSanteMembres] = useState({});
   const [santeResponsables, setSanteResponsables] = useState({});
   const [absencesRecentes, setAbsencesRecentes] = useState({}); // { membre_id: nb absences sur 4 derniers dimanches }
+  const [motifsRecents, setMotifsRecents] = useState({}); // { membre_id: dernier motif d'absence connu }
   const [recherche, setRecherche] = useState("");
   const [filtreIrreguliers, setFiltreIrreguliers] = useState(false);
   const [filtreRole, setFiltreRole] = useState(""); // "" | membre | gem | departement_resp | tribu_resp
   const [personneOuverte, setPersonneOuverte] = useState(null);
+  const [vueBoss, setVueBoss] = useState(false);
+  const [filtreBossIrreguliers, setFiltreBossIrreguliers] = useState(false);
+  const [bossOuvert, setBossOuvert] = useState(null);
 
   const membresDuPerimetre = gemsAutorises ? membres.filter(m => gemsAutorises.includes(m.gem_id)) : membres;
 
@@ -4610,6 +4614,17 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
           mapAbs[m.id] = { absences, total: dimanchesReels.length };
         });
         setAbsencesRecentes(mapAbs);
+
+        // Dernier motif d'absence connu, par membre (le plus récent dimanche avec un motif renseigné)
+        const mapMotifs = {};
+        [...presencesRecentes || []].sort((a, b) => {
+          const da = dimanchesReels.find(d => d.id === a.dimanche_id)?.date || "";
+          const db = dimanchesReels.find(d => d.id === b.dimanche_id)?.date || "";
+          return db.localeCompare(da);
+        }).forEach(p => {
+          if (!p.present && p.motif && !mapMotifs[p.membre_id]) mapMotifs[p.membre_id] = p.motif;
+        });
+        setMotifsRecents(mapMotifs);
       }
     }
 
@@ -4694,6 +4709,65 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
   });
   personnesResponsables.forEach(pr => { if (!responsablesUtilises.has(pr.id)) toutesLesPersonnes.push(pr); });
 
+  // --- BOSS ("Bon Ouvrier au Service du Seigneur") : toute personne inscrite
+  // dans au moins un GEM de type "département". Une même personne peut servir
+  // dans plusieurs départements (regroupés par numéro de téléphone), mais n'a
+  // qu'une seule tribu — celle de son GEM de type "tribu", si elle en a un.
+  const groupesTelephone = {};
+  membresDuPerimetre.forEach(m => {
+    const cle = chiffresNumero(m.telephone) || `sans-numero-${m.id}`;
+    if (!groupesTelephone[cle]) groupesTelephone[cle] = [];
+    groupesTelephone[cle].push(m);
+  });
+
+  const listeBoss = Object.values(groupesTelephone)
+    .map(fiches => {
+      const fichesDept = fiches.filter(m => gems.find(g => g.id === m.gem_id)?.type === "departement");
+      if (fichesDept.length === 0) return null;
+
+      const ficheTribu = fiches.find(m => gems.find(g => g.id === m.gem_id)?.type === "tribu");
+      const nomTribu = ficheTribu ? tribus.find(t => t.id === gems.find(g => g.id === ficheTribu.gem_id)?.tribu_id)?.nom : null;
+
+      const servicesUniques = [];
+      const nomsDejaVus = new Set();
+      fichesDept.forEach(m => {
+        const g = gems.find(gg => gg.id === m.gem_id);
+        const nomDept = departements.find(d => d.id === g?.departement_id)?.nom || "Département inconnu";
+        if (!nomsDejaVus.has(nomDept)) { nomsDejaVus.add(nomDept); servicesUniques.push({ nom: nomDept, gemNom: g?.nom || "" }); }
+      });
+
+      // Régularité et irrégularité : on regarde toutes ses fiches (tribu + départements)
+      const regularites = fiches.map(m => regulariteParMembre?.[m.id]).filter(Boolean);
+      const tauxMoyen = regularites.length > 0
+        ? Math.round(regularites.reduce((a, r) => a + (r.tauxRegularite || 0), 0) / regularites.length)
+        : null;
+      const maxAbsencesConsecutives = Math.max(0, ...regularites.map(r => r.absencesConsecutives || 0));
+      const ficheIrreguliere = fiches.find(m => (regulariteParMembre?.[m.id]?.absencesConsecutives || 0) >= 2);
+
+      const reference = ficheTribu || fichesDept[0];
+      return {
+        id: `boss-${cle}`,
+        nom: reference.nom,
+        telephone: reference.telephone,
+        quartier: reference.quartier,
+        dateNaissance: reference.date_naissance,
+        photo: reference.photo,
+        nomTribu,
+        services: servicesUniques,
+        tauxMoyen,
+        absencesConsecutives: maxAbsencesConsecutives,
+        motif: ficheIrreguliere ? "" : null,
+        fiches,
+      };
+    })
+    .filter(Boolean)
+    .sort((a, b) => a.nom.localeCompare(b.nom));
+
+  const bossIrreguliers = listeBoss.filter(b => b.absencesConsecutives >= 2).sort((a, b) => b.absencesConsecutives - a.absencesConsecutives);
+
+  const resultatsBoss = (filtreBossIrreguliers ? bossIrreguliers : listeBoss)
+    .filter(b => b.nom.toLowerCase().includes(recherche.toLowerCase()));
+
   function libelleRole(type) {
     if (type === "membre") return "Membre";
     if (type === "gem") return "Responsable GEM";
@@ -4717,6 +4791,64 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
     .filter(p => !filtreIrreguliers || (p.types.includes("membre") && (absencesRecentes[p.membreId]?.absences || 0) >= 2));
 
   if (chargement) return <Chargement />;
+
+  if (bossOuvert) {
+    const b = bossOuvert;
+    const numeroWhatsApp = numeroPourWhatsApp(b.telephone);
+    const ficheIrreguliere = b.fiches.find(m => (regulariteParMembre?.[m.id]?.absencesConsecutives || 0) >= 2);
+    const motifIrregularite = ficheIrreguliere ? (motifsRecents?.[ficheIrreguliere.id] || "") : "";
+    return (
+      <div>
+        <button className="btn-app" onClick={() => setBossOuvert(null)} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 16, fontSize: 13 }}>← Retour à la liste</button>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+          <div style={{ width: 64, height: 64, borderRadius: "50%", backgroundColor: TEAL_700, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 700, color: GOLD_LIGHT, border: `2px solid ${GOLD}` }}>
+            {b.nom.split(" ").filter(Boolean).slice(0, 2).map(x => x[0]).join("").toUpperCase()}
+          </div>
+          <div>
+            <p style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{b.nom}</p>
+            <p style={{ fontSize: 12, color: GOLD_LIGHT, margin: 0 }}>🌟 BOSS — Bon Ouvrier au Service du Seigneur</p>
+          </div>
+        </div>
+
+        <div style={{ ...cardStyle, marginBottom: 16 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>Téléphone</span><span style={{ fontSize: 13, fontWeight: 600 }}>{b.telephone || "—"}</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>Quartier</span><span style={{ fontSize: 13, fontWeight: 600 }}>{b.quartier || "—"}</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span style={{ color: "#a9d6cf", fontSize: 13 }}>🎂 Anniversaire</span>
+              <span style={{ fontSize: 13, fontWeight: 600 }}>{b.dateNaissance ? new Date(b.dateNaissance + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : "—"}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>Tribu</span><span style={{ fontSize: 13, fontWeight: 600 }}>{b.nomTribu || "Non renseignée"}</span></div>
+            <div>
+              <p style={{ color: "#a9d6cf", fontSize: 13, marginBottom: 4 }}>Sert dans {b.services.length} département{b.services.length > 1 ? "s" : ""}</p>
+              {b.services.map((s, i) => (
+                <p key={i} style={{ fontSize: 13, fontWeight: 600, margin: "2px 0" }}>• {s.nom}{s.gemNom ? ` (${s.gemNom})` : ""}</p>
+              ))}
+            </div>
+            {b.tauxMoyen !== null && (
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "#a9d6cf", fontSize: 13 }}>📊 Taux de régularité moyen</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: b.tauxMoyen >= 70 ? "#6fcf97" : b.tauxMoyen >= 40 ? GOLD_LIGHT : RED_LIGHT }}>{b.tauxMoyen}%</span>
+              </div>
+            )}
+            {b.absencesConsecutives >= 2 && (
+              <div style={{ ...cardStyle, borderColor: RED_LIGHT, marginTop: 4 }}>
+                <p style={{ fontSize: 13, fontWeight: 700, color: RED_LIGHT, margin: 0 }}>⚠️ {b.absencesConsecutives} cultes consécutifs manqués</p>
+                {motifIrregularite && <p style={{ fontSize: 12, color: GOLD_LIGHT, margin: "6px 0 0 0" }}>Motif : {motifIrregularite}</p>}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {b.telephone && (
+          <div style={{ display: "flex", gap: 10 }}>
+            <a href={`tel:${b.telephone}`} style={{ flex: 1, textAlign: "center", padding: "12px 0", borderRadius: 10, backgroundColor: GOLD_LIGHT, color: TEAL_950, fontWeight: 700, textDecoration: "none", fontSize: 14 }}>📞 Appeler</a>
+            <a href={`https://wa.me/${numeroWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, textAlign: "center", padding: "12px 0", borderRadius: 10, backgroundColor: "#25D366", color: "#fff", fontWeight: 700, textDecoration: "none", fontSize: 14 }}>💬 WhatsApp</a>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   if (personneOuverte) {
     const p = personneOuverte;
@@ -4806,17 +4938,61 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
       />
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
-        <button className="btn-app" onClick={() => setFiltreIrreguliers(v => !v)} style={{ padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${RED_LIGHT}`, cursor: "pointer", backgroundColor: filtreIrreguliers ? RED_LIGHT : "transparent", color: filtreIrreguliers ? "#fff" : RED_LIGHT }}>
-          ⚠️ Membres irréguliers (2+ absences / 4 dimanches)
+        <button className="btn-app" onClick={() => { setVueBoss(v => !v); setFiltreBossIrreguliers(false); }} style={{ padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${GOLD}`, cursor: "pointer", backgroundColor: vueBoss ? GOLD : "transparent", color: vueBoss ? TEAL_950 : GOLD_LIGHT }}>
+          🌟 BOSS ({listeBoss.length})
         </button>
-        {["", "membre", "gem", "departement_resp", "tribu_resp"].map(r => (
-          <button key={r} className="btn-app" onClick={() => setFiltreRole(r)} style={{ padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${TEAL_600}`, cursor: "pointer", backgroundColor: filtreRole === r ? GOLD : "transparent", color: filtreRole === r ? TEAL_950 : "#cdeae4" }}>
-            {r === "" ? "Tous" : libelleRole(r)}
+        {!vueBoss && (
+          <>
+            <button className="btn-app" onClick={() => setFiltreIrreguliers(v => !v)} style={{ padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${RED_LIGHT}`, cursor: "pointer", backgroundColor: filtreIrreguliers ? RED_LIGHT : "transparent", color: filtreIrreguliers ? "#fff" : RED_LIGHT }}>
+              ⚠️ Membres irréguliers (2+ absences / 4 dimanches)
+            </button>
+            {["", "membre", "gem", "departement_resp", "tribu_resp"].map(r => (
+              <button key={r} className="btn-app" onClick={() => setFiltreRole(r)} style={{ padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${TEAL_600}`, cursor: "pointer", backgroundColor: filtreRole === r ? GOLD : "transparent", color: filtreRole === r ? TEAL_950 : "#cdeae4" }}>
+                {r === "" ? "Tous" : libelleRole(r)}
+              </button>
+            ))}
+          </>
+        )}
+        {vueBoss && (
+          <button className="btn-app" onClick={() => setFiltreBossIrreguliers(v => !v)} style={{ padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${RED_LIGHT}`, cursor: "pointer", backgroundColor: filtreBossIrreguliers ? RED_LIGHT : "transparent", color: filtreBossIrreguliers ? "#fff" : RED_LIGHT }}>
+            ⚠️ BOSS irréguliers ({bossIrreguliers.length})
           </button>
-        ))}
+        )}
       </div>
 
-      {resultats.length === 0 ? (
+      {vueBoss ? (
+        resultatsBoss.length === 0 ? (
+          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun BOSS trouvé.</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {resultatsBoss.map(b => (
+              <button key={b.id} className="btn-app card-app" onClick={() => setBossOuvert(b)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, borderColor: b.absencesConsecutives >= 2 ? RED_LIGHT : cardStyle.border }}>
+                <div>
+                  <p style={{ fontWeight: 700, margin: 0 }}>{b.nom}</p>
+                  <p style={{ fontSize: 11, color: "#a9d6cf", margin: 0 }}>
+                    {b.nomTribu ? `Tribu de ${b.nomTribu}` : "Tribu non renseignée"} · {b.services.map(s => s.nom).join(", ")}
+                  </p>
+                  {b.absencesConsecutives >= 2 && (() => {
+                    const ficheIrr = b.fiches.find(m => (regulariteParMembre?.[m.id]?.absencesConsecutives || 0) >= 2);
+                    const motif = ficheIrr ? motifsRecents?.[ficheIrr.id] : "";
+                    return motif ? <p style={{ fontSize: 11, color: GOLD_LIGHT, margin: "2px 0 0 0" }}>Motif : {motif}</p> : null;
+                  })()}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  {b.tauxMoyen !== null && (
+                    <span style={{ fontSize: 11, fontWeight: 700, color: b.tauxMoyen >= 70 ? "#6fcf97" : b.tauxMoyen >= 40 ? GOLD_LIGHT : RED_LIGHT, backgroundColor: TEAL_900, borderRadius: 999, padding: "4px 10px" }}>
+                      📊 {b.tauxMoyen}%
+                    </span>
+                  )}
+                  {b.absencesConsecutives >= 2 && (
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "3px 9px" }}>⚠️ {b.absencesConsecutives} cultes ratés</span>
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+        )
+      ) : resultats.length === 0 ? (
         <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucune personne trouvée.</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
