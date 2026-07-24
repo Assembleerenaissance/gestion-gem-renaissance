@@ -4784,7 +4784,9 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
               <span style={{ color: "#a9d6cf", fontSize: 13 }}>🎂 Anniversaire</span>
               <span style={{ fontSize: 13, fontWeight: 600 }}>{b.dateNaissance ? new Date(b.dateNaissance + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : "—"}</span>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>Tribu</span><span style={{ fontSize: 13, fontWeight: 600 }}>{b.nomTribu || "Non renseignée"}</span></div>
+            {b.nomTribu && (
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>Tribu</span><span style={{ fontSize: 13, fontWeight: 600 }}>{b.nomTribu}</span></div>
+            )}
             <div>
               <p style={{ color: "#a9d6cf", fontSize: 13, marginBottom: 4 }}>Sert dans {b.services.length} département{b.services.length > 1 ? "s" : ""}</p>
               {b.services.map((s, i) => (
@@ -4976,7 +4978,7 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
                 <div>
                   <p style={{ fontWeight: 700, margin: 0 }}>{b.nom}</p>
                   <p style={{ fontSize: 11, color: "#a9d6cf", margin: 0 }}>
-                    {b.nomTribu ? `Tribu de ${b.nomTribu}` : "Tribu non renseignée"} · {b.services.map(s => s.nom).join(", ")}
+                    {b.nomTribu ? `Tribu de ${b.nomTribu} · ` : ""}{b.services.map(s => s.nom).join(", ")}
                   </p>
                   {b.absencesConsecutives >= 2 && (() => {
                     const ficheIrr = b.fiches.find(m => (regulariteParMembre?.[m.id]?.absencesConsecutives || 0) >= 2);
