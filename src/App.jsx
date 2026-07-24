@@ -4372,18 +4372,8 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
   // (non pointé du tout = considéré absent aussi).
   const absents = membresDuPerimetre
     .filter(m => !presentsIds.has(m.id))
-    .map(m => ({ membre: m, absencesConsecutives: regulariteParMembre[m.id]?.absencesConsecutives || 0, motif: motifsParMembre[m.id] || "" }));
-
-  // Regroupement hiérarchique : tribu/département (alphabétique) → GEM (alphabétique) →
-  // membres de ce GEM (les plus en absence répétée en premier). Deux personnes du
-  // même GEM se suivent ainsi toujours dans la liste.
-  const absentsGroupes = [...absents].sort((a, b) => {
-    const provA = nomTribuOuDept(a.membre.gem_id), provB = nomTribuOuDept(b.membre.gem_id);
-    if (provA !== provB) return provA.localeCompare(provB);
-    const gemA = nomGem(a.membre.gem_id), gemB = nomGem(b.membre.gem_id);
-    if (gemA !== gemB) return gemA.localeCompare(gemB);
-    return b.absencesConsecutives - a.absencesConsecutives;
-  });
+    .map(m => ({ membre: m, absencesConsecutives: regulariteParMembre[m.id]?.absencesConsecutives || 0, motif: motifsParMembre[m.id] || "" }))
+    .sort((a, b) => b.absencesConsecutives - a.absencesConsecutives);
 
   // --- GEM / tribu / département avec le plus grand taux d'absence (semaine en cours) ---
   function pireEntite(cle) {
@@ -4463,45 +4453,36 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
             <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun absent pour l'instant — tout le monde est pointé présent. 🙏</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {absentsGroupes.map(({ membre, absencesConsecutives, motif }, i) => {
-                const nouveauGroupe = i === 0 || nomTribuOuDept(membre.gem_id) !== nomTribuOuDept(absentsGroupes[i - 1].membre.gem_id) || nomGem(membre.gem_id) !== nomGem(absentsGroupes[i - 1].membre.gem_id);
-                return (
-                  <div key={membre.id}>
-                    {nouveauGroupe && (
-                      <p style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, marginTop: i === 0 ? 0 : 14, marginBottom: 6 }}>
-                        {nomGem(membre.gem_id)} — {provenance(membre.gem_id)}
-                      </p>
-                    )}
-                    <div style={{ ...cardStyle, borderColor: absencesConsecutives >= 2 ? RED_LIGHT : TEAL_700 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
-                        <div>
-                          <p style={{ fontWeight: 700, marginBottom: 2 }}>{membre.nom}</p>
-                          {motif && <p style={{ fontSize: 12, color: GOLD_LIGHT, marginTop: 4 }}>Motif : {motif}</p>}
-                        </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                          {absencesConsecutives >= 1 && (
-                            <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", backgroundColor: absencesConsecutives >= 2 ? RED_LIGHT : TEAL_700, borderRadius: 999, padding: "5px 10px" }}>
-                              {absencesConsecutives} dimanche{absencesConsecutives > 1 ? "s" : ""} consécutif{absencesConsecutives > 1 ? "s" : ""}
-                            </span>
-                          )}
-                          {membre.telephone && (
-                            <>
-                              <a title="Appeler" href={`tel:${membre.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}>📞</a>
-                              <a
-                                title="WhatsApp"
-                                href={`https://wa.me/${numeroPourWhatsApp(membre.telephone)}?text=${encodeURIComponent(`Bonjour ${membre.nom}, tu nous as manqué au culte. Est-ce que tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏`)}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}
-                              >💬</a>
-                            </>
-                          )}
-                        </div>
-                      </div>
+              {absents.map(({ membre, absencesConsecutives, motif }) => (
+                <div key={membre.id} style={{ ...cardStyle, borderColor: absencesConsecutives >= 2 ? RED_LIGHT : TEAL_700 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
+                    <div>
+                      <p style={{ fontWeight: 700, marginBottom: 2 }}>{membre.nom}</p>
+                      <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomGem(membre.gem_id)} — {provenance(membre.gem_id)}</p>
+                      {motif && <p style={{ fontSize: 12, color: GOLD_LIGHT, marginTop: 4 }}>Motif : {motif}</p>}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      {absencesConsecutives >= 1 && (
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", backgroundColor: absencesConsecutives >= 2 ? RED_LIGHT : TEAL_700, borderRadius: 999, padding: "5px 10px" }}>
+                          {absencesConsecutives} dimanche{absencesConsecutives > 1 ? "s" : ""} consécutif{absencesConsecutives > 1 ? "s" : ""}
+                        </span>
+                      )}
+                      {membre.telephone && (
+                        <>
+                          <a title="Appeler" href={`tel:${membre.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}>📞</a>
+                          <a
+                            title="WhatsApp"
+                            href={`https://wa.me/${numeroPourWhatsApp(membre.telephone)}?text=${encodeURIComponent(`Bonjour ${membre.nom}, tu nous as manqué au culte. Est-ce que tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏`)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}
+                          >💬</a>
+                        </>
+                      )}
                     </div>
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           )}
         </>
