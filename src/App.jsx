@@ -2513,6 +2513,12 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
     if (membreCible && membres.some(m => m.id === membreCible)) {
       setMembreOuvert(membreCible);
       if (onMembreCibleConsomme) onMembreCibleConsomme();
+      // Fait défiler l'écran jusqu'à la fiche du membre recherché, sinon elle
+      // s'ouvre correctement mais reste invisible plus bas dans la liste.
+      setTimeout(() => {
+        const el = document.getElementById(`membre-${membreCible}`);
+        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
+      }, 150);
     }
   }, [membreCible, membres]);
 
@@ -2843,18 +2849,19 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
           <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun membre pour l'instant.</p>
         ) : (
           membres.map(m => (
-            <FicheMembre
-              key={m.id}
-              compte={compte}
-              membre={m}
-              derniereSante={santeParMembre[m.id]}
-              regularite={regulariteParMembre?.[m.id]}
-              ouvert={membreOuvert === m.id}
-              onToggle={() => setMembreOuvert(membreOuvert === m.id ? null : m.id)}
-              onSauvegarde={chargerSante}
-              onMisAJour={onMembreAjoute}
-              cardStyle={cardStyle}
-            />
+            <div key={m.id} id={`membre-${m.id}`}>
+              <FicheMembre
+                compte={compte}
+                membre={m}
+                derniereSante={santeParMembre[m.id]}
+                regularite={regulariteParMembre?.[m.id]}
+                ouvert={membreOuvert === m.id}
+                onToggle={() => setMembreOuvert(membreOuvert === m.id ? null : m.id)}
+                onSauvegarde={chargerSante}
+                onMisAJour={onMembreAjoute}
+                cardStyle={cardStyle}
+              />
+            </div>
           ))
         )}
       </div>
