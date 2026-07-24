@@ -777,6 +777,7 @@ function TableauDeBord({ compte }) {
   const [tribuDeptDuMois, setTribuDeptDuMois] = useState({ tribu: null, departement: null });
   const [rapportsPresenceSemaine, setRapportsPresenceSemaine] = useState({ valides: 0, total: 0 });
   const [rapportsActivitesSemaine, setRapportsActivitesSemaine] = useState({ valides: 0, total: 0 });
+  const [absencesSemaine, setAbsencesSemaine] = useState({ nombre: 0, pourcentage: 0 });
   const [regulariteParMembre, setRegulariteParMembre] = useState({});
   const [rappelPointageGlobal, setRappelPointageGlobal] = useState(null);
   const [rechercheGlobale, setRechercheGlobale] = useState("");
@@ -851,6 +852,15 @@ function TableauDeBord({ compte }) {
       } else {
         setRapportsPresenceSemaine({ valides: 0, total: g?.length || 0 });
         setRapportsActivitesSemaine({ valides: 0, total: g?.length || 0 });
+      }
+
+      if (dernierDimanche && m && m.length > 0) {
+        const { data: presencesSemaine } = await supabase.from("presences").select("membre_id, present").eq("dimanche_id", dernierDimanche.id).in("membre_id", m.map(mm => mm.id));
+        const idsPresents = new Set((presencesSemaine || []).filter(p => p.present).map(p => p.membre_id));
+        const nbAbsents = m.filter(mm => !idsPresents.has(mm.id)).length;
+        setAbsencesSemaine({ nombre: nbAbsents, pourcentage: Math.round((nbAbsents / m.length) * 100) });
+      } else {
+        setAbsencesSemaine({ nombre: 0, pourcentage: 0 });
       }
     }
     calculerGemDuMoisGlobal(g || [], m || [], t || [], d || []).then(setGemDuMois);
@@ -1112,6 +1122,11 @@ function TableauDeBord({ compte }) {
  onClick={() => { setPage("membres"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "membres" ? TEAL_700 : "transparent", color: page === "membres" ? GOLD_LIGHT : "#cdeae4" }}>
                 👥 Membres
               </button>
+              <button
+ className="btn-app"
+ onClick={() => { setPage("absences"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "absences" ? TEAL_700 : "transparent", color: page === "absences" ? GOLD_LIGHT : "#cdeae4" }}>
+                🚫 Absences
+              </button>
               {compte.role === "pasteur" && (
                 <button
  className="btn-app"
@@ -1209,6 +1224,7 @@ function TableauDeBord({ compte }) {
                   { label: "🌡️ Santé responsables", cible: "sante_responsables" },
                   { label: "🌱 Nouveaux", cible: "nouveaux" },
                   { label: "👥 Membres", cible: "membres" },
+                  { label: "🚫 Absences", cible: "absences" },
                 ];
                 if (compte.role === "pasteur") groupeGestion.push({ label: "Rôles & Accès", cible: "assistants" });
                 if (compte.role !== "pasteur") groupeGestion.push({ label: "➕ Rôle supplémentaire", cible: "demande_role_supp" });
@@ -1406,6 +1422,13 @@ function TableauDeBord({ compte }) {
                 </p>
                 <p style={{ fontSize: 11, color: "#a9d6cf" }}>GEM ayant validé leurs activités</p>
               </div>
+              <button className="btn-app card-app" onClick={() => { setPage("absences"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...cardStyle, cursor: "pointer", textAlign: "left", borderColor: absencesSemaine.nombre > 0 ? RED_LIGHT : cardStyle.border }}>
+                <p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>🚫 Absents ce dimanche</p>
+                <p style={{ fontSize: 26, fontWeight: 700, color: absencesSemaine.nombre === 0 ? "#6fcf97" : RED_LIGHT }}>
+                  <NombreAnime valeur={absencesSemaine.nombre} /> ({absencesSemaine.pourcentage}%)
+                </p>
+                <p style={{ fontSize: 11, color: "#a9d6cf" }}>Clique pour voir le détail</p>
+              </button>
             </div>
             <PrioritesPastorales membres={membres} gems={gems} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
             <div style={{ marginTop: 24 }}>
@@ -1461,6 +1484,8 @@ function TableauDeBord({ compte }) {
           <PageNouveaux membres={membres} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
         ) : page === "membres" ? (
           <PageMembres membres={membres} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
+        ) : page === "absences" ? (
+          <PageAbsences membres={membres} gems={gems} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
         ) : (
           <PageAssistants compte={compte} tribus={tribus} departements={departements} gems={gems} onChange={chargerDonnees} cardStyle={cardStyle} />
         )}
@@ -1475,11 +1500,12 @@ function TableauDeBord({ compte }) {
 
 // Résumé pour les responsables de département/tribu : GEM, rapports de la semaine,
 // GEM en retard (après lundi), membres, taux de présence/absence.
-function ResumePerimetre({ gems, membres, cardStyle }) {
+function ResumePerimetre({ gems, membres, onVoirAbsences, cardStyle }) {
   const [chargement, setChargement] = useState(true);
   const [rapportsValides, setRapportsValides] = useState(0);
   const [gemsEnRetard, setGemsEnRetard] = useState([]);
   const [tauxPresence, setTauxPresence] = useState(null);
+  const [absencesCount, setAbsencesCount] = useState(0);
   const [afficherRetard, setAfficherRetard] = useState(false);
 
   useEffect(() => { chargerResume(); }, [gems.length, membres.length]);
@@ -1502,6 +1528,7 @@ function ResumePerimetre({ gems, membres, cardStyle }) {
     const slots = membres.length;
     const presents = (presencesSemaine || []).filter(p => p.present).length;
     setTauxPresence(slots > 0 ? Math.round((presents / slots) * 100) : null);
+    setAbsencesCount(Math.max(0, slots - presents));
 
     // On ne signale les GEM "en retard" qu'à partir du mardi (le lundi est le dernier
     // jour normal pour soumettre le rapport du dimanche précédent).
@@ -1531,12 +1558,12 @@ function ResumePerimetre({ gems, membres, cardStyle }) {
             <NombreAnime valeur={rapportsValides} /> / {gems.length}
           </p>
         </div>
-        <div className="card-app" style={cardStyle}>
-          <p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Présence / Absence</p>
+        <button className="btn-app card-app" onClick={onVoirAbsences} disabled={!onVoirAbsences} style={{ ...cardStyle, textAlign: "left", cursor: onVoirAbsences ? "pointer" : "default", borderColor: absencesCount > 0 ? RED_LIGHT : cardStyle.border }}>
+          <p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>🚫 Absents ce dimanche</p>
           <p style={{ fontSize: 18, fontWeight: 700 }}>
-            {tauxPresence !== null ? <><span style={{ color: "#6fcf97" }}>{tauxPresence}%</span> / <span style={{ color: RED_LIGHT }}>{100 - tauxPresence}%</span></> : "—"}
+            {tauxPresence !== null ? <><span style={{ color: RED_LIGHT }}>{absencesCount}</span> <span style={{ fontSize: 13, color: "#a9d6cf" }}>({100 - tauxPresence}%)</span></> : "—"}
           </p>
-        </div>
+        </button>
       </div>
 
       {afficherRetard && gemsEnRetard.length > 0 && (
@@ -4074,6 +4101,94 @@ const LIBELLES_ETAPES_SUIVI = { accueil: "Accueil", classe: "Classe de baptême"
 
 /* --------------------------- Page Membres (tous, unifiée) --------------------------- */
 
+/* --------------------------- Page Absences (détail du dimanche) --------------------------- */
+
+function PageAbsences({ membres, gems, regulariteParMembre, gemsAutorises, cardStyle }) {
+  const [chargement, setChargement] = useState(true);
+  const [dimancheRecent, setDimancheRecent] = useState(null);
+  const [motifsParMembre, setMotifsParMembre] = useState({});
+  const [presentsIds, setPresentsIds] = useState(new Set());
+
+  const membresDuPerimetre = gemsAutorises ? membres.filter(m => gemsAutorises.includes(m.gem_id)) : membres;
+
+  useEffect(() => { chargerDonnees(); }, [membresDuPerimetre.length]);
+
+  async function chargerDonnees() {
+    setChargement(true);
+    const { data: dim } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(1).maybeSingle();
+    setDimancheRecent(dim || null);
+    if (dim && membresDuPerimetre.length > 0) {
+      const { data: pres } = await supabase.from("presences").select("*").eq("dimanche_id", dim.id).in("membre_id", membresDuPerimetre.map(m => m.id));
+      const mapMotifs = {};
+      const presents = new Set();
+      (pres || []).forEach(p => {
+        if (p.present) presents.add(p.membre_id);
+        else if (p.motif) mapMotifs[p.membre_id] = p.motif;
+      });
+      setMotifsParMembre(mapMotifs);
+      setPresentsIds(presents);
+    }
+    setChargement(false);
+  }
+
+  function nomGem(gemId) { return gems.find(g => g.id === gemId)?.nom || "GEM inconnu"; }
+
+  // Un membre est "absent" pour ce dimanche s'il n'a pas été pointé présent
+  // (non pointé du tout = considéré absent aussi).
+  const absents = membresDuPerimetre
+    .filter(m => !presentsIds.has(m.id))
+    .map(m => ({ membre: m, absencesConsecutives: regulariteParMembre[m.id]?.absencesConsecutives || 0, motif: motifsParMembre[m.id] || "" }))
+    .sort((a, b) => b.absencesConsecutives - a.absencesConsecutives);
+
+  if (chargement) return <Chargement />;
+
+  return (
+    <div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>🚫 Absences</h2>
+      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>
+        {dimancheRecent ? `Dimanche ${new Date(dimancheRecent.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}` : "Aucun dimanche enregistré"} — {absents.length} absent(s) sur {membresDuPerimetre.length}
+      </p>
+
+      {absents.length === 0 ? (
+        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun absent pour l'instant — tout le monde est pointé présent. 🙏</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          {absents.map(({ membre, absencesConsecutives, motif }) => (
+            <div key={membre.id} style={{ ...cardStyle, borderColor: absencesConsecutives >= 2 ? RED_LIGHT : TEAL_700 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
+                <div>
+                  <p style={{ fontWeight: 700, marginBottom: 2 }}>{membre.nom}</p>
+                  <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomGem(membre.gem_id)}</p>
+                  {motif && <p style={{ fontSize: 12, color: GOLD_LIGHT, marginTop: 4 }}>Motif : {motif}</p>}
+                </div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                  {absencesConsecutives >= 1 && (
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", backgroundColor: absencesConsecutives >= 2 ? RED_LIGHT : TEAL_700, borderRadius: 999, padding: "5px 10px" }}>
+                      {absencesConsecutives} dimanche{absencesConsecutives > 1 ? "s" : ""} consécutif{absencesConsecutives > 1 ? "s" : ""}
+                    </span>
+                  )}
+                  {membre.telephone && (
+                    <>
+                      <a title="Appeler" href={`tel:${membre.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}>📞</a>
+                      <a
+                        title="WhatsApp"
+                        href={`https://wa.me/${numeroPourWhatsApp(membre.telephone)}?text=${encodeURIComponent(`Bonjour ${membre.nom}, tu nous as manqué au culte. Est-ce que tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏`)}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}
+                      >💬</a>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function PageMembres({ membres, gems, tribus, departements, gemsAutorises, cardStyle }) {
   const [chargement, setChargement] = useState(true);
   const [tousLesComptes, setTousLesComptes] = useState([]);
@@ -5965,7 +6080,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>{gemsDuPerimetre.length} GEM sous ta responsabilité</p>
 
       <ClassementsDuMois gemDuMois={gemDuMois} tribuDeptDuMois={tribuDeptDuMois} />
-      <ResumePerimetre gems={gemsDuPerimetre} membres={membresDuPerimetre} cardStyle={cardStyle} />
+      <ResumePerimetre gems={gemsDuPerimetre} membres={membresDuPerimetre} onVoirAbsences={() => setSousOnglet("absences")} cardStyle={cardStyle} />
 
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
         <button
@@ -5986,6 +6101,9 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
         <button
  className="btn-app"
  onClick={() => setSousOnglet("membres")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "membres" ? GOLD : TEAL_900, color: sousOnglet === "membres" ? TEAL_950 : "#cdeae4" }}>👥 Membres</button>
+        <button
+ className="btn-app"
+ onClick={() => setSousOnglet("absences")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "absences" ? GOLD : TEAL_900, color: sousOnglet === "absences" ? TEAL_950 : "#cdeae4" }}>🚫 Absences</button>
       </div>
 
       {sousOnglet === "rapports" ? (
@@ -5998,6 +6116,8 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
         <PageNouveaux membres={membresDuPerimetre} gems={gemsDuPerimetre} tribus={tribus} departements={departements} gemsAutorises={gemsDuPerimetre.map(g => g.id)} cardStyle={cardStyle} />
       ) : sousOnglet === "membres" ? (
         <PageMembres membres={membres} gems={gems} tribus={tribus} departements={departements} gemsAutorises={gemsDuPerimetre.map(g => g.id)} cardStyle={cardStyle} />
+      ) : sousOnglet === "absences" ? (
+        <PageAbsences membres={membres} gems={gems} regulariteParMembre={regulariteParMembre} gemsAutorises={gemsDuPerimetre.map(g => g.id)} cardStyle={cardStyle} />
       ) : (
         <>
           <AnniversairesAVenir membres={membresDuPerimetre} gems={gems} cardStyle={cardStyle} />
