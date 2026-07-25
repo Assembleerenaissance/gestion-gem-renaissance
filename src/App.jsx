@@ -183,6 +183,14 @@ function IconeCroissance({ size = 16, color = "currentColor" }) {
     </svg>
   );
 }
+function IconeEtoile({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+    </svg>
+  );
+}
+
 function IconeAnalyse({ size = 16, color = "currentColor" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1636,7 +1644,7 @@ function TableauDeBord({ compte }) {
                 const bossIrreguliersDashboard = listeBossDashboard.filter(b => b.absencesConsecutives >= 2);
                 return (
                   <button className="btn-app card-app" onClick={() => { setPage("membres"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...cardStyle, cursor: "pointer", textAlign: "left", borderColor: bossIrreguliersDashboard.length > 0 ? RED_LIGHT : GOLD }}>
-                    <p style={{ fontSize: 12, color: "#FFFFFF", textTransform: "uppercase" }}>🌟 BOSS</p>
+                    <p style={{ fontSize: 12, color: "#FFFFFF", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 5 }}><IconeEtoile size={13} /> BOSS</p>
                     <p style={{ fontSize: 26, fontWeight: 700, color: GOLD_LIGHT }}>
                       <NombreAnime valeur={listeBossDashboard.length} />
                     </p>
@@ -2008,7 +2016,7 @@ function AnniversairesAVenir({ membres, gems, tribus, departements, cardStyle })
 
   return (
     <div style={{ marginBottom: 28 }}>
-      <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>🎂 Anniversaires à venir (3 prochains jours)</p>
+      <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><IconeGateau size={16} /> Anniversaires à venir (3 prochains jours)</p>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {anniversaires.map(({ membre, date, diffJours }) => (
           <div key={membre.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
@@ -2046,7 +2054,7 @@ function AnniversairesResponsables({ comptes, cardStyle }) {
 
   return (
     <div style={{ marginBottom: 28 }}>
-      <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>🎂 Anniversaires des responsables (14 prochains jours)</p>
+      <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><IconeGateau size={16} /> Anniversaires des responsables (14 prochains jours)</p>
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {anniversaires.map(({ compte, date, diffJours }) => (
           <div key={compte.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
@@ -2109,7 +2117,7 @@ function PrioritesPastorales({ membres, gems, regulariteParMembre, cardStyle }) 
 
   return (
     <div>
-      <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>⚠️ Priorités pastorales — membres à visiter ({membresAlerte.length})</p>
+      <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><IconeAlerte size={16} /> Priorités pastorales — membres à visiter ({membresAlerte.length})</p>
       {membresAlerte.length === 0 ? (
         <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun membre en absence répétée pour l'instant — tout va bien.</p>
       ) : (
@@ -5626,7 +5634,7 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
           </div>
           <div>
             <p style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{b.nom}</p>
-            <p style={{ fontSize: 12, color: GOLD_LIGHT, margin: 0 }}>🌟 BOSS — Bon Ouvrier au Service du Seigneur</p>
+            <p style={{ fontSize: 12, color: GOLD_LIGHT, margin: 0, display: "flex", alignItems: "center", gap: 5 }}><IconeEtoile size={12} /> BOSS — Bon Ouvrier au Service du Seigneur</p>
           </div>
         </div>
 
@@ -5801,7 +5809,7 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
         <button className="btn-app" onClick={() => { setVueBoss(v => !v); setFiltreBossIrreguliers(false); }} style={{ padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${GOLD}`, cursor: "pointer", backgroundColor: vueBoss ? GOLD : "transparent", color: vueBoss ? TEAL_950 : GOLD_LIGHT }}>
-          🌟 BOSS ({listeBoss.length})
+          <span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeEtoile size={14}/> BOSS ({listeBoss.length})</span>
         </button>
         {!vueBoss && (
           <>
@@ -9204,7 +9212,7 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
         <button
  className="btn-app"
  onClick={() => setOnglet("rappels")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "rappels" ? GOLD : TEAL_900, color: onglet === "rappels" ? TEAL_950 : "#cdeae4" }}>
-          🔔 Mes rappels{notificationsPerso.filter(n => !n.lu).length > 0 ? ` (${notificationsPerso.filter(n => !n.lu).length})` : ""}
+          <span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeCloche size={14}/> Mes rappels{notificationsPerso.filter(n => !n.lu).length > 0 ? ` (${notificationsPerso.filter(n => !n.lu).length})` : ""}</span>
         </button>
       </div>
 
