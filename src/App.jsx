@@ -18,6 +18,21 @@ const VERT_DOUX = "#8FCBA8";
 // Styles globaux : transitions douces et effets de survol, injectés une seule fois.
 // Motif signature — un épi de blé, en écho à la "Moisson" (GEM = Groupe
 // d'Évangélisation et de Moisson). Utilisé avec retenue, jamais en excès.
+// État vide soigné — remplace le simple texte gris par une invitation à agir,
+// avec une icône discrète dans un halo doré. Utilisé partout où il n'y a
+// encore aucune donnée (fréquent tant que l'église remplit l'application).
+function EtatVide({ icone: Icone, titre, description }) {
+  return (
+    <div style={{ textAlign: "center", padding: "36px 16px" }}>
+      <div style={{ width: 52, height: 52, borderRadius: 999, backgroundColor: "rgba(214,165,76,0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
+        {Icone ? <Icone size={24} color="#D6A54C" /> : <EpiDeBle size={24} />}
+      </div>
+      <p style={{ fontWeight: 700, fontSize: 14.5, margin: 0, color: "#F6F1E4" }}>{titre}</p>
+      {description && <p style={{ fontSize: 12.5, color: "#B9D3CB", maxWidth: 280, margin: "6px auto 0", lineHeight: 1.5 }}>{description}</p>}
+    </div>
+  );
+}
+
 function EpiDeBle({ size = 22, color, opacity = 1 }) {
   const couleur = color || GOLD;
   return (
@@ -2377,7 +2392,7 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
       <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><IconeClipboard size={15} /> GEM de ce {type === "tribu" ? "tribu" : "département"} ({gemsDuParent.length})</p>
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
         {gemsDuParent.length === 0 ? (
-          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun GEM créé pour l'instant.</p>
+          <EtatVide icone={IconeMaison} titre="Aucun GEM créé pour l'instant" />
         ) : (
           gemsDuParent.map(g => {
             const nbMembresGem = membres.filter(m => m.gem_id === g.id).length;
@@ -3339,7 +3354,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>Tous les membres</p>
         {membres.length === 0 ? (
-          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun membre pour l'instant.</p>
+          <EtatVide icone={IconeGroupe} titre="Aucun membre pour l'instant" description="Ajoute le premier membre de ce GEM avec le formulaire ci-dessus." />
         ) : (
           membres.map(m => (
             <div key={m.id} id={`membre-${m.id}`}>
@@ -5832,7 +5847,7 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
 
       {vueBoss ? (
         resultatsBoss.length === 0 ? (
-          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun BOSS trouvé.</p>
+          <EtatVide icone={IconeEtoile} titre="Aucun BOSS trouvé" description="Les BOSS sont les membres inscrits dans un GEM de type département." />
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {resultatsBoss.map(b => (
@@ -5867,7 +5882,7 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
           </div>
         )
       ) : resultats.length === 0 ? (
-        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucune personne trouvée.</p>
+        <EtatVide icone={IconeRecherche} titre="Aucune personne trouvée" />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {resultats.map(p => {
@@ -5971,7 +5986,7 @@ function PageNouveaux({ membres, gems, tribus, departements, gemsAutorises, card
       />
 
       {resultats.length === 0 ? (
-        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun nouveau converti trouvé.</p>
+        <EtatVide icone={IconePousse} titre="Aucun nouveau converti trouvé" />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {resultats.map(m => {
@@ -6168,7 +6183,7 @@ function PageSanteResponsables({ tousLesComptes, gems, tribus, departements, res
 
       <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {resultatsRecherche.length === 0 ? (
-          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun responsable trouvé.</p>
+          <EtatVide icone={IconePersonne} titre="Aucun responsable trouvé" />
         ) : (
           resultatsRecherche.map(c => {
             const fiche = santeParCompte[c.id];
@@ -8896,7 +8911,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
 
               <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>Détail par GEM</p>
               {gems.length === 0 ? (
-                <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun GEM créé pour l'instant.</p>
+                <EtatVide icone={IconeMaison} titre="Aucun GEM créé pour l'instant" />
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {gems.map(g => {
@@ -9244,7 +9259,7 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
             </div>
           )}
           {messages.length === 0 ? (
-            <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun message pour l'instant.</p>
+            <EtatVide icone={IconeMessage} titre="Aucun message pour l'instant" />
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {messages.map(m => (
@@ -9286,7 +9301,7 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
             </div>
           )}
           {messagesDirects.length === 0 ? (
-            <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun message pour l'instant.</p>
+            <EtatVide icone={IconeMessage} titre="Aucun message pour l'instant" />
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {messagesDirects.map(m => (
@@ -9504,7 +9519,7 @@ function PageCalendrier({ estPasteur, compte, onOuverture, cardStyle }) {
         <>
           <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>À venir</p>
           {aVenir.length === 0 ? (
-            <p style={{ color: "#a9d6cf", fontSize: 13, marginBottom: 20 }}>Aucun événement prévu pour l'instant.</p>
+            <EtatVide icone={IconeCalendrier} titre="Aucun événement prévu" description="Crée le premier événement du calendrier avec le bouton ci-dessus." />
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
               {aVenir.map(e => <CarteEvenement key={e.id} e={e} />)}
