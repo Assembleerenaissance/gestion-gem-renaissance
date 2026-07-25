@@ -1616,7 +1616,7 @@ function TableauDeBord({ compte }) {
             <AnniversairesAVenir membres={membres} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
             <AnniversairesResponsables comptes={tousLesComptes} cardStyle={cardStyle} />
 
-            <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>📋 Rapports de la semaine en cours</p>
+            <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><IconeClipboard size={15} /> Rapports de la semaine en cours</p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 28 }}>
               <div className="card-app" style={cardStyle}>
                 <p style={{ fontSize: 12, color: "#FFFFFF", textTransform: "uppercase" }}>Présence pointée</p>
@@ -2374,7 +2374,7 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
       <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>{parent.nom}</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>{membresDuParent.length} membre{membresDuParent.length > 1 ? "s" : ""} au total, répartis sur {gemsDuParent.length} GEM</p>
 
-      <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 10 }}>📋 GEM de ce {type === "tribu" ? "tribu" : "département"} ({gemsDuParent.length})</p>
+      <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><IconeClipboard size={15} /> GEM de ce {type === "tribu" ? "tribu" : "département"} ({gemsDuParent.length})</p>
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
         {gemsDuParent.length === 0 ? (
           <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun GEM créé pour l'instant.</p>
@@ -4819,7 +4819,7 @@ function PageCorbeille({ compte, gems, cardStyle, onTraite }) {
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 4 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>🗑️ Corbeille ({entrees.length})</h2>
+        <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0, display: "flex", alignItems: "center", gap: 8 }}><IconePoubelle size={20} /> Corbeille ({entrees.length})</h2>
         {entrees.length > 0 && (
           <button className="btn-app" onClick={exporterJournal} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>
             📊 Exporter le journal (CSV)
@@ -8802,7 +8802,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                 <p style={{ fontWeight: 700, fontSize: 16, marginTop: 24, marginBottom: 14 }}>🌱 Suivi des âmes — intégration des nouveaux convertis</p>
                 <Classement titre="Tribus" liste={classementTribusAmes} suffixe="%" maxValeur={100} onClicItem={(it) => setDetailOuvert({ type: "tribu", item: tribus.find(t => t.id === it.id) })} />
                 <Classement titre="Départements" liste={classementDepartementsAmes} suffixe="%" maxValeur={100} onClicItem={(it) => setDetailOuvert({ type: "departement", item: departements.find(d => d.id === it.id) })} />
-                <p style={{ fontWeight: 700, fontSize: 16, marginTop: 24, marginBottom: 14 }}>📋 Rapports d'activités hebdomadaires validés</p>
+                <p style={{ fontWeight: 700, fontSize: 16, marginTop: 24, marginBottom: 14, display: "flex", alignItems: "center", gap: 6 }}><IconeClipboard size={16} /> Rapports d'activités hebdomadaires validés</p>
                 <Classement titre="Tribus" liste={classementTribusActiviteMois} suffixe="%" maxValeur={100} onClicItem={(it) => setDetailOuvert({ type: "tribu", item: tribus.find(t => t.id === it.id) })} />
                 <Classement titre="Départements" liste={classementDepartementsActiviteMois} suffixe="%" maxValeur={100} onClicItem={(it) => setDetailOuvert({ type: "departement", item: departements.find(d => d.id === it.id) })} />
                 <ClassementMembres liste={classementMembresMois} />
@@ -8821,7 +8821,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                 <p style={{ fontWeight: 700, fontSize: 16, marginTop: 24, marginBottom: 14 }}>🌱 Suivi des âmes — intégration des nouveaux convertis</p>
                 <Classement titre="Tribus" liste={classementTribusAmes} suffixe="%" maxValeur={100} onClicItem={(it) => setDetailOuvert({ type: "tribu", item: tribus.find(t => t.id === it.id) })} />
                 <Classement titre="Départements" liste={classementDepartementsAmes} suffixe="%" maxValeur={100} onClicItem={(it) => setDetailOuvert({ type: "departement", item: departements.find(d => d.id === it.id) })} />
-                <p style={{ fontWeight: 700, fontSize: 16, marginTop: 24, marginBottom: 14 }}>📋 Rapports d'activités hebdomadaires validés</p>
+                <p style={{ fontWeight: 700, fontSize: 16, marginTop: 24, marginBottom: 14, display: "flex", alignItems: "center", gap: 6 }}><IconeClipboard size={16} /> Rapports d'activités hebdomadaires validés</p>
                 <Classement titre="Tribus" liste={classementTribusActiviteAnnee} suffixe="%" maxValeur={100} onClicItem={(it) => setDetailOuvert({ type: "tribu", item: tribus.find(t => t.id === it.id) })} />
                 <Classement titre="Départements" liste={classementDepartementsActiviteAnnee} suffixe="%" maxValeur={100} onClicItem={(it) => setDetailOuvert({ type: "departement", item: departements.find(d => d.id === it.id) })} />
                 <ClassementMembres liste={classementMembresAnnee} />
@@ -9843,7 +9843,7 @@ function PageHistorique({ cardStyle }) {
           </div>
 
           <div style={cardStyle}>
-            <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>📋 Rapports d'activités validés par mois</p>
+            <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16, display: "flex", alignItems: "center", gap: 6 }}><IconeClipboard size={15} /> Rapports d'activités validés par mois</p>
             {activiteParMois.length === 0 ? (
               <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun rapport d'activité enregistré pour l'instant.</p>
             ) : (
