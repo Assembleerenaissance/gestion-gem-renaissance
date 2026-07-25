@@ -1529,6 +1529,170 @@ function TableauDeBord({ compte }) {
 
 // Résumé pour les responsables de département/tribu : GEM, rapports de la semaine,
 // GEM en retard (après lundi), membres, taux de présence/absence.
+// Historique scopé à un périmètre (département/tribu) — vues hebdomadaire,
+// mensuelle et annuelle avec commentaire intelligent, pour les responsables
+// de département/tribu (équivalent réduit de l'Historique du pasteur).
+function HistoriquePerimetre({ gems, membres, cardStyle }) {
+  const [vue, setVue] = useState("hebdomadaire"); // hebdomadaire | mensuelle | annuelle
+  const [chargement, setChargement] = useState(true);
+  const [presenceParDimanche, setPresenceParDimanche] = useState([]);
+  const [presenceParMois, setPresenceParMois] = useState([]);
+  const [santeParMois, setSanteParMois] = useState([]);
+  const [presenceParAnnee, setPresenceParAnnee] = useState([]);
+
+  const idsMembres = membres.map(m => m.id);
+
+  useEffect(() => { chargerHistorique(); }, [membres.length]);
+
+  async function chargerHistorique() {
+    setChargement(true);
+    if (idsMembres.length === 0) { setChargement(false); return; }
+
+    const [{ data: dimanchesTous }, { data: presencesTous }, { data: santeTous }] = await Promise.all([
+      supabase.from("dimanches").select("*").order("date", { ascending: true }),
+      supabase.from("presences").select("*").in("membre_id", idsMembres),
+      supabase.from("sante_spirituelle").select("*").in("membre_id", idsMembres),
+    ]);
+
+    // Ne garde que les dimanches réellement pointés pour ce périmètre
+    const idsDimanchesPointes = new Set((presencesTous || []).map(p => p.dimanche_id));
+    const dimanchesReels = (dimanchesTous || []).filter(d => idsDimanchesPointes.has(d.id));
+
+    // --- Vue hebdomadaire : 16 derniers dimanches réellement pointés ---
+    const seizeRecents = dimanchesReels.slice(-16);
+    setPresenceParDimanche(seizeRecents.map(d => {
+      const pres = (presencesTous || []).filter(p => p.dimanche_id === d.id);
+      const presents = pres.filter(p => p.present).length;
+      return { date: d.date, taux: pres.length > 0 ? Math.round((presents / pres.length) * 100) : 0 };
+    }));
+
+    // --- Regroupe par mois et par année ---
+    const parMois = {};
+    const parAnnee = {};
+    dimanchesReels.forEach(d => {
+      const cleMois = d.date.slice(0, 7);
+      const cleAnnee = d.date.slice(0, 4);
+      if (!parMois[cleMois]) parMois[cleMois] = [];
+      parMois[cleMois].push(d.id);
+      if (!parAnnee[cleAnnee]) parAnnee[cleAnnee] = [];
+      parAnnee[cleAnnee].push(d.id);
+    });
+
+    const moisTries = Object.keys(parMois).sort().slice(-12);
+    setPresenceParMois(moisTries.map(mois => {
+      const idsDim = parMois[mois];
+      const pres = (presencesTous || []).filter(p => idsDim.includes(p.dimanche_id));
+      const presents = pres.filter(p => p.present).length;
+      return { mois, taux: pres.length > 0 ? Math.round((presents / pres.length) * 100) : 0 };
+    }));
+
+    setSanteParMois(moisTries.map(mois => {
+      const [annee, m] = mois.split("-");
+      const debut = `${mois}-01`;
+      const fin = new Date(annee, m, 0).toISOString().slice(0, 10);
+      const scoresMois = (santeTous || []).filter(s => s.date_maj.slice(0, 10) >= debut && s.date_maj.slice(0, 10) <= fin).map(s => moyenneSante(s)).filter(v => v !== null);
+      return { mois, moyenne: scoresMois.length > 0 ? Math.round((scoresMois.reduce((a, b) => a + b, 0) / scoresMois.length) * 10) / 10 : null };
+    }));
+
+    const anneesTriees = Object.keys(parAnnee).sort();
+    setPresenceParAnnee(anneesTriees.map(annee => {
+      const idsDim = parAnnee[annee];
+      const pres = (presencesTous || []).filter(p => idsDim.includes(p.dimanche_id));
+      const presents = pres.filter(p => p.present).length;
+      return { annee, taux: pres.length > 0 ? Math.round((presents / pres.length) * 100) : 0 };
+    }));
+
+    setChargement(false);
+  }
+
+  if (chargement) return <Chargement />;
+
+  const dernierTauxHebdo = presenceParDimanche.length > 0 ? presenceParDimanche[presenceParDimanche.length - 1].taux : null;
+  const precedentTauxHebdo = presenceParDimanche.length > 1 ? presenceParDimanche[presenceParDimanche.length - 2].taux : null;
+  const dernierTauxMois = presenceParMois.length > 0 ? presenceParMois[presenceParMois.length - 1].taux : null;
+  const precedentTauxMois = presenceParMois.length > 1 ? presenceParMois[presenceParMois.length - 2].taux : null;
+  const derniereSanteMois = [...santeParMois].reverse().find(s => s.moyenne !== null)?.moyenne ?? null;
+  const dernierTauxAnnee = presenceParAnnee.length > 0 ? presenceParAnnee[presenceParAnnee.length - 1].taux : null;
+  const precedentTauxAnnee = presenceParAnnee.length > 1 ? presenceParAnnee[presenceParAnnee.length - 2].taux : null;
+
+  return (
+    <div>
+      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>📈 Historique</h2>
+      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>Vue d'ensemble de ton périmètre dans le temps.</p>
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+        {[["hebdomadaire", "Hebdomadaire"], ["mensuelle", "Mensuelle"], ["annuelle", "Annuelle"]].map(([cle, label]) => (
+          <button key={cle} className="btn-app" onClick={() => setVue(cle)} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === cle ? GOLD : TEAL_900, color: vue === cle ? TEAL_950 : "#cdeae4" }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {vue === "hebdomadaire" && (
+        presenceParDimanche.length === 0 ? (
+          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Pas encore de dimanche pointé pour ce périmètre.</p>
+        ) : (
+          <>
+            <div style={{ ...cardStyle, marginBottom: 20 }}>
+              <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>Présence — dimanche par dimanche</p>
+              <GraphiqueBarres
+                donnees={presenceParDimanche.map(d => ({
+                  libelle: new Date(d.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }),
+                  valeur: d.taux, texteAffiche: `${d.taux}%`,
+                  infoBulle: `${new Date(d.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })} : ${d.taux}% de présence`,
+                }))}
+              />
+            </div>
+            <CommentaireIntelligent titre="🧠 Analyse intelligente" stats={{ tauxPresence: dernierTauxHebdo, tauxPresencePrecedent: precedentTauxHebdo }} />
+          </>
+        )
+      )}
+
+      {vue === "mensuelle" && (
+        presenceParMois.length === 0 ? (
+          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Pas encore de mois pointé pour ce périmètre.</p>
+        ) : (
+          <>
+            <div style={{ ...cardStyle, marginBottom: 20 }}>
+              <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>Taux de présence moyen — mois par mois</p>
+              <GraphiqueBarres
+                donnees={presenceParMois.map(d => {
+                  const [annee, mois] = d.mois.split("-");
+                  return { libelle: new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "short" }), valeur: d.taux, texteAffiche: `${d.taux}%` };
+                })}
+              />
+            </div>
+            <div style={{ ...cardStyle, marginBottom: 20 }}>
+              <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>🌡️ Santé spirituelle moyenne — mois par mois</p>
+              <GraphiqueBarres
+                donnees={santeParMois.filter(s => s.moyenne !== null).map(d => {
+                  const [annee, mois] = d.mois.split("-");
+                  return { libelle: new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "short" }), valeur: d.moyenne, texteAffiche: `${d.moyenne}/10` };
+                })}
+              />
+            </div>
+            <CommentaireIntelligent titre="🧠 Analyse intelligente du mois" stats={{ tauxPresence: dernierTauxMois, tauxPresencePrecedent: precedentTauxMois, moyenneSante: derniereSanteMois }} />
+          </>
+        )
+      )}
+
+      {vue === "annuelle" && (
+        presenceParAnnee.length === 0 ? (
+          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Pas encore d'année pointée pour ce périmètre.</p>
+        ) : (
+          <>
+            <div style={{ ...cardStyle, marginBottom: 20 }}>
+              <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>Taux de présence moyen — année par année</p>
+              <GraphiqueBarres donnees={presenceParAnnee.map(d => ({ libelle: d.annee, valeur: d.taux, texteAffiche: `${d.taux}%` }))} />
+            </div>
+            <CommentaireIntelligent titre="🧠 Analyse intelligente de l'année" stats={{ tauxPresence: dernierTauxAnnee, tauxPresencePrecedent: precedentTauxAnnee }} />
+          </>
+        )
+      )}
+    </div>
+  );
+}
+
 function ResumePerimetre({ gems, membres, onVoirAbsences, cardStyle }) {
   const [chargement, setChargement] = useState(true);
   const [rapportsValides, setRapportsValides] = useState(0);
@@ -7049,6 +7213,9 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
         <button
  className="btn-app"
  onClick={() => setSousOnglet("absences")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "absences" ? GOLD : TEAL_900, color: sousOnglet === "absences" ? TEAL_950 : "#cdeae4" }}>🚫 Absences</button>
+        <button
+ className="btn-app"
+ onClick={() => setSousOnglet("historique")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "historique" ? GOLD : TEAL_900, color: sousOnglet === "historique" ? TEAL_950 : "#cdeae4" }}>📈 Historique</button>
       </div>
 
       {sousOnglet === "rapports" ? (
@@ -7063,6 +7230,8 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
         <PageMembres membres={membres} gems={gems} tribus={tribus} departements={departements} gemsAutorises={gemsDuPerimetre.map(g => g.id)} regulariteParMembre={regulariteParMembre} estPasteur={compte.role === "pasteur" || compte.assistant === true} cardStyle={cardStyle} />
       ) : sousOnglet === "absences" ? (
         <PageAbsences membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} gemsAutorises={gemsDuPerimetre.map(g => g.id)} cardStyle={cardStyle} />
+      ) : sousOnglet === "historique" ? (
+        <HistoriquePerimetre gems={gemsDuPerimetre} membres={membresDuPerimetre} cardStyle={cardStyle} />
       ) : (
         <>
           <AnniversairesAVenir membres={membresDuPerimetre} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
