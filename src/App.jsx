@@ -176,6 +176,20 @@ function IconeDeconnexion({ size = 16, color = "currentColor" }) {
     </svg>
   );
 }
+function IconeCroissance({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" />
+    </svg>
+  );
+}
+function IconeAnalyse({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9.5 2A5.5 5.5 0 0 0 4 7.5c0 1.4.5 2.6 1.4 3.6C4.5 12 4 13.4 4 15a5 5 0 0 0 5 5" /><path d="M14.5 2A5.5 5.5 0 0 1 20 7.5c0 1.4-.5 2.6-1.4 3.6.9.9 1.4 2.3 1.4 3.9a5 5 0 0 1-5 5" /><path d="M9.5 2v20" /><path d="M14.5 2v20" />
+    </svg>
+  );
+}
 
 function StylesGlobaux() {
   return (
@@ -1791,7 +1805,7 @@ function HistoriquePerimetre({ gems, membres, cardStyle }) {
 
   return (
     <div>
-      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>📈 Historique</h2>
+      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4, display: "flex", alignItems: "center", gap: 10 }}><IconeCroissance size={22} /> Historique</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>Vue d'ensemble de ton périmètre dans le temps.</p>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
@@ -3161,23 +3175,23 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
         <button
           className="btn-app"
           onClick={() => setSousOnglet("membres")}
-          style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "membres" ? GOLD : TEAL_900, color: sousOnglet === "membres" ? TEAL_950 : "#cdeae4" }}
+          style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "membres" ? GOLD : TEAL_900, color: sousOnglet === "membres" ? TEAL_950 : "#cdeae4", display: "inline-flex", alignItems: "center", gap: 6 }}
         >
-          Membres & Présence
+          <IconeGroupe size={14} /> Membres & Présence
         </button>
         <button
           className="btn-app"
           onClick={() => setSousOnglet("activites")}
-          style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "activites" ? GOLD : TEAL_900, color: sousOnglet === "activites" ? TEAL_950 : "#cdeae4" }}
+          style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "activites" ? GOLD : TEAL_900, color: sousOnglet === "activites" ? TEAL_950 : "#cdeae4", display: "inline-flex", alignItems: "center", gap: 6 }}
         >
-          📋 Activités de la semaine
+          <IconeClipboard size={14} /> Activités de la semaine
         </button>
         <button
           className="btn-app"
           onClick={() => setSousOnglet("sante")}
-          style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "sante" ? GOLD : TEAL_900, color: sousOnglet === "sante" ? TEAL_950 : "#cdeae4" }}
+          style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "sante" ? GOLD : TEAL_900, color: sousOnglet === "sante" ? TEAL_950 : "#cdeae4", display: "inline-flex", alignItems: "center", gap: 6 }}
         >
-          🌡️ Santé spirituelle
+          <IconeThermometre size={14} /> Santé spirituelle
         </button>
       </div>
 
@@ -5217,7 +5231,7 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
 
   return (
     <div>
-      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>🚫 Absences</h2>
+      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4, display: "flex", alignItems: "center", gap: 10 }}><IconeInterdit size={22} /> Absences</h2>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
         {[["hebdomadaire", "Hebdomadaire"], ["mensuelle", "Mensuelle"], ["annuelle", "Annuelle"]].map(([cle, label]) => (
@@ -5775,7 +5789,7 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
 
   return (
     <div>
-      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>👥 Membres</h2>
+      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4, display: "flex", alignItems: "center", gap: 10 }}><IconeGroupe size={22} /> Membres</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>{toutesLesPersonnes.length} personne(s) — membres et responsables confondus.</p>
 
       <input
@@ -5924,7 +5938,7 @@ function PageNouveaux({ membres, gems, tribus, departements, gemsAutorises, card
 
   return (
     <div>
-      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>🌱 Suivi des nouveaux convertis</h2>
+      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4, display: "flex", alignItems: "center", gap: 10 }}><IconePousse size={22} /> Suivi des nouveaux convertis</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>{nouveaux.length} nouveau(x) converti(s) suivis à travers toute l'église.</p>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
@@ -6108,7 +6122,7 @@ function PageSanteResponsables({ tousLesComptes, gems, tribus, departements, res
 
   return (
     <div>
-      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>🌡️ Santé spirituelle des responsables</h2>
+      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4, display: "flex", alignItems: "center", gap: 10 }}><IconeThermometre size={22} /> Santé spirituelle des responsables</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>Suivi des fiches remplies chaque semaine par les responsables GEM, département et tribu.</p>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
@@ -6379,7 +6393,7 @@ function PageAnalyse({ gems, membres, cardStyle }) {
 
   return (
     <div>
-      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>🧠 Analyse intelligente</h2>
+      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4, display: "flex", alignItems: "center", gap: 10 }}><IconeAnalyse size={22} /> Analyse intelligente</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 8 }}>
         Détection automatique des tendances et recommandations, sur une fenêtre glissante de 4 semaines.
       </p>
@@ -7630,19 +7644,19 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
  onClick={() => setSousOnglet("evolution")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "evolution" ? GOLD : TEAL_900, color: sousOnglet === "evolution" ? TEAL_950 : "#cdeae4" }}>Évolution</button>
         <button
  className="btn-app"
- onClick={() => setSousOnglet("activites")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "activites" ? GOLD : TEAL_900, color: sousOnglet === "activites" ? TEAL_950 : "#cdeae4" }}>📋 Activités de la semaine</button>
+ onClick={() => setSousOnglet("activites")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "activites" ? GOLD : TEAL_900, color: sousOnglet === "activites" ? TEAL_950 : "#cdeae4" }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeClipboard size={14}/> Activités de la semaine</span></button>
         <button
  className="btn-app"
- onClick={() => setSousOnglet("nouveaux")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "nouveaux" ? GOLD : TEAL_900, color: sousOnglet === "nouveaux" ? TEAL_950 : "#cdeae4" }}>🌱 Nouveaux</button>
+ onClick={() => setSousOnglet("nouveaux")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "nouveaux" ? GOLD : TEAL_900, color: sousOnglet === "nouveaux" ? TEAL_950 : "#cdeae4" }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconePousse size={14}/> Nouveaux</span></button>
         <button
  className="btn-app"
- onClick={() => setSousOnglet("membres")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "membres" ? GOLD : TEAL_900, color: sousOnglet === "membres" ? TEAL_950 : "#cdeae4" }}>👥 Membres</button>
+ onClick={() => setSousOnglet("membres")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "membres" ? GOLD : TEAL_900, color: sousOnglet === "membres" ? TEAL_950 : "#cdeae4" }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeGroupe size={14}/> Membres</span></button>
         <button
  className="btn-app"
- onClick={() => setSousOnglet("absences")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "absences" ? GOLD : TEAL_900, color: sousOnglet === "absences" ? TEAL_950 : "#cdeae4" }}>🚫 Absences</button>
+ onClick={() => setSousOnglet("absences")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "absences" ? GOLD : TEAL_900, color: sousOnglet === "absences" ? TEAL_950 : "#cdeae4" }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeInterdit size={14}/> Absences</span></button>
         <button
  className="btn-app"
- onClick={() => setSousOnglet("historique")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "historique" ? GOLD : TEAL_900, color: sousOnglet === "historique" ? TEAL_950 : "#cdeae4" }}>📈 Historique</button>
+ onClick={() => setSousOnglet("historique")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "historique" ? GOLD : TEAL_900, color: sousOnglet === "historique" ? TEAL_950 : "#cdeae4" }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeCroissance size={14}/> Historique</span></button>
       </div>
 
       {sousOnglet === "rapports" ? (
