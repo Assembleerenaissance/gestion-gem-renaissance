@@ -1381,7 +1381,10 @@ function TableauDeBord({ compte }) {
                           onClick={it.action || (() => allerA(it.cible))}
                           style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 18px", borderRadius: 10, backgroundColor: page === it.cible ? "rgba(208,175,28,0.15)" : TEAL_900, border: `1px solid ${page === it.cible ? GOLD : TEAL_700}`, color: page === it.cible ? GOLD_LIGHT : CREAM, fontWeight: 700, fontSize: 17, cursor: "pointer", textAlign: "left" }}
                         >
-                          {it.label}
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
+                            {it.icone && <it.icone size={17} />}
+                            {it.label}
+                          </span>
                           {it.badge > 0 && (
                             <span style={{ backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 13, fontWeight: 700, minWidth: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px" }}>
                               {it.badge}
@@ -1395,40 +1398,40 @@ function TableauDeBord({ compte }) {
               }
 
               if (estPasteur) {
-                const groupeSuivi = [{ label: "Tableau de bord", cible: "dashboard" }];
-                if (aResponsabilitePersonnelle) groupeSuivi.push({ label: "Mon espace", cible: "mon_espace" });
-                groupeSuivi.push({ label: "Tribus", cible: "tribus" }, { label: "Départements", cible: "departements" });
+                const groupeSuivi = [{ label: "Tableau de bord", cible: "dashboard", icone: IconeMaison }];
+                if (aResponsabilitePersonnelle) groupeSuivi.push({ label: "Mon espace", cible: "mon_espace", icone: IconeMaison });
+                groupeSuivi.push({ label: "Tribus", cible: "tribus", icone: IconeGroupe }, { label: "Départements", cible: "departements", icone: IconeGroupe });
 
                 const groupeGestion = [
                   { label: "Demandes", cible: "demandes", badge: nbDemandesAttente },
                   { label: "Suppressions", cible: "suppressions", badge: nbDemandesSuppression },
-                  { label: "🗑️ Corbeille", cible: "corbeille" },
-                  { label: "🌡️ Santé responsables", cible: "sante_responsables" },
-                  { label: "🌱 Nouveaux", cible: "nouveaux" },
-                  { label: "👥 Membres", cible: "membres" },
-                  { label: "🚫 Absences", cible: "absences" },
+                  { label: "Corbeille", cible: "corbeille", icone: IconePoubelle },
+                  { label: "Santé responsables", cible: "sante_responsables", icone: IconeThermometre },
+                  { label: "Nouveaux", cible: "nouveaux", icone: IconePousse },
+                  { label: "Membres", cible: "membres", icone: IconeGroupe },
+                  { label: "Absences", cible: "absences", icone: IconeInterdit },
                 ];
-                if (compte.role === "pasteur") groupeGestion.push({ label: "Rôles & Accès", cible: "assistants" });
-                if (compte.role !== "pasteur") groupeGestion.push({ label: "➕ Rôle supplémentaire", cible: "demande_role_supp" });
+                if (compte.role === "pasteur") groupeGestion.push({ label: "Rôles & Accès", cible: "assistants", icone: IconeCle });
+                if (compte.role !== "pasteur") groupeGestion.push({ label: "Rôle supplémentaire", cible: "demande_role_supp" });
 
                 return (
                   <>
                     <GroupeMenu titre="Suivi" items={groupeSuivi} />
                     <GroupeMenu titre="Rapports" items={[
-                      { label: "Rapports", cible: "rapports" },
+                      { label: "Rapports", cible: "rapports", icone: IconeClipboard },
                       { label: "Historique", cible: "historique" },
-                      { label: "🧠 Analyse", cible: "analyse" },
+                      { label: "Analyse", cible: "analyse" },
                     ]} />
                     <GroupeMenu titre="Gestion" items={groupeGestion} />
                     <GroupeMenu titre="Communication" items={[
-                      { label: "Calendrier", cible: "calendrier", badge: nbNouveauxEvenements },
-                      { label: "Messagerie", cible: "messagerie", badge: nbMessagesNonLus },
-                      { label: "Mots de passe", cible: "mots_de_passe", badge: nbDemandesMdp },
+                      { label: "Calendrier", cible: "calendrier", badge: nbNouveauxEvenements, icone: IconeCalendrier },
+                      { label: "Messagerie", cible: "messagerie", badge: nbMessagesNonLus, icone: IconeMessage },
+                      { label: "Mots de passe", cible: "mots_de_passe", badge: nbDemandesMdp, icone: IconeCle },
                     ]} />
                     <GroupeMenu titre="Compte" items={[
-                      { label: "👤 Mon compte", cible: "mon_compte" },
-                      { label: "❓ Aide", cible: "aide" },
-                      { label: "Déconnexion", cible: "deconnexion", action: seDeconnecter },
+                      { label: "Mon compte", cible: "mon_compte", icone: IconePersonne },
+                      { label: "Aide", cible: "aide", icone: IconeAide },
+                      { label: "Déconnexion", cible: "deconnexion", action: seDeconnecter, icone: IconeDeconnexion },
                     ]} />
                   </>
                 );
@@ -1437,17 +1440,17 @@ function TableauDeBord({ compte }) {
               return (
                 <>
                   <GroupeMenu titre="Mon espace" items={[
-                    { label: "Mon espace", cible: "dashboard" },
-                    { label: "➕ Rôle supplémentaire", cible: "demande_role_supp" },
+                    { label: "Mon espace", cible: "dashboard", icone: IconeMaison },
+                    { label: "Rôle supplémentaire", cible: "demande_role_supp" },
                   ]} />
                   <GroupeMenu titre="Communication" items={[
-                    { label: "Calendrier", cible: "calendrier", badge: nbNouveauxEvenements },
-                    { label: "Messagerie", cible: "messagerie", badge: nbMessagesNonLus },
+                    { label: "Calendrier", cible: "calendrier", badge: nbNouveauxEvenements, icone: IconeCalendrier },
+                    { label: "Messagerie", cible: "messagerie", badge: nbMessagesNonLus, icone: IconeMessage },
                   ]} />
                   <GroupeMenu titre="Compte" items={[
-                    { label: "👤 Mon compte", cible: "mon_compte" },
-                    { label: "❓ Aide", cible: "aide" },
-                    { label: "Déconnexion", cible: "deconnexion", action: seDeconnecter },
+                    { label: "Mon compte", cible: "mon_compte", icone: IconePersonne },
+                    { label: "Aide", cible: "aide", icone: IconeAide },
+                    { label: "Déconnexion", cible: "deconnexion", action: seDeconnecter, icone: IconeDeconnexion },
                   ]} />
                 </>
               );
