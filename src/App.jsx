@@ -1206,7 +1206,7 @@ function TableauDeBord({ compte }) {
                     {r.data.nom}
                     {r.type === "responsable" && (
                       <span style={{ fontSize: 9, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, borderRadius: 999, padding: "2px 7px", marginLeft: 6 }}>
-                        👤 {libelleRoleCompte(r.data)}
+                        <IconePersonne size={9} style={{verticalAlign:"-1px",marginRight:3}} /> {libelleRoleCompte(r.data)}
                       </span>
                     )}
                   </p>
@@ -3273,7 +3273,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
               <input type="checkbox" checked={presenceResponsable} onChange={basculerPresenceResponsable} disabled={!dimancheId} style={{ width: 18, height: 18, accentColor: GOLD }} />
               <span>
                 <span style={{ fontWeight: 700 }}>{responsableGem.compte.nom}</span>
-                <span style={{ fontSize: 10, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, borderRadius: 999, padding: "2px 8px", marginLeft: 8 }}>👤 Responsable</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, borderRadius: 999, padding: "2px 8px", marginLeft: 8 }}><IconePersonne size={10} style={{verticalAlign:"-1px",marginRight:3}} /> Responsable</span>
               </span>
             </label>
             <p style={{ fontSize: 11, color: "#a9d6cf", marginTop: 4 }}>{responsableGem.compte.telephone}{responsableGem.compte.quartier ? ` · ${responsableGem.compte.quartier}` : ""}</p>
@@ -3560,7 +3560,7 @@ function RapportSanteSemaine({ gem, membres, compte, cardStyle }) {
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
           <p style={{ fontWeight: 600, fontSize: 14, margin: 0 }}>🌡️ Santé spirituelle — semaine</p>
           {valide && (
-            <span style={{ fontSize: 11, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD, borderRadius: 999, padding: "4px 10px" }}>✓ Rapport validé</span>
+            <span style={{ fontSize: 11, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD, borderRadius: 999, padding: "4px 10px" }}><IconeValide size={11} style={{verticalAlign:"-1px",marginRight:3}} /> Rapport validé</span>
           )}
         </div>
         <select
@@ -3585,7 +3585,7 @@ function RapportSanteSemaine({ gem, membres, compte, cardStyle }) {
             >
               <span>
                 <span style={{ fontWeight: 700, fontSize: 13 }}>{responsableGem.nom}</span>
-                <span style={{ fontSize: 10, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, borderRadius: 999, padding: "2px 8px", marginLeft: 8 }}>👤 Responsable</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, borderRadius: 999, padding: "2px 8px", marginLeft: 8 }}><IconePersonne size={10} style={{verticalAlign:"-1px",marginRight:3}} /> Responsable</span>
               </span>
               <span style={{ fontSize: 12, fontWeight: 700, color: couleurScore(moyenneSante(valeursResponsable)) }}>{moyenneSante(valeursResponsable)}/10 {responsableOuvert ? "▲" : "▼"}</span>
             </button>
@@ -5344,7 +5344,7 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
                   <div key={c.id} style={{ ...cardStyle, borderColor: RED_LIGHT }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
                       <div>
-                        <p style={{ fontWeight: 700, marginBottom: 2 }}>{c.nom} <span style={{ fontSize: 10, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, borderRadius: 999, padding: "2px 8px", marginLeft: 4 }}>👤 Responsable</span></p>
+                        <p style={{ fontWeight: 700, marginBottom: 2 }}>{c.nom} <span style={{ fontSize: 10, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, borderRadius: 999, padding: "2px 8px", marginLeft: 4 }}><IconePersonne size={10} style={{verticalAlign:"-1px",marginRight:3}} /> Responsable</span></p>
                         <p style={{ fontSize: 12, color: "#a9d6cf" }}>{gem?.nom || "GEM inconnu"} — {provenance(gem?.id)}</p>
                       </div>
                       {c.telephone && (
@@ -7115,7 +7115,7 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
                       </div>
                       {resp && (
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, paddingTop: 8, borderTop: `1px solid ${TEAL_800}`, flexWrap: "wrap", gap: 6 }}>
-                          <span style={{ fontSize: 12, color: "#a9d6cf" }}>👤 {resp.compte.nom} (responsable)</span>
+                          <span style={{ fontSize: 12, color: "#a9d6cf" }}><IconePersonne size={12} style={{verticalAlign:"-1px",marginRight:3}} /> {resp.compte.nom} (responsable)</span>
                           <div style={{ display: "flex", gap: 6 }}>
                             {resp.present !== null && (
                               <span style={{ fontSize: 10, fontWeight: 700, color: resp.present ? TEAL_950 : "#fff", backgroundColor: resp.present ? "#6fcf97" : RED_LIGHT, borderRadius: 999, padding: "3px 8px" }}>
@@ -7365,7 +7365,7 @@ function ActivitesSemainePerimetre({ gems, membres, tribus, departements, cardSt
                         <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           {vue === "semaine" ? (
                             act?.valide ? (
-                              <span style={{ fontSize: 11, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD, borderRadius: 999, padding: "4px 10px" }}>✓ Validé</span>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD, borderRadius: 999, padding: "4px 10px" }}><IconeValide size={11} style={{verticalAlign:"-1px",marginRight:3}} /> Validé</span>
                             ) : (
                               <span style={{ fontSize: 11, fontWeight: 700, color: "#a9d6cf", backgroundColor: TEAL_900, borderRadius: 999, padding: "4px 10px" }}>Non rempli</span>
                             )
@@ -8910,7 +8910,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                           <p style={{ fontWeight: 700 }}>{g.nom}</p>
                           <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomParent(g)}</p>
                           {responsablesParGem?.[g.id] && (
-                            <p style={{ fontSize: 11, color: GOLD_LIGHT, marginTop: 2 }}>👤 {responsablesParGem[g.id]}</p>
+                            <p style={{ fontSize: 11, color: GOLD_LIGHT, marginTop: 2 }}><IconePersonne size={11} style={{verticalAlign:"-1px",marginRight:3}} /> {responsablesParGem[g.id]}</p>
                           )}
                         </div>
                         <div style={{ textAlign: "right" }}>
