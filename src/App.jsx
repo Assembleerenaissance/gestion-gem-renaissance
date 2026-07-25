@@ -234,14 +234,16 @@ function StylesGlobaux() {
       .barre-graphique:hover { opacity: 0.75; }
       @keyframes fadeInApp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
       @keyframes tourner { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-      .spinner-app { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(232,202,74,0.3); border-top-color: #E8CA4A; border-radius: 50%; animation: tourner 0.7s linear infinite; margin-right: 8px; vertical-align: middle; }
+      .spinner-app { display: inline-block; width: 15px; height: 15px; border: 2px solid rgba(214,165,76,0.25); border-top-color: #D6A54C; border-radius: 50%; animation: tourner 0.7s linear infinite; flex-shrink: 0; }
       @keyframes chuteConfetti {
         0% { transform: translateY(0) rotate(0deg); opacity: 1; }
         100% { transform: translateY(100vh) rotate(600deg); opacity: 0.3; }
       }
       .transition-page { animation: fadeInApp 0.28s ease; }
       input, select, textarea { transition: border-color 0.15s ease, box-shadow 0.15s ease; }
-      input:focus, select:focus, textarea:focus { outline: none; box-shadow: 0 0 0 2px rgba(208,175,28,0.4); }
+      input:focus, select:focus, textarea:focus { outline: none; box-shadow: 0 0 0 2px rgba(214,165,76,0.45); }
+      button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 2px solid #EFCB77; outline-offset: 2px; border-radius: 6px; }
+      ::selection { background-color: rgba(214,165,76,0.35); }
 
       .nav-bureau { display: flex; gap: 8px; flex-wrap: wrap; }
       .bouton-hamburger { display: none; }
@@ -266,10 +268,10 @@ function StylesGlobaux() {
 // Indicateur de chargement animé, réutilisé partout dans l'application.
 function Chargement({ texte = "Chargement…" }) {
   return (
-    <p style={{ color: "#a9d6cf", display: "flex", alignItems: "center" }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "28px 0", color: "#B9D3CB", fontSize: 13.5 }}>
       <span className="spinner-app" />
       {texte}
-    </p>
+    </div>
   );
 }
 
@@ -359,7 +361,7 @@ function NombreAnime({ valeur, suffixe = "" }) {
 // Petite pluie de confettis pour célébrer un moment fort (nouveau converti intégré,
 // GEM primé...). Se déclenche une fois puis disparaît d'elle-même.
 function Confettis({ actif, onFin }) {
-  const couleurs = ["#D0AF1C", "#E8CA4A", "#27B3A1", "#6fcf97", "#e2626d"];
+  const couleurs = ["#D6A54C", "#EFCB77", "#2C917F", "#6fcf97", "#E2777B"];
   const morceaux = React.useMemo(() => (
     Array.from({ length: 60 }, (_, i) => ({
       id: i,
@@ -410,7 +412,7 @@ function BoiteDemandeSuppression({ nomMembre, onEnvoyer, onAnnuler }) {
 
   return (
     <div className="fade-in" style={{ position: "fixed", inset: 0, backgroundColor: "rgba(5,20,18,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
-      <div style={{ backgroundColor: "#14776B", border: "1px solid #1F9C8D", borderRadius: 16, padding: 24, maxWidth: 420, width: "100%", boxShadow: "0 20px 50px rgba(0,0,0,0.4)" }}>
+      <div style={{ backgroundColor: "#17594E", border: "1px solid #227A6B", borderRadius: 16, padding: 24, maxWidth: 420, width: "100%", boxShadow: "0 20px 50px rgba(0,0,0,0.4)" }}>
         <p style={{ fontWeight: 700, fontSize: 17, marginBottom: 10, color: "#FFFFFF" }}>Demander la suppression de {nomMembre}</p>
         <p style={{ fontSize: 13, color: "#cdeae4", marginBottom: 14, lineHeight: 1.5 }}>
           Cette suppression sera soumise au pasteur et aux assistants pour validation — le membre ne sera pas retiré immédiatement.
@@ -420,14 +422,14 @@ function BoiteDemandeSuppression({ nomMembre, onEnvoyer, onAnnuler }) {
           onChange={e => { setMotif(e.target.value); setErreur(""); }}
           rows={3}
           placeholder="Motif de la suppression (obligatoire)..."
-          style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: "#116A5F", color: "#FFFFFF", border: "1px solid #27B3A1", resize: "vertical", fontSize: 13 }}
+          style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: "#124D43", color: "#FFFFFF", border: "1px solid #2C917F", resize: "vertical", fontSize: 13 }}
         />
-        {erreur && <p style={{ color: "#e2626d", fontSize: 12, marginTop: 6 }}>{erreur}</p>}
+        {erreur && <p style={{ color: "#E2777B", fontSize: 12, marginTop: 6 }}>{erreur}</p>}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap", marginTop: 16 }}>
-          <button className="btn-app" onClick={onAnnuler} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: "transparent", color: "#cdeae4", border: "1px solid #27B3A1", fontWeight: 600, cursor: "pointer" }}>
+          <button className="btn-app" onClick={onAnnuler} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: "transparent", color: "#cdeae4", border: "1px solid #2C917F", fontWeight: 600, cursor: "pointer" }}>
             Annuler
           </button>
-          <button className="btn-app" onClick={valider} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: "#e2626d", color: "#fff", border: "none", fontWeight: 700, cursor: "pointer" }}>
+          <button className="btn-app" onClick={valider} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: "#E2777B", color: "#fff", border: "none", fontWeight: 700, cursor: "pointer" }}>
             Envoyer la demande
           </button>
         </div>
@@ -439,19 +441,32 @@ function BoiteDemandeSuppression({ nomMembre, onEnvoyer, onAnnuler }) {
 // Boîte de dialogue de confirmation personnalisée — remplace les popups natives du navigateur.
 function BoiteConfirmation({ titre, message, texteConfirmer, dangereux, onConfirmer, onAnnuler }) {
   return (
-    <div className="fade-in" style={{ position: "fixed", inset: 0, backgroundColor: "rgba(5,20,18,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
-      <div style={{ backgroundColor: "#14776B", border: "1px solid #1F9C8D", borderRadius: 16, padding: 24, maxWidth: 420, width: "100%", boxShadow: "0 20px 50px rgba(0,0,0,0.4)" }}>
-        <p style={{ fontWeight: 700, fontSize: 17, marginBottom: 10, color: "#FFFFFF" }}>{titre}</p>
-        <p style={{ fontSize: 13, color: "#cdeae4", marginBottom: 22, lineHeight: 1.5 }}>{message}</p>
+    <div className="fade-in" style={{ position: "fixed", inset: 0, backgroundColor: "rgba(4,18,16,0.72)", backdropFilter: "blur(2px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
+      <div style={{ backgroundColor: "#17594E", border: `1px solid ${dangereux ? "rgba(226,119,123,0.4)" : "#227A6B"}`, borderRadius: 16, padding: 24, maxWidth: 420, width: "100%", boxShadow: "0 24px 60px rgba(0,0,0,0.45)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+          {dangereux && (
+            <div style={{ width: 34, height: 34, borderRadius: 999, backgroundColor: "rgba(226,119,123,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <IconeAlerte size={17} color="#E2777B" />
+            </div>
+          )}
+          <p className="titre-moisson" style={{ fontWeight: 600, fontSize: 18, margin: 0, color: "#F6F1E4" }}>{titre}</p>
+        </div>
+        <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 22, lineHeight: 1.55 }}>{message}</p>
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
           <button
  className="btn-app"
- onClick={onAnnuler} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: "transparent", color: "#cdeae4", border: "1px solid #27B3A1", fontWeight: 600, cursor: "pointer" }}>
+ onClick={onAnnuler} style={{ padding: "10px 18px", borderRadius: 9, backgroundColor: "transparent", color: "#B9D3CB", border: "1px solid #2C917F", fontWeight: 600, cursor: "pointer" }}>
             Annuler
           </button>
           <button
  className="btn-app"
- onClick={onConfirmer} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: dangereux ? "#e2626d" : "#D0AF1C", color: dangereux ? "#fff" : "#0D5C52", border: "none", fontWeight: 700, cursor: "pointer" }}>
+ onClick={onConfirmer} style={{
+              padding: "10px 18px", borderRadius: 9, border: "none", fontWeight: 700, cursor: "pointer",
+              color: dangereux ? "#fff" : "#0B4038",
+              backgroundColor: dangereux ? "#E2777B" : "#D6A54C",
+              backgroundImage: dangereux ? "linear-gradient(135deg, #ea9a9d, #E2777B)" : "linear-gradient(135deg, #EFCB77, #D6A54C)",
+              boxShadow: dangereux ? "0 4px 14px rgba(226,119,123,0.3)" : "0 4px 14px rgba(214,165,76,0.28)",
+            }}>
             {texteConfirmer}
           </button>
         </div>
@@ -482,21 +497,27 @@ function ConteneurToasts() {
   if (toasts.length === 0) return null;
 
   return (
-    <div style={{ position: "fixed", bottom: 20, right: 20, left: 20, zIndex: 2000, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8, pointerEvents: "none" }}>
-      {toasts.map(t => (
-        <div
-          key={t.id}
-          className="fade-in"
-          style={{
-            padding: "14px 18px", borderRadius: 10, color: "#fff", fontWeight: 600, fontSize: 13, lineHeight: 1.4,
-            maxWidth: 360, boxShadow: "0 10px 25px rgba(0,0,0,0.35)", pointerEvents: "auto",
-            backgroundColor: t.type === "erreur" ? "#e2626d" : t.type === "succes" ? "#1F9C8D" : "#116A5F",
-            border: `1px solid ${t.type === "erreur" ? "#e2626d" : "#27B3A1"}`,
-          }}
-        >
-          {t.type === "erreur" ? "⚠️ " : t.type === "succes" ? "✓ " : ""}{t.message}
-        </div>
-      ))}
+    <div style={{ position: "fixed", bottom: 20, right: 20, left: 20, zIndex: 2000, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 10, pointerEvents: "none" }}>
+      {toasts.map(t => {
+        const accent = t.type === "erreur" ? "#E2777B" : t.type === "succes" ? "#8FCBA8" : "#D6A54C";
+        return (
+          <div
+            key={t.id}
+            className="fade-in"
+            style={{
+              display: "flex", alignItems: "flex-start", gap: 10,
+              padding: "13px 16px", borderRadius: 12, color: "#F6F1E4", fontWeight: 500, fontSize: 13, lineHeight: 1.45,
+              maxWidth: 380, boxShadow: "0 12px 28px rgba(0,0,0,0.4)", pointerEvents: "auto",
+              backgroundColor: "#17594E", borderLeft: `3px solid ${accent}`,
+            }}
+          >
+            <span style={{ flexShrink: 0, marginTop: 1, color: accent }}>
+              {t.type === "erreur" ? <IconeAlerte size={16} /> : t.type === "succes" ? <IconeValide size={16} /> : <EpiDeBle size={13} color={accent} />}
+            </span>
+            <span>{t.message}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -513,7 +534,7 @@ class LimiteErreurs extends React.Component {
           <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20, maxWidth: 400 }}>Aucune donnée n'a été perdue. Recharge la page pour continuer.</p>
           <button
  className="btn-app"
- onClick={() => window.location.reload()} style={{ padding: "10px 20px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>
+ onClick={() => window.location.reload()} style={{ padding: "10px 20px", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer" }}>
             Recharger la page
           </button>
         </div>
@@ -574,8 +595,8 @@ function EcranVerrouillage({ compte, onDeverrouille }) {
             <input type="checkbox" checked={motDePasseVisible} onChange={e => setMotDePasseVisible(e.target.checked)} />
             Afficher le mot de passe
           </label>
-          {erreur && <p style={{ color: "#e2626d", fontSize: 12 }}>{erreur}</p>}
-          <button className="btn-app" disabled={chargement} onClick={deverrouiller} style={{ padding: "12px 0", borderRadius: 8, fontWeight: 700, fontSize: 14, backgroundColor: GOLD, color: TEAL_950, border: "none", cursor: "pointer" }}>
+          {erreur && <p style={{ color: "#E2777B", fontSize: 12 }}>{erreur}</p>}
+          <button className="btn-app" disabled={chargement} onClick={deverrouiller} style={{ padding: "12px 0", borderRadius: 8, fontWeight: 700, fontSize: 14, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", cursor: "pointer" }}>
             {chargement ? "…" : "Déverrouiller"}
           </button>
           <button className="btn-app" onClick={seDeconnecter} style={{ padding: "8px 0", borderRadius: 8, fontWeight: 600, fontSize: 12, backgroundColor: "transparent", color: "#a9d6cf", border: "none", cursor: "pointer" }}>
@@ -854,7 +875,7 @@ function EcranConnexion() {
             </p>
             <input value={telephoneOubli} onChange={e => setTelephoneOubli(e.target.value)} placeholder="Ton numéro de téléphone" type="tel" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_850, color: CREAM, border: `1px solid ${TEAL_700}` }} />
             {messageOubli && <p style={{ color: messageOubli.startsWith("Ta demande") ? GOLD_LIGHT : RED_LIGHT, fontSize: 12 }}>{messageOubli}</p>}
-            <button disabled={envoiOubliEnCours} onClick={envoyerDemandeOubli} style={{ padding: "12px 0", borderRadius: 8, fontWeight: 700, fontSize: 14, backgroundColor: GOLD, color: TEAL_950, border: "none", cursor: "pointer" }}>
+            <button disabled={envoiOubliEnCours} onClick={envoyerDemandeOubli} style={{ padding: "12px 0", borderRadius: 8, fontWeight: 700, fontSize: 14, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", cursor: "pointer" }}>
               {envoiOubliEnCours ? "…" : "Envoyer la demande"}
             </button>
             <button
@@ -907,7 +928,7 @@ function EcranConnexion() {
             )}
 
             {erreur && <p style={{ color: RED_LIGHT, fontSize: 12 }}>{erreur}</p>}
-            <button disabled={chargement} onClick={mode === "connexion" ? seConnecter : sInscrire} style={{ padding: "12px 0", borderRadius: 8, fontWeight: 700, fontSize: 14, backgroundColor: GOLD, color: TEAL_950, border: "none", cursor: "pointer" }}>
+            <button disabled={chargement} onClick={mode === "connexion" ? seConnecter : sInscrire} style={{ padding: "12px 0", borderRadius: 8, fontWeight: 700, fontSize: 14, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", cursor: "pointer" }}>
               {chargement ? "…" : mode === "connexion" ? "Accéder à mon espace" : "Créer mon compte"}
             </button>
           </div>
@@ -2039,7 +2060,7 @@ function AnniversairesAVenir({ membres, gems, tribus, departements, cardStyle })
               <p style={{ fontWeight: 700, marginBottom: 2 }}>{membre.nom}</p>
               <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomGem(membre.gem_id)}{provenance(membre.gem_id) ? ` — ${provenance(membre.gem_id)}` : ""}</p>
             </div>
-            <span style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, backgroundColor: "#E8CA4A", borderRadius: 999, padding: "6px 12px" }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, backgroundColor: "#EFCB77", borderRadius: 999, padding: "6px 12px" }}>
               {diffJours === 0 ? "🎉 Aujourd'hui !" : diffJours === 1 ? "Demain" : `Dans ${diffJours} jours`} — {date.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
             </span>
           </div>
@@ -2077,7 +2098,7 @@ function AnniversairesResponsables({ comptes, cardStyle }) {
               <p style={{ fontWeight: 700, marginBottom: 2 }}>{compte.nom}</p>
               <p style={{ fontSize: 12, color: "#a9d6cf" }}>{compte.role === "pasteur" ? "Pasteur" : compte.assistant ? "Assistant" : "Responsable"} · {compte.quartier || "Quartier non renseigné"}</p>
             </div>
-            <span style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, backgroundColor: "#E8CA4A", borderRadius: 999, padding: "6px 12px" }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, backgroundColor: "#EFCB77", borderRadius: 999, padding: "6px 12px" }}>
               {diffJours === 0 ? "🎉 Aujourd'hui !" : diffJours === 1 ? "Demain" : `Dans ${diffJours} jours`} — {date.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
             </span>
           </div>
@@ -2269,7 +2290,7 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
                     <input value={nomNouveauGem} onChange={e => setNomNouveauGem(e.target.value)} placeholder="Nom du GEM" style={{ flex: 1, padding: 6, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
                     <button
  className="btn-app"
- onClick={() => creerGem(it.id)} style={{ padding: "6px 10px", borderRadius: 6, backgroundColor: GOLD, color: TEAL_950, border: "none", fontSize: 12, fontWeight: 700 }}>OK</button>
+ onClick={() => creerGem(it.id)} style={{ padding: "6px 10px", borderRadius: 6, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontSize: 12, fontWeight: 700 }}>OK</button>
                   </div>
                 ) : (
                   <button
@@ -2408,7 +2429,7 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
                       autoFocus
                       style={{ flex: 1, minWidth: 140, padding: 8, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}
                     />
-                    <button className="btn-app" onClick={() => renommerGem(g.id)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 12 }}>Enregistrer</button>
+                    <button className="btn-app" onClick={() => renommerGem(g.id)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer", fontSize: 12 }}>Enregistrer</button>
                     <button className="btn-app" onClick={() => setGemEnEdition(null)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: "transparent", color: "#a9d6cf", border: `1px solid ${TEAL_600}`, cursor: "pointer", fontSize: 12 }}>Annuler</button>
                   </div>
                 ) : (
@@ -2758,20 +2779,20 @@ function genererAfficheImage({ titre, sousTitre, corps, piedDePage, nomFichier }
 
   // Fond dégradé teal
   const degrade = ctx.createLinearGradient(0, 0, 0, hauteur);
-  degrade.addColorStop(0, "#0D5C52");
-  degrade.addColorStop(1, "#116A5F");
+  degrade.addColorStop(0, "#0B4038");
+  degrade.addColorStop(1, "#124D43");
   ctx.fillStyle = degrade;
   ctx.fillRect(0, 0, largeur, hauteur);
 
   // Bande dorée en haut
-  ctx.fillStyle = "#D0AF1C";
+  ctx.fillStyle = "#D6A54C";
   ctx.fillRect(0, 0, largeur, 14);
 
   function dessinerLogoEtTexte() {
     ctx.textAlign = "center";
 
     // Nom de l'église
-    ctx.fillStyle = "#E8CA4A";
+    ctx.fillStyle = "#EFCB77";
     ctx.font = "bold 34px Arial";
     ctx.fillText("ASSEMBLÉE RENAISSANCE", largeur / 2, 130);
     ctx.font = "24px Arial";
@@ -2779,7 +2800,7 @@ function genererAfficheImage({ titre, sousTitre, corps, piedDePage, nomFichier }
     ctx.fillText("Bouaflé", largeur / 2, 168);
 
     // Ligne de séparation
-    ctx.strokeStyle = "#D0AF1C";
+    ctx.strokeStyle = "#D6A54C";
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(largeur / 2 - 80, 200);
@@ -2797,7 +2818,7 @@ function genererAfficheImage({ titre, sousTitre, corps, piedDePage, nomFichier }
     if (sousTitre) {
       y += 20;
       ctx.font = "32px Arial";
-      ctx.fillStyle = "#D0AF1C";
+      ctx.fillStyle = "#D6A54C";
       const lignesSousTitre = decouperTexte(ctx, sousTitre, largeur - 160);
       lignesSousTitre.forEach(ligne => { ctx.fillText(ligne, largeur / 2, y); y += 42; });
     }
@@ -2817,7 +2838,7 @@ function genererAfficheImage({ titre, sousTitre, corps, piedDePage, nomFichier }
     ctx.fillText(piedDePage || "Pasteur Dimitri Koffi", largeur / 2, hauteur - 60);
 
     // Bande dorée en bas
-    ctx.fillStyle = "#D0AF1C";
+    ctx.fillStyle = "#D6A54C";
     ctx.fillRect(0, hauteur - 14, largeur, 14);
 
     // Déclenche le téléchargement
@@ -3244,7 +3265,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
           <input value={quartier} onChange={e => setQuartier(e.target.value)} placeholder="Quartier" style={{ flex: 1, minWidth: 140, padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
           <button
  className="btn-app"
- onClick={ajouterMembre} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>Ajouter</button>
+ onClick={ajouterMembre} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer" }}>Ajouter</button>
         </div>
         <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 12, color: "#a9d6cf", cursor: "pointer" }}>
           <input type="checkbox" checked={nouveauConverti} onChange={e => setNouveauConverti(e.target.checked)} />
@@ -3343,7 +3364,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
               className="btn-app"
               disabled={validationEnCours}
               onClick={validerRapportPresence}
-              style={{ marginTop: 10, padding: "12px 20px", borderRadius: 10, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer", alignSelf: "flex-start" }}
+              style={{ marginTop: 10, padding: "12px 20px", borderRadius: 10, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer", alignSelf: "flex-start" }}
             >
               {validationEnCours ? "…" : rapportPresenceValide ? "✓ Revalider le rapport de présence" : "Valider le rapport de présence"}
             </button>
@@ -3386,7 +3407,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
       )}
       {apercuImport && (
         <div className="fade-in" style={{ position: "fixed", inset: 0, backgroundColor: "rgba(5,20,18,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
-          <div style={{ backgroundColor: "#14776B", border: "1px solid #1F9C8D", borderRadius: 16, padding: 24, maxWidth: 480, width: "100%", maxHeight: "80vh", overflowY: "auto", boxShadow: "0 20px 50px rgba(0,0,0,0.4)" }}>
+          <div style={{ backgroundColor: "#17594E", border: "1px solid #227A6B", borderRadius: 16, padding: 24, maxWidth: 480, width: "100%", maxHeight: "80vh", overflowY: "auto", boxShadow: "0 20px 50px rgba(0,0,0,0.4)" }}>
             <p style={{ fontWeight: 700, fontSize: 17, marginBottom: 10, color: "#FFFFFF" }}>Confirmer l'import — {apercuImport.length} membre(s)</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
               {apercuImport.slice(0, 15).map((l, i) => (
@@ -3395,10 +3416,10 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
               {apercuImport.length > 15 && <p style={{ fontSize: 12, color: "#a9d6cf", fontStyle: "italic" }}>+ {apercuImport.length - 15} autre(s)…</p>}
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
-              <button className="btn-app" onClick={() => setApercuImport(null)} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: "transparent", color: "#cdeae4", border: "1px solid #27B3A1", fontWeight: 600, cursor: "pointer" }}>
+              <button className="btn-app" onClick={() => setApercuImport(null)} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: "transparent", color: "#cdeae4", border: "1px solid #2C917F", fontWeight: 600, cursor: "pointer" }}>
                 Annuler
               </button>
-              <button className="btn-app" disabled={importEnCours} onClick={confirmerImport} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: "#D0AF1C", color: "#0D5C52", border: "none", fontWeight: 700, cursor: "pointer" }}>
+              <button className="btn-app" disabled={importEnCours} onClick={confirmerImport} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: "#D6A54C", color: "#0B4038", border: "none", fontWeight: 700, cursor: "pointer" }}>
                 {importEnCours ? "…" : `Importer ${apercuImport.length} membre(s)`}
               </button>
             </div>
@@ -3452,7 +3473,7 @@ function EditionResponsableGem({ compteResponsable, onFerme, onEnregistre }) {
         </div>
         <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
           <button className="btn-app" onClick={onFerme} style={{ flex: 1, padding: "10px 0", borderRadius: 8, backgroundColor: "transparent", color: "#cdeae4", border: `1px solid ${TEAL_600}`, cursor: "pointer" }}>Annuler</button>
-          <button className="btn-app" disabled={enregistrement} onClick={enregistrer} style={{ flex: 1, padding: "10px 0", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>
+          <button className="btn-app" disabled={enregistrement} onClick={enregistrer} style={{ flex: 1, padding: "10px 0", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer" }}>
             {enregistrement ? "…" : "Enregistrer"}
           </button>
         </div>
@@ -3623,7 +3644,7 @@ function RapportSanteSemaine({ gem, membres, compte, cardStyle }) {
                   className="btn-app"
                   disabled={enregistrementResponsable}
                   onClick={enregistrerSanteResponsable}
-                  style={{ padding: "10px 0", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+                  style={{ padding: "10px 0", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
                 >
                   {enregistrementResponsable ? "…" : "💾 Enregistrer ma fiche"}
                 </button>
@@ -3678,7 +3699,7 @@ function RapportSanteSemaine({ gem, membres, compte, cardStyle }) {
             className="btn-app"
             disabled={enregistrement}
             onClick={valider}
-            style={{ marginTop: 16, padding: "12px 20px", borderRadius: 10, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+            style={{ marginTop: 16, padding: "12px 20px", borderRadius: 10, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
           >
             {enregistrement ? "…" : valide ? "Revalider le rapport" : "Valider le rapport de santé spirituelle"}
           </button>
@@ -3874,7 +3895,7 @@ function ActivitesSemaine({ gem, membres, compte, cardStyle }) {
             className="btn-app"
             disabled={enregistrement}
             onClick={valider}
-            style={{ padding: "12px 24px", borderRadius: 12, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}
+            style={{ padding: "12px 24px", borderRadius: 12, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}
           >
             {enregistrement ? "…" : activite.valide ? "✓ Revalider le rapport" : "Valider le rapport de la semaine"}
           </button>
@@ -4291,7 +4312,7 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
               </span>
             )}
             {estAnniversaireProche(membre.date_naissance) && (
-              <span style={{ fontSize: 10, fontWeight: 700, color: TEAL_950, backgroundColor: "#E8CA4A", borderRadius: 999, padding: "2px 8px", display: "inline-block" }}>
+              <span style={{ fontSize: 10, fontWeight: 700, color: TEAL_950, backgroundColor: "#EFCB77", borderRadius: 999, padding: "2px 8px", display: "inline-block" }}>
                 🎂 Anniversaire bientôt
               </span>
             )}
@@ -4442,7 +4463,7 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
                 <textarea value={noteVisite} onChange={e => setNoteVisite(e.target.value)} rows={2} placeholder="Note sur la visite..." style={{ width: "100%", padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, resize: "vertical" }} />
                 <button
  className="btn-app"
- onClick={enregistrerVisite} style={{ marginTop: 8, padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>
+ onClick={enregistrerVisite} style={{ marginTop: 8, padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>
                   Enregistrer la visite
                 </button>
               </div>
@@ -4497,7 +4518,7 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
               {(membre.etape_conversion || "accueil") !== "integre" ? (
                 <button
  className="btn-app"
- onClick={avancerEtape} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>
+ onClick={avancerEtape} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>
                   Faire avancer à l'étape suivante
                 </button>
               ) : (
@@ -4600,7 +4621,7 @@ function DemanderResponsabilite({ compte, tribus, departements, mesAssignations,
 
         <button
  className="btn-app"
- onClick={envoyer} style={{ padding: "10px 0", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>
+ onClick={envoyer} style={{ padding: "10px 0", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer" }}>
           Envoyer la demande
         </button>
       </div>
@@ -4744,7 +4765,7 @@ function PageDemandes({ tribus, departements, compte, onTraite, cardStyle }) {
               <div style={{ display: "flex", gap: 8 }}>
                 <button
  className="btn-app"
- onClick={() => valider(d)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 12 }}>Valider</button>
+ onClick={() => valider(d)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer", fontSize: 12 }}>Valider</button>
                 <button
  className="btn-app"
  onClick={() => refuser(d)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: "transparent", color: RED_LIGHT, border: `1px solid ${RED_LIGHT}`, cursor: "pointer", fontSize: 12 }}>Refuser</button>
@@ -4866,7 +4887,7 @@ function PageCorbeille({ compte, gems, cardStyle, onTraite }) {
                     className="btn-app"
                     disabled={enCours === e.id}
                     onClick={() => restaurer(e)}
-                    style={{ padding: "10px 16px", borderRadius: 10, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 12 }}
+                    style={{ padding: "10px 16px", borderRadius: 10, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer", fontSize: 12 }}
                   >
                     ↩️ Restaurer
                   </button>
@@ -6612,7 +6633,7 @@ function PageMonCompte({ compte, cardStyle, onMisAJour }) {
               className="btn-app"
               disabled={enregistrementSante}
               onClick={enregistrerMaSante}
-              style={{ marginTop: 16, padding: "12px 20px", borderRadius: 10, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+              style={{ marginTop: 16, padding: "12px 20px", borderRadius: 10, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
             >
               {enregistrementSante ? "…" : "💾 Enregistrer ma fiche"}
             </button>
@@ -6647,7 +6668,7 @@ function PageMonCompte({ compte, cardStyle, onMisAJour }) {
             className="btn-app"
             disabled={enregistrementProfil}
             onClick={enregistrerProfil}
-            style={{ padding: "10px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer", alignSelf: "flex-start" }}
+            style={{ padding: "10px 16px", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer", alignSelf: "flex-start" }}
           >
             {enregistrementProfil ? "…" : "💾 Enregistrer"}
           </button>
@@ -6687,7 +6708,7 @@ function PageMonCompte({ compte, cardStyle, onMisAJour }) {
             className="btn-app"
             disabled={enCours}
             onClick={changerMotDePasse}
-            style={{ padding: "12px 0", borderRadius: 8, fontWeight: 700, fontSize: 14, backgroundColor: GOLD, color: TEAL_950, border: "none", cursor: "pointer" }}
+            style={{ padding: "12px 0", borderRadius: 8, fontWeight: 700, fontSize: 14, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", cursor: "pointer" }}
           >
             {enCours ? "…" : "Changer mon mot de passe"}
           </button>
@@ -6906,7 +6927,7 @@ function PageMotsDePasse({ cardStyle, onTraite }) {
                       {compteAssocie && (
                         <button
  className="btn-app"
- onClick={() => ouvrirReinitialisation(d)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 12 }}>Réinitialiser</button>
+ onClick={() => ouvrirReinitialisation(d)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer", fontSize: 12 }}>Réinitialiser</button>
                       )}
                       <button
  className="btn-app"
@@ -6934,7 +6955,7 @@ function PageMotsDePasse({ cardStyle, onTraite }) {
                     {erreur && <p style={{ color: RED_LIGHT, fontSize: 12, marginTop: 8 }}>{erreur}</p>}
                     {succes && <p style={{ color: GOLD_LIGHT, fontSize: 12, marginTop: 8, fontWeight: 700 }}>{succes}</p>}
                     <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                      <button disabled={enCours} onClick={() => reinitialiser(d)} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 12 }}>
+                      <button disabled={enCours} onClick={() => reinitialiser(d)} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer", fontSize: 12 }}>
                         {enCours ? "…" : "Confirmer la réinitialisation"}
                       </button>
                       <button
@@ -7705,7 +7726,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
                 <input value={nomNouveauGem} onChange={e => setNomNouveauGem(e.target.value)} placeholder="Nom du nouveau GEM" style={{ flex: 1, minWidth: 160, padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
                 <button
  className="btn-app"
- onClick={creerGem} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>Créer</button>
+ onClick={creerGem} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer" }}>Créer</button>
               </div>
             ) : (
               <button
@@ -7935,7 +7956,7 @@ function SousPageAttribuerRole({ compte, tribus, departements, onChange, cardSty
           />
           {erreur && <p style={{ color: RED_LIGHT, fontSize: 12 }}>{erreur}</p>}
           {succes && <p style={{ color: GOLD_LIGHT, fontSize: 12, fontWeight: 700 }}>{succes}</p>}
-          <button disabled={enCours} onClick={attribuer} style={{ padding: "10px 0", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>
+          <button disabled={enCours} onClick={attribuer} style={{ padding: "10px 0", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer" }}>
             {enCours ? "…" : "Attribuer ce rôle"}
           </button>
         </div>
@@ -8059,7 +8080,7 @@ function SousPageCreerCompte({ compte, tribus, departements, onChange, cardStyle
         {erreur && <p style={{ color: RED_LIGHT, fontSize: 12 }}>{erreur}</p>}
         {succes && <p style={{ color: GOLD_LIGHT, fontSize: 12, fontWeight: 700 }}>{succes}</p>}
 
-        <button disabled={enCours} onClick={creer} style={{ padding: "10px 0", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>
+        <button disabled={enCours} onClick={creer} style={{ padding: "10px 0", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer" }}>
           {enCours ? "…" : "Créer le compte et attribuer le rôle"}
         </button>
       </div>
@@ -9255,7 +9276,7 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
               </div>
               <button
  className="btn-app"
- onClick={envoyerDiffusion} style={{ marginTop: 8, padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>Envoyer</button>
+ onClick={envoyerDiffusion} style={{ marginTop: 8, padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer" }}>Envoyer</button>
             </div>
           )}
           {messages.length === 0 ? (
@@ -9297,7 +9318,7 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
               <textarea value={texte} onChange={e => setTexte(e.target.value)} rows={3} placeholder="Ton message..." style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, resize: "vertical" }} />
               <button
  className="btn-app"
- onClick={envoyerDirect} style={{ marginTop: 8, padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>Envoyer</button>
+ onClick={envoyerDirect} style={{ marginTop: 8, padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer" }}>Envoyer</button>
             </div>
           )}
           {messagesDirects.length === 0 ? (
@@ -9498,7 +9519,7 @@ function PageCalendrier({ estPasteur, compte, onOuverture, cardStyle }) {
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
  className="btn-app"
- onClick={creerEvenement} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>Créer</button>
+ onClick={creerEvenement} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer" }}>Créer</button>
                   <button
  className="btn-app"
  onClick={() => setFormOuvert(false)} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: "transparent", color: "#a9d6cf", border: `1px solid ${TEAL_600}`, cursor: "pointer" }}>Annuler</button>
@@ -9508,7 +9529,7 @@ function PageCalendrier({ estPasteur, compte, onOuverture, cardStyle }) {
           ) : (
             <button
  className="btn-app"
- onClick={() => setFormOuvert(true)} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>+ Nouvel événement</button>
+ onClick={() => setFormOuvert(true)} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer", fontSize: 13 }}>+ Nouvel événement</button>
           )}
         </div>
       )}
