@@ -952,10 +952,14 @@ function TableauDeBord({ compte }) {
       ).slice(0, 6).map(m => ({ type: "membre", data: m }))
     : [];
 
+  function chiffresRecherche(tel) { return (tel || "").replace(/[^\d]/g, "").slice(-8); }
+  const numerosDejaTrouves = new Set(resultatsRecherche.map(r => chiffresRecherche(r.data.telephone)).filter(Boolean));
+
   const resultatsResponsables = (estPasteur && rechercheGlobale.trim().length >= 2)
     ? tousLesComptes.filter(c =>
-        c.nom.toLowerCase().includes(rechercheGlobale.toLowerCase()) ||
-        (c.telephone || "").includes(rechercheGlobale)
+        (c.nom.toLowerCase().includes(rechercheGlobale.toLowerCase()) ||
+        (c.telephone || "").includes(rechercheGlobale)) &&
+        !numerosDejaTrouves.has(chiffresRecherche(c.telephone)) // évite d'afficher la même personne deux fois
       ).slice(0, 4).map(c => ({ type: "responsable", data: c }))
     : [];
 
@@ -2602,12 +2606,21 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
     if (membreCible && membres.some(m => m.id === membreCible)) {
       setMembreOuvert(membreCible);
       if (onMembreCibleConsomme) onMembreCibleConsomme();
-      // Fait défiler l'écran jusqu'à la fiche du membre recherché, sinon elle
-      // s'ouvre correctement mais reste invisible plus bas dans la liste.
-      setTimeout(() => {
-        const el = document.getElementById(`membre-${membreCible}`);
-        if (el) el.scrollIntoView({ behavior: "smooth", block: "center" });
-      }, 150);
+      // Fait défiler l'écran jusqu'à la fiche du membre recherché. On réessaie
+      // plusieurs fois car l'élément peut ne pas encore exister dans le DOM
+      // juste après l'ouverture (liste longue, rendu pas terminé).
+      let tentatives = 0;
+      const idCible = membreCible;
+      const intervalle = setInterval(() => {
+        tentatives++;
+        const el = document.getElementById(`membre-${idCible}`);
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth", block: "center" });
+          clearInterval(intervalle);
+        } else if (tentatives >= 15) {
+          clearInterval(intervalle);
+        }
+      }, 200);
     }
   }, [membreCible, membres]);
 
