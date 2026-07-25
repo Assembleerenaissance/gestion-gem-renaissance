@@ -1397,19 +1397,19 @@ function TableauDeBord({ compte }) {
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 24 }}>
               <div className="card-app" style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 14 }}>
                 <span style={{ fontSize: 28 }}>👥</span>
-                <div><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}><NombreAnime valeur={membres.length} /></p></div>
+                <div><p style={{ fontSize: 12, color: "#FFFFFF", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}><NombreAnime valeur={membres.length} /></p></div>
               </div>
               <div className="card-app" style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 14 }}>
                 <span style={{ fontSize: 28 }}>🏠</span>
-                <div><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>GEM actifs</p><p style={{ fontSize: 28, fontWeight: 700 }}><NombreAnime valeur={gems.length} /></p></div>
+                <div><p style={{ fontSize: 12, color: "#FFFFFF", textTransform: "uppercase" }}>GEM actifs</p><p style={{ fontSize: 28, fontWeight: 700 }}><NombreAnime valeur={gems.length} /></p></div>
               </div>
               <div className="card-app" style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 14 }}>
                 <span style={{ fontSize: 28 }}>🏛️</span>
-                <div><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Tribus</p><p style={{ fontSize: 28, fontWeight: 700 }}><NombreAnime valeur={tribus.length} /></p></div>
+                <div><p style={{ fontSize: 12, color: "#FFFFFF", textTransform: "uppercase" }}>Tribus</p><p style={{ fontSize: 28, fontWeight: 700 }}><NombreAnime valeur={tribus.length} /></p></div>
               </div>
               <div className="card-app" style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 14 }}>
                 <span style={{ fontSize: 28 }}>🏢</span>
-                <div><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Départements</p><p style={{ fontSize: 28, fontWeight: 700 }}><NombreAnime valeur={departements.length} /></p></div>
+                <div><p style={{ fontSize: 12, color: "#FFFFFF", textTransform: "uppercase" }}>Départements</p><p style={{ fontSize: 28, fontWeight: 700 }}><NombreAnime valeur={departements.length} /></p></div>
               </div>
             </div>
             <ClassementsDuMois gemDuMois={gemDuMois} tribuDeptDuMois={tribuDeptDuMois} />
@@ -1419,21 +1419,21 @@ function TableauDeBord({ compte }) {
             <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>📋 Rapports de la semaine en cours</p>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 28 }}>
               <div className="card-app" style={cardStyle}>
-                <p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Présence pointée</p>
+                <p style={{ fontSize: 12, color: "#FFFFFF", textTransform: "uppercase" }}>Présence pointée</p>
                 <p style={{ fontSize: 26, fontWeight: 700, color: rapportsPresenceSemaine.valides === rapportsPresenceSemaine.total && rapportsPresenceSemaine.total > 0 ? "#6fcf97" : GOLD_LIGHT }}>
                   <NombreAnime valeur={rapportsPresenceSemaine.valides} /> / {rapportsPresenceSemaine.total}
                 </p>
                 <p style={{ fontSize: 11, color: "#a9d6cf" }}>GEM ayant validé leur présence</p>
               </div>
               <div className="card-app" style={cardStyle}>
-                <p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Activités validées</p>
+                <p style={{ fontSize: 12, color: "#FFFFFF", textTransform: "uppercase" }}>Activités validées</p>
                 <p style={{ fontSize: 26, fontWeight: 700, color: rapportsActivitesSemaine.valides === rapportsActivitesSemaine.total && rapportsActivitesSemaine.total > 0 ? "#6fcf97" : GOLD_LIGHT }}>
                   <NombreAnime valeur={rapportsActivitesSemaine.valides} /> / {rapportsActivitesSemaine.total}
                 </p>
                 <p style={{ fontSize: 11, color: "#a9d6cf" }}>GEM ayant validé leurs activités</p>
               </div>
               <button className="btn-app card-app" onClick={() => { setPage("absences"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...cardStyle, cursor: "pointer", textAlign: "left", borderColor: absencesSemaine.nombre > 0 ? RED_LIGHT : cardStyle.border }}>
-                <p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>🚫 Absents ce dimanche</p>
+                <p style={{ fontSize: 12, color: "#FFFFFF", textTransform: "uppercase" }}>🚫 Absents ce dimanche</p>
                 <p style={{ fontSize: 26, fontWeight: 700, color: absencesSemaine.nombre === 0 ? "#6fcf97" : RED_LIGHT }}>
                   <NombreAnime valeur={absencesSemaine.nombre} /> ({absencesSemaine.pourcentage}%)
                 </p>
@@ -1444,7 +1444,7 @@ function TableauDeBord({ compte }) {
                 const bossIrreguliersDashboard = listeBossDashboard.filter(b => b.absencesConsecutives >= 2);
                 return (
                   <button className="btn-app card-app" onClick={() => { setPage("membres"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...cardStyle, cursor: "pointer", textAlign: "left", borderColor: bossIrreguliersDashboard.length > 0 ? RED_LIGHT : GOLD }}>
-                    <p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>🌟 BOSS</p>
+                    <p style={{ fontSize: 12, color: "#FFFFFF", textTransform: "uppercase" }}>🌟 BOSS</p>
                     <p style={{ fontSize: 26, fontWeight: 700, color: GOLD_LIGHT }}>
                       <NombreAnime valeur={listeBossDashboard.length} />
                     </p>
@@ -1575,21 +1575,21 @@ function ResumePerimetre({ gems, membres, onVoirAbsences, cardStyle }) {
     <div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 20 }}>
         <div className="card-app" style={cardStyle}>
-          <p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>GEM</p>
+          <p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>GEM</p>
           <p style={{ fontSize: 24, fontWeight: 700 }}><NombreAnime valeur={gems.length} /></p>
         </div>
         <div className="card-app" style={cardStyle}>
-          <p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Membres</p>
+          <p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>Membres</p>
           <p style={{ fontSize: 24, fontWeight: 700 }}><NombreAnime valeur={membres.length} /></p>
         </div>
         <div className="card-app" style={cardStyle}>
-          <p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Rapports (semaine)</p>
+          <p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>Rapports (semaine)</p>
           <p style={{ fontSize: 24, fontWeight: 700, color: rapportsValides === gems.length ? "#6fcf97" : GOLD_LIGHT }}>
             <NombreAnime valeur={rapportsValides} /> / {gems.length}
           </p>
         </div>
         <button className="btn-app card-app" onClick={onVoirAbsences} disabled={!onVoirAbsences} style={{ ...cardStyle, textAlign: "left", cursor: onVoirAbsences ? "pointer" : "default", borderColor: absencesCount > 0 ? RED_LIGHT : cardStyle.border }}>
-          <p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>🚫 Absents ce dimanche</p>
+          <p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>🚫 Absents ce dimanche</p>
           <p style={{ fontSize: 18, fontWeight: 700 }}>
             {tauxPresence !== null ? <><span style={{ color: RED_LIGHT }}>{absencesCount}</span> <span style={{ fontSize: 13, color: "#a9d6cf" }}>({100 - tauxPresence}%)</span></> : "—"}
           </p>
@@ -2563,8 +2563,6 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
   const [responsableGem, setResponsableGem] = useState(null); // { assignationId, compte }
   const [chargementResponsable, setChargementResponsable] = useState(true);
   const [presenceResponsable, setPresenceResponsable] = useState(false);
-  const [editionResponsableOuverte, setEditionResponsableOuverte] = useState(false);
-  const [confirmerRetraitResponsable, setConfirmerRetraitResponsable] = useState(false);
 
   const estAdmin = compte.role === "pasteur" || compte.assistant === true;
 
@@ -2595,15 +2593,6 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
       { onConflict: "compte_id,dimanche_id" }
     );
     if (error) { toast("⚠️ Présence du responsable non enregistrée : " + error.message, "erreur"); setPresenceResponsable(!nouvelEtat); }
-  }
-
-  async function retirerResponsable() {
-    if (!responsableGem) return;
-    const { error } = await supabase.from("assignations").delete().eq("id", responsableGem.assignationId);
-    setConfirmerRetraitResponsable(false);
-    if (error) { toast("Impossible de retirer ce responsable : " + error.message, "erreur"); return; }
-    toast(`${responsableGem.compte.nom} n'est plus responsable de ce GEM.`, "succes");
-    setResponsableGem(null);
   }
 
   useEffect(() => { initialiserPresences(); chargerSante(); verifierPointageManquant(membres).then(setRappelPointage); }, [membres.length]);
@@ -2868,21 +2857,13 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
 
         {!chargementResponsable && responsableGem && (
           <div style={{ border: `2px solid ${GOLD}`, borderRadius: 8, padding: "10px 14px", marginBottom: 12, backgroundColor: "rgba(208,175,28,0.08)" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-              <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: dimancheId ? "pointer" : "default" }}>
-                <input type="checkbox" checked={presenceResponsable} onChange={basculerPresenceResponsable} disabled={!dimancheId} style={{ width: 18, height: 18, accentColor: GOLD }} />
-                <span>
-                  <span style={{ fontWeight: 700 }}>{responsableGem.compte.nom}</span>
-                  <span style={{ fontSize: 10, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, borderRadius: 999, padding: "2px 8px", marginLeft: 8 }}>👤 Responsable</span>
-                </span>
-              </label>
-              {estAdmin && (
-                <div style={{ display: "flex", gap: 6 }}>
-                  <button className="btn-app" onClick={() => setEditionResponsableOuverte(true)} style={{ fontSize: 11, fontWeight: 700, color: GOLD_LIGHT, background: "none", border: `1px solid ${TEAL_600}`, borderRadius: 6, padding: "5px 10px", cursor: "pointer" }}>✏️ Infos</button>
-                  <button className="btn-app" onClick={() => setConfirmerRetraitResponsable(true)} style={{ fontSize: 11, fontWeight: 700, color: RED_LIGHT, background: "none", border: `1px solid ${RED_LIGHT}`, borderRadius: 6, padding: "5px 10px", cursor: "pointer" }}>🗑️ Retirer</button>
-                </div>
-              )}
-            </div>
+            <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: dimancheId ? "pointer" : "default" }}>
+              <input type="checkbox" checked={presenceResponsable} onChange={basculerPresenceResponsable} disabled={!dimancheId} style={{ width: 18, height: 18, accentColor: GOLD }} />
+              <span>
+                <span style={{ fontWeight: 700 }}>{responsableGem.compte.nom}</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, borderRadius: 999, padding: "2px 8px", marginLeft: 8 }}>👤 Responsable</span>
+              </span>
+            </label>
             <p style={{ fontSize: 11, color: "#a9d6cf", marginTop: 4 }}>{responsableGem.compte.telephone}{responsableGem.compte.quartier ? ` · ${responsableGem.compte.quartier}` : ""}</p>
           </div>
         )}
@@ -2996,25 +2977,6 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
             </div>
           </div>
         </div>
-      )}
-
-      {editionResponsableOuverte && responsableGem && (
-        <EditionResponsableGem
-          compteResponsable={responsableGem.compte}
-          onFerme={() => setEditionResponsableOuverte(false)}
-          onEnregistre={(c) => { setResponsableGem(r => ({ ...r, compte: c })); setEditionResponsableOuverte(false); }}
-        />
-      )}
-
-      {confirmerRetraitResponsable && responsableGem && (
-        <BoiteConfirmation
-          titre="Retirer ce responsable ?"
-          message={`Es-tu sûr de vouloir retirer "${responsableGem.compte.nom}" de la responsabilité de ce GEM ? Son compte de connexion restera actif, mais il n'aura plus accès à ce GEM.`}
-          texteConfirmer="Retirer"
-          dangereux
-          onConfirmer={retirerResponsable}
-          onAnnuler={() => setConfirmerRetraitResponsable(false)}
-        />
       )}
     </div>
   );
@@ -4606,14 +4568,14 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginBottom: 20 }}>
               {pireGem && pireGem.taux > 0 && (
                 <div style={{ ...cardStyle, borderColor: RED_LIGHT }}>
-                  <p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>GEM le plus touché</p>
+                  <p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>GEM le plus touché</p>
                   <p style={{ fontSize: 16, fontWeight: 700 }}>{pireGem.nom}</p>
                   <p style={{ fontSize: 20, fontWeight: 700, color: RED_LIGHT }}>{pireGem.taux}% d'absence</p>
                 </div>
               )}
               {pireProvenance && pireProvenance.taux > 0 && (
                 <div style={{ ...cardStyle, borderColor: RED_LIGHT }}>
-                  <p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Tribu/Département le plus touché</p>
+                  <p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>Tribu/Département le plus touché</p>
                   <p style={{ fontSize: 16, fontWeight: 700 }}>{pireProvenance.nom}</p>
                   <p style={{ fontSize: 20, fontWeight: 700, color: RED_LIGHT }}>{pireProvenance.taux}% d'absence</p>
                 </div>
@@ -5292,7 +5254,7 @@ function PageNouveaux({ membres, gems, tribus, departements, gemsAutorises, card
             onClick={() => setFiltreEtape(filtreEtape === r.etape ? "" : r.etape)}
             style={{ ...cardStyle, cursor: "pointer", border: filtreEtape === r.etape ? `2px solid ${GOLD}` : cardStyle.border, textAlign: "left" }}
           >
-            <p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>{LIBELLES_ETAPES_SUIVI[r.etape]}</p>
+            <p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>{LIBELLES_ETAPES_SUIVI[r.etape]}</p>
             <p style={{ fontSize: 22, fontWeight: 700, color: GOLD_LIGHT }}>{r.nb}</p>
           </button>
         ))}
@@ -5470,11 +5432,11 @@ function PageSanteResponsables({ tousLesComptes, gems, tribus, departements, res
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
         <div className="card-app" style={cardStyle}>
-          <p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Fiches remplies</p>
+          <p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>Fiches remplies</p>
           <p style={{ fontSize: 24, fontWeight: 700 }}><NombreAnime valeur={responsablesAvecFiche.length} /> / {(tousLesComptes || []).length}</p>
         </div>
         <div className="card-app" style={cardStyle}>
-          <p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Moyenne générale</p>
+          <p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>Moyenne générale</p>
           <p style={{ fontSize: 24, fontWeight: 700, color: couleurScore(moyenneGlobale) }}>{moyenneGlobale !== null ? `${moyenneGlobale}/10` : "—"}</p>
         </div>
       </div>
@@ -6424,10 +6386,10 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
  onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
-                <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Membres</p><p style={{ fontSize: 24, fontWeight: 700 }}>{totalMembres}</p></div>
-                <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Présents</p><p style={{ fontSize: 24, fontWeight: 700, color: GOLD_LIGHT }}>{totalPresents}</p></div>
-                <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Taux</p><p style={{ fontSize: 24, fontWeight: 700 }}>{tauxGlobal}%</p></div>
-                <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Santé moy.</p><p style={{ fontSize: 24, fontWeight: 700, color: couleurScore(scoreMoyenGlobal) }}>{scoreMoyenGlobal !== null ? `${scoreMoyenGlobal}/10` : "—"}</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>Membres</p><p style={{ fontSize: 24, fontWeight: 700 }}>{totalMembres}</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>Présents</p><p style={{ fontSize: 24, fontWeight: 700, color: GOLD_LIGHT }}>{totalPresents}</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>Taux</p><p style={{ fontSize: 24, fontWeight: 700 }}>{tauxGlobal}%</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>Santé moy.</p><p style={{ fontSize: 24, fontWeight: 700, color: couleurScore(scoreMoyenGlobal) }}>{scoreMoyenGlobal !== null ? `${scoreMoyenGlobal}/10` : "—"}</p></div>
               </div>
 
               <CommentaireIntelligent titre="🧠 Analyse intelligente" stats={{ tauxPresence: tauxGlobal, moyenneSante: scoreMoyenGlobal }} />
@@ -6519,9 +6481,9 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
  onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
-                <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Membres</p><p style={{ fontSize: 24, fontWeight: 700 }}>{totalMembres}</p></div>
-                <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Taux moyen</p><p style={{ fontSize: 24, fontWeight: 700 }}>{tauxMoyenMois}%</p></div>
-                <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Santé moy.</p><p style={{ fontSize: 24, fontWeight: 700, color: couleurScore(scoreMoyenMois) }}>{scoreMoyenMois !== null ? `${scoreMoyenMois}/10` : "—"}</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>Membres</p><p style={{ fontSize: 24, fontWeight: 700 }}>{totalMembres}</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>Taux moyen</p><p style={{ fontSize: 24, fontWeight: 700 }}>{tauxMoyenMois}%</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>Santé moy.</p><p style={{ fontSize: 24, fontWeight: 700, color: couleurScore(scoreMoyenMois) }}>{scoreMoyenMois !== null ? `${scoreMoyenMois}/10` : "—"}</p></div>
               </div>
 
               <CommentaireIntelligent titre="🧠 Analyse intelligente du mois" stats={{ tauxPresence: tauxMoyenMois, moyenneSante: scoreMoyenMois }} />
@@ -6671,9 +6633,9 @@ function ActivitesSemainePerimetre({ gems, membres, tribus, departements, cardSt
               {vue === "semaine" && <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>Semaine du {dateFormatee}</p>}
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
-                <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>{vue === "semaine" ? "Rapports validés" : "GEM ayant rapporté"}</p><p style={{ fontSize: 24, fontWeight: 700, color: GOLD_LIGHT }}>{nbValides} / {gems.length}</p></div>
-                <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Visites (total)</p><p style={{ fontSize: 24, fontWeight: 700 }}>{totalVisites}</p></div>
-                <div style={cardStyle}><p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Appels (total)</p><p style={{ fontSize: 24, fontWeight: 700 }}>{totalAppels}</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>{vue === "semaine" ? "Rapports validés" : "GEM ayant rapporté"}</p><p style={{ fontSize: 24, fontWeight: 700, color: GOLD_LIGHT }}>{nbValides} / {gems.length}</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>Visites (total)</p><p style={{ fontSize: 24, fontWeight: 700 }}>{totalVisites}</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>Appels (total)</p><p style={{ fontSize: 24, fontWeight: 700 }}>{totalAppels}</p></div>
               </div>
 
               <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>Détail par GEM</p>
@@ -7461,21 +7423,21 @@ function DetailTribuDeptClassement({ type, item, gems, membres, onBack, cardStyl
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 20 }}>
         <div className="card-app" style={cardStyle}>
-          <p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>Membres</p>
+          <p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>Membres</p>
           <p style={{ fontSize: 22, fontWeight: 700 }}>{membresDuPerimetre.length}</p>
         </div>
         <div className="card-app" style={cardStyle}>
-          <p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>📊 Régularité moy.</p>
+          <p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>📊 Régularité moy.</p>
           <p style={{ fontSize: 22, fontWeight: 700, color: tauxRegulariteMoyen !== null ? (tauxRegulariteMoyen >= 70 ? "#6fcf97" : tauxRegulariteMoyen >= 40 ? GOLD_LIGHT : RED_LIGHT) : "#a9d6cf" }}>
             {tauxRegulariteMoyen !== null ? `${tauxRegulariteMoyen}%` : "—"}
           </p>
         </div>
         <div className="card-app" style={cardStyle}>
-          <p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>🌡️ Santé moy.</p>
+          <p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>🌡️ Santé moy.</p>
           <p style={{ fontSize: 22, fontWeight: 700, color: couleurScore(santeMoyenne) }}>{santeMoyenne !== null ? `${santeMoyenne}/10` : "—"}</p>
         </div>
         <div className="card-app" style={cardStyle}>
-          <p style={{ fontSize: 11, color: "#a9d6cf", textTransform: "uppercase" }}>⚠️ À surveiller</p>
+          <p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>⚠️ À surveiller</p>
           <p style={{ fontSize: 22, fontWeight: 700, color: nbIrreguliers > 0 ? RED_LIGHT : "#6fcf97" }}>{nbIrreguliers}</p>
         </div>
       </div>
@@ -8206,10 +8168,10 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 24 }}>
-                <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}>{totalMembres}</p></div>
-                <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Présents ce dimanche</p><p style={{ fontSize: 28, fontWeight: 700, color: GOLD_LIGHT }}>{totalPresents}</p></div>
-                <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Taux de présence</p><p style={{ fontSize: 28, fontWeight: 700 }}>{tauxGlobal}%</p><ComparaisonPeriode actuel={tauxGlobal} precedent={tauxPrecedentHebdo} libellePeriode="dimanche dernier" /></div>
-                <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Santé spirituelle moy.</p><p style={{ fontSize: 28, fontWeight: 700, color: couleurScore(scoreMoyenGlobal) }}>{scoreMoyenGlobal !== null ? `${scoreMoyenGlobal}/10` : "—"}</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 12, color: "#FFFFFF", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}>{totalMembres}</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 12, color: "#FFFFFF", textTransform: "uppercase" }}>Présents ce dimanche</p><p style={{ fontSize: 28, fontWeight: 700, color: GOLD_LIGHT }}>{totalPresents}</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 12, color: "#FFFFFF", textTransform: "uppercase" }}>Taux de présence</p><p style={{ fontSize: 28, fontWeight: 700 }}>{tauxGlobal}%</p><ComparaisonPeriode actuel={tauxGlobal} precedent={tauxPrecedentHebdo} libellePeriode="dimanche dernier" /></div>
+                <div style={cardStyle}><p style={{ fontSize: 12, color: "#FFFFFF", textTransform: "uppercase" }}>Santé spirituelle moy.</p><p style={{ fontSize: 28, fontWeight: 700, color: couleurScore(scoreMoyenGlobal) }}>{scoreMoyenGlobal !== null ? `${scoreMoyenGlobal}/10` : "—"}</p></div>
               </div>
 
               <CommentaireIntelligent
@@ -8335,9 +8297,9 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 28 }}>
-                <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}>{totalMembres}</p></div>
-                <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Taux de présence moyen</p><p style={{ fontSize: 28, fontWeight: 700 }}>{tauxMoyenMois}%</p><ComparaisonPeriode actuel={tauxMoyenMois} precedent={tauxPrecedentMois} libellePeriode="mois dernier" /></div>
-                <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Santé spirituelle moy.</p><p style={{ fontSize: 28, fontWeight: 700, color: couleurScore(scoreMoyenMois) }}>{scoreMoyenMois !== null ? `${scoreMoyenMois}/10` : "—"}</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 12, color: "#FFFFFF", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}>{totalMembres}</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 12, color: "#FFFFFF", textTransform: "uppercase" }}>Taux de présence moyen</p><p style={{ fontSize: 28, fontWeight: 700 }}>{tauxMoyenMois}%</p><ComparaisonPeriode actuel={tauxMoyenMois} precedent={tauxPrecedentMois} libellePeriode="mois dernier" /></div>
+                <div style={cardStyle}><p style={{ fontSize: 12, color: "#FFFFFF", textTransform: "uppercase" }}>Santé spirituelle moy.</p><p style={{ fontSize: 28, fontWeight: 700, color: couleurScore(scoreMoyenMois) }}>{scoreMoyenMois !== null ? `${scoreMoyenMois}/10` : "—"}</p></div>
               </div>
 
               <CommentaireIntelligent
@@ -8398,9 +8360,9 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 28 }}>
-                <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}>{totalMembres}</p></div>
-                <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Taux de présence annuel</p><p style={{ fontSize: 28, fontWeight: 700 }}>{tauxMoyenAnnee}%</p><ComparaisonPeriode actuel={tauxMoyenAnnee} precedent={tauxPrecedentAnnee} libellePeriode="année dernière" /></div>
-                <div style={cardStyle}><p style={{ fontSize: 12, color: "#a9d6cf", textTransform: "uppercase" }}>Santé spirituelle moy.</p><p style={{ fontSize: 28, fontWeight: 700, color: couleurScore(scoreMoyenAnnee) }}>{scoreMoyenAnnee !== null ? `${scoreMoyenAnnee}/10` : "—"}</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 12, color: "#FFFFFF", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}>{totalMembres}</p></div>
+                <div style={cardStyle}><p style={{ fontSize: 12, color: "#FFFFFF", textTransform: "uppercase" }}>Taux de présence annuel</p><p style={{ fontSize: 28, fontWeight: 700 }}>{tauxMoyenAnnee}%</p><ComparaisonPeriode actuel={tauxMoyenAnnee} precedent={tauxPrecedentAnnee} libellePeriode="année dernière" /></div>
+                <div style={cardStyle}><p style={{ fontSize: 12, color: "#FFFFFF", textTransform: "uppercase" }}>Santé spirituelle moy.</p><p style={{ fontSize: 28, fontWeight: 700, color: couleurScore(scoreMoyenAnnee) }}>{scoreMoyenAnnee !== null ? `${scoreMoyenAnnee}/10` : "—"}</p></div>
               </div>
 
               <CommentaireIntelligent
