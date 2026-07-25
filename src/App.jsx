@@ -7,17 +7,42 @@ import { LOGO_VH } from "./logoVH";
    GESTION DES GEM — Étape 2 : Tribus, Départements, GEM, Membres
    ============================================================================ */
 
-const TEAL_950 = "#0D5C52", TEAL_900 = "#116A5F", TEAL_850 = "#14776B";
-const TEAL_800 = "#188478", TEAL_700 = "#1F9C8D", TEAL_600 = "#27B3A1";
-const GOLD = "#E0BE2C", GOLD_LIGHT = "#F5DD5C", CREAM = "#FFFFFF";
-const RED_LIGHT = "#FF7A88";
+const TEAL_950 = "#0B4038", TEAL_900 = "#124D43", TEAL_850 = "#17594E";
+const TEAL_800 = "#1B6659", TEAL_700 = "#227A6B", TEAL_600 = "#2C917F";
+const GOLD = "#D6A54C", GOLD_LIGHT = "#EFCB77", CREAM = "#F6F1E4";
+const RED_LIGHT = "#E2777B";
+const VERT_DOUX = "#8FCBA8";
 
 // Filet de sécurité : si un bug imprévu survient n'importe où dans l'application,
 // on affiche un message clair avec un bouton pour recharger, plutôt qu'un écran blanc.
 // Styles globaux : transitions douces et effets de survol, injectés une seule fois.
+// Motif signature — un épi de blé, en écho à la "Moisson" (GEM = Groupe
+// d'Évangélisation et de Moisson). Utilisé avec retenue, jamais en excès.
+function EpiDeBle({ size = 22, color, opacity = 1 }) {
+  const couleur = color || GOLD;
+  return (
+    <svg width={size} height={size * 1.4} viewBox="0 0 20 28" fill="none" style={{ opacity, flexShrink: 0 }}>
+      <path d="M10 27V6" stroke={couleur} strokeWidth="1.3" strokeLinecap="round" />
+      {[0, 1, 2, 3, 4].map(i => (
+        <g key={i}>
+          <path d={`M10 ${9 + i * 4} C7 ${7 + i * 4} 5.5 ${8 + i * 4} 5 ${10 + i * 4}`} stroke={couleur} strokeWidth="1.2" strokeLinecap="round" fill="none" />
+          <path d={`M10 ${9 + i * 4} C13 ${7 + i * 4} 14.5 ${8 + i * 4} 15 ${10 + i * 4}`} stroke={couleur} strokeWidth="1.2" strokeLinecap="round" fill="none" />
+        </g>
+      ))}
+      <path d="M10 6 L8.3 2.5 L10 0.5 L11.7 2.5 Z" fill={couleur} />
+    </svg>
+  );
+}
+
 function StylesGlobaux() {
   return (
     <style>{`
+      @import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&display=swap');
+
+      body, input, select, textarea, button { font-family: 'Inter', system-ui, sans-serif; }
+      .titre-moisson { font-family: 'Fraunces', serif; font-optical-sizing: auto; letter-spacing: -0.01em; }
+      .chiffre-app { font-variant-numeric: tabular-nums; }
+
       .btn-app { transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease; }
       .btn-app:hover:not(:disabled) { filter: brightness(1.12); transform: translateY(-1px); }
       .btn-app:active:not(:disabled) { transform: translateY(0); filter: brightness(0.95); }
@@ -630,7 +655,7 @@ function EcranConnexion() {
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
           <img src={LOGO_VH} alt="Vases d'Honneur" style={{ height: 72, width: "auto" }} />
         </div>
-        <h1 style={{ color: CREAM, fontSize: 22, fontWeight: 700, marginBottom: 4, textAlign: "center" }}>Gestion des GEM</h1>
+        <h1 className="titre-moisson" style={{ color: CREAM, fontSize: 26, fontWeight: 600, marginBottom: 4, textAlign: "center" }}>Gestion des GEM</h1>
         <p style={{ color: "#cdeae4", fontSize: 13, marginBottom: 20, textAlign: "center" }}>Assemblée RENAISSANCE -Bouaflé</p>
         <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
           <button
@@ -984,7 +1009,7 @@ function TableauDeBord({ compte }) {
     return gems.find(g => g.id === membre.gem_id)?.nom || "GEM inconnu";
   }
 
-  const cardStyle = { backgroundColor: TEAL_850, border: `1px solid ${TEAL_700}`, borderRadius: 16, padding: 20 };
+  const cardStyle = { backgroundColor: TEAL_850, border: `1px solid ${TEAL_700}`, borderRadius: 16, padding: 20, boxShadow: "0 6px 18px rgba(0,0,0,0.16)" };
   const btnStyle = { padding: "10px 18px", borderRadius: 8, fontWeight: 700, fontSize: 17, cursor: "pointer", border: "none" };
 
   return (
@@ -1396,7 +1421,10 @@ function TableauDeBord({ compte }) {
           />
         ) : page === "dashboard" ? (
           <>
-            <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 16 }}>Tableau de bord</h2>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+              <EpiDeBle size={22} />
+              <h2 className="titre-moisson" style={{ fontSize: 24, fontWeight: 600, margin: 0 }}>Tableau de bord</h2>
+            </div>
             <BanniereRappelPointage rappel={rappelPointageGlobal} />
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 24 }}>
               <div className="card-app" style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 14 }}>
@@ -1617,7 +1645,7 @@ function HistoriquePerimetre({ gems, membres, cardStyle }) {
 
   return (
     <div>
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>📈 Historique</h2>
+      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>📈 Historique</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>Vue d'ensemble de ton périmètre dans le temps.</p>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
@@ -2175,7 +2203,7 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
       <button
  className="btn-app"
  onClick={onBack} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 12, fontSize: 13 }}>← Retour</button>
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{parent.nom}</h2>
+      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>{parent.nom}</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>{membresDuParent.length} membre{membresDuParent.length > 1 ? "s" : ""} au total, répartis sur {gemsDuParent.length} GEM</p>
 
       <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 10 }}>📋 GEM de ce {type === "tribu" ? "tribu" : "département"} ({gemsDuParent.length})</p>
@@ -2978,7 +3006,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
       {onBack && <button
  className="btn-app"
  onClick={onBack} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 12, fontSize: 13 }}>← Retour</button>}
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{gem.nom}</h2>
+      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>{gem.nom}</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>{membres.length} membre{membres.length > 1 ? "s" : ""}</p>
 
       <BanniereRappelPointage rappel={rappelPointage} />
@@ -2998,10 +3026,19 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
         >
           📋 Activités de la semaine
         </button>
+        <button
+          className="btn-app"
+          onClick={() => setSousOnglet("sante")}
+          style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "sante" ? GOLD : TEAL_900, color: sousOnglet === "sante" ? TEAL_950 : "#cdeae4" }}
+        >
+          🌡️ Santé spirituelle
+        </button>
       </div>
 
       {sousOnglet === "activites" ? (
         <ActivitesSemaine gem={gem} membres={membres} compte={compte} cardStyle={cardStyle} />
+      ) : sousOnglet === "sante" ? (
+        <RapportSanteSemaine gem={gem} membres={membres} compte={compte} cardStyle={cardStyle} />
       ) : (
         <>
       <div style={{ ...cardStyle, marginBottom: 20 }}>
@@ -3249,6 +3286,224 @@ const CHAMPS_ACTIVITE_TEXTE = [
   ["evangelisation", "📣 Évangélisation", "Où, avec qui, combien de personnes touchées..."],
   ["autres", "➕ Autres activités", "Toute autre activité à mentionner..."],
 ];
+
+// Rapport de santé spirituelle hebdomadaire — même logique que le rapport de
+// présence et d'activités : sélecteur de semaine + validation par GEM.
+function RapportSanteSemaine({ gem, membres, compte, cardStyle }) {
+  const [dimanches, setDimanches] = useState([]);
+  const [dimancheId, setDimancheId] = useState(null);
+  const [valide, setValide] = useState(false);
+  const [valeursParMembre, setValeursParMembre] = useState({}); // { membre_id: { meditation, jeune, priere, sanctification, dons, caractere } }
+  const [membreOuvert, setMembreOuvert] = useState(null);
+  const [chargement, setChargement] = useState(true);
+  const [enregistrement, setEnregistrement] = useState(false);
+  const [responsableGem, setResponsableGem] = useState(null); // compte du responsable de ce GEM
+  const [valeursResponsable, setValeursResponsable] = useState(null);
+  const [responsableOuvert, setResponsableOuvert] = useState(false);
+  const [enregistrementResponsable, setEnregistrementResponsable] = useState(false);
+
+  useEffect(() => { initialiser(); chargerResponsableGem(); }, [gem.id]);
+  useEffect(() => { if (dimancheId) chargerDonnees(); }, [dimancheId, membres.length]);
+
+  async function chargerResponsableGem() {
+    const { data } = await supabase.from("assignations").select("compte_id").eq("gem_id", gem.id).eq("role_demande", "gem").eq("statut", "actif").limit(1).maybeSingle();
+    if (!data) { setResponsableGem(null); return; }
+    const { data: c } = await supabase.from("comptes").select("*").eq("id", data.compte_id).maybeSingle();
+    setResponsableGem(c || null);
+    if (c) {
+      const { data: derniereSante } = await supabase.from("sante_spirituelle_responsables").select("*").eq("compte_id", c.id).order("date_maj", { ascending: false }).limit(1).maybeSingle();
+      setValeursResponsable({
+        meditation: derniereSante?.meditation ?? 5, jeune: derniereSante?.jeune ?? 5, priere: derniereSante?.priere ?? 5,
+        sanctification: derniereSante?.sanctification ?? 5, dons: derniereSante?.dons ?? 5, caractere: derniereSante?.caractere ?? 5,
+      });
+    }
+  }
+
+  async function enregistrerSanteResponsable() {
+    if (!responsableGem || !valeursResponsable) return;
+    setEnregistrementResponsable(true);
+    const { error } = await supabase.from("sante_spirituelle_responsables").insert({ compte_id: responsableGem.id, ...valeursResponsable });
+    setEnregistrementResponsable(false);
+    if (error) { toast("Erreur d'enregistrement : " + error.message, "erreur"); return; }
+    toast(`✓ Santé spirituelle de ${responsableGem.nom} enregistrée.`, "succes");
+  }
+
+  async function initialiser() {
+    setChargement(true);
+    const dateAuj = dimancheActuel();
+    let { data: dimAuj } = await supabase.from("dimanches").select("*").eq("date", dateAuj).maybeSingle();
+    if (!dimAuj) {
+      const { data: nouveauDim } = await supabase.from("dimanches").insert({ date: dateAuj }).select().single();
+      dimAuj = nouveauDim;
+    }
+    const { data: toutesLesSemaines } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(52);
+    setDimanches(toutesLesSemaines || []);
+    setDimancheId(dimAuj.id);
+  }
+
+  async function chargerDonnees() {
+    setChargement(true);
+    if (membres.length > 0) {
+      const { data: sante } = await supabase.from("sante_spirituelle").select("*").in("membre_id", membres.map(m => m.id)).order("date_maj", { ascending: false });
+      const map = {};
+      (sante || []).forEach(s => { if (!map[s.membre_id]) map[s.membre_id] = s; });
+      const init = {};
+      membres.forEach(m => {
+        const derniere = map[m.id];
+        init[m.id] = {
+          meditation: derniere?.meditation ?? 5, jeune: derniere?.jeune ?? 5, priere: derniere?.priere ?? 5,
+          sanctification: derniere?.sanctification ?? 5, dons: derniere?.dons ?? 5, caractere: derniere?.caractere ?? 5,
+        };
+      });
+      setValeursParMembre(init);
+    }
+    const { data: validation } = await supabase.from("validations_sante").select("*").eq("gem_id", gem.id).eq("dimanche_id", dimancheId).maybeSingle();
+    setValide(!!validation?.valide);
+    setChargement(false);
+  }
+
+  function modifierValeur(membreId, cle, valeur) {
+    setValeursParMembre(v => ({ ...v, [membreId]: { ...v[membreId], [cle]: valeur } }));
+    if (valide) setValide(false);
+  }
+
+  async function valider() {
+    setEnregistrement(true);
+    // Enregistre une nouvelle évaluation pour chaque membre de ce GEM
+    const lignes = membres.map(m => ({ membre_id: m.id, ...valeursParMembre[m.id] }));
+    const { error: err1 } = await supabase.from("sante_spirituelle").insert(lignes);
+    if (err1) { toast("Erreur d'enregistrement : " + err1.message, "erreur"); setEnregistrement(false); return; }
+
+    const { error: err2 } = await supabase.from("validations_sante").upsert(
+      { gem_id: gem.id, dimanche_id: dimancheId, valide: true, valide_par: compte?.id || null, date_validation: new Date().toISOString() },
+      { onConflict: "gem_id,dimanche_id" }
+    );
+    setEnregistrement(false);
+    if (err2) { toast("Erreur de validation : " + err2.message, "erreur"); return; }
+    setValide(true);
+    toast("✓ Rapport de santé spirituelle validé pour cette semaine. 🙏", "succes");
+  }
+
+  if (chargement) return <Chargement />;
+
+  return (
+    <div>
+      <div style={{ ...cardStyle, marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
+          <p style={{ fontWeight: 600, fontSize: 14, margin: 0 }}>🌡️ Santé spirituelle — semaine</p>
+          {valide && (
+            <span style={{ fontSize: 11, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD, borderRadius: 999, padding: "4px 10px" }}>✓ Rapport validé</span>
+          )}
+        </div>
+        <select
+          value={dimancheId || ""}
+          onChange={e => setDimancheId(e.target.value)}
+          style={{ padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, marginBottom: 12 }}
+        >
+          {dimanches.map(d => (
+            <option key={d.id} value={d.id}>
+              {new Date(d.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
+            </option>
+          ))}
+        </select>
+        <p style={{ fontSize: 11, color: "#a9d6cf", marginBottom: 12 }}>Évalue chaque membre de 0 (faible) à 10 (excellent), puis valide le rapport de la semaine.</p>
+
+        {responsableGem && valeursResponsable && (
+          <div style={{ border: `2px solid ${GOLD}`, borderRadius: 8, marginBottom: 14, backgroundColor: "rgba(208,175,28,0.08)" }}>
+            <button
+              className="btn-app"
+              onClick={() => setResponsableOuvert(v => !v)}
+              style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", padding: "10px 14px", background: "none", border: "none", cursor: "pointer", color: CREAM, textAlign: "left" }}
+            >
+              <span>
+                <span style={{ fontWeight: 700, fontSize: 13 }}>{responsableGem.nom}</span>
+                <span style={{ fontSize: 10, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, borderRadius: 999, padding: "2px 8px", marginLeft: 8 }}>👤 Responsable</span>
+              </span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: couleurScore(moyenneSante(valeursResponsable)) }}>{moyenneSante(valeursResponsable)}/10 {responsableOuvert ? "▲" : "▼"}</span>
+            </button>
+            {responsableOuvert && (
+              <div style={{ padding: "0 14px 14px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+                {DIMENSIONS_SANTE.map(([cle, label]) => (
+                  <div key={cle}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                      <label style={{ fontSize: 12, color: "#cdeae4" }}>{label}</label>
+                      <span style={{ fontSize: 12, fontWeight: 700, color: couleurScore(valeursResponsable[cle]) }}>{valeursResponsable[cle]}/10</span>
+                    </div>
+                    <input
+                      type="range" min="0" max="10" value={valeursResponsable[cle] ?? 5}
+                      onChange={e => setValeursResponsable(v => ({ ...v, [cle]: Number(e.target.value) }))}
+                      style={{ width: "100%", accentColor: GOLD }}
+                    />
+                  </div>
+                ))}
+                <button
+                  className="btn-app"
+                  disabled={enregistrementResponsable}
+                  onClick={enregistrerSanteResponsable}
+                  style={{ padding: "10px 0", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+                >
+                  {enregistrementResponsable ? "…" : "💾 Enregistrer ma fiche"}
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {membres.length === 0 ? (
+          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Ajoute d'abord un membre dans l'onglet "Membres & Présence".</p>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {membres.map(m => {
+              const valeurs = valeursParMembre[m.id] || {};
+              const moyenne = moyenneSante(valeurs);
+              const ouvert = membreOuvert === m.id;
+              return (
+                <div key={m.id} style={{ backgroundColor: TEAL_900, borderRadius: 8, border: `1px solid ${TEAL_700}` }}>
+                  <button
+                    className="btn-app"
+                    onClick={() => setMembreOuvert(ouvert ? null : m.id)}
+                    style={{ display: "flex", justifyContent: "space-between", alignItems: "center", width: "100%", padding: "10px 14px", background: "none", border: "none", cursor: "pointer", color: CREAM, textAlign: "left" }}
+                  >
+                    <span style={{ fontWeight: 700, fontSize: 13 }}>{m.nom}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: couleurScore(moyenne) }}>{moyenne !== null ? `${moyenne}/10` : "—"} {ouvert ? "▲" : "▼"}</span>
+                  </button>
+                  {ouvert && (
+                    <div style={{ padding: "0 14px 14px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
+                      {DIMENSIONS_SANTE.map(([cle, label]) => (
+                        <div key={cle}>
+                          <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                            <label style={{ fontSize: 12, color: "#cdeae4" }}>{label}</label>
+                            <span style={{ fontSize: 12, fontWeight: 700, color: couleurScore(valeurs[cle]) }}>{valeurs[cle]}/10</span>
+                          </div>
+                          <input
+                            type="range" min="0" max="10" value={valeurs[cle] ?? 5}
+                            onChange={e => modifierValeur(m.id, cle, Number(e.target.value))}
+                            style={{ width: "100%", accentColor: GOLD }}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {membres.length > 0 && (
+          <button
+            className="btn-app"
+            disabled={enregistrement}
+            onClick={valider}
+            style={{ marginTop: 16, padding: "12px 20px", borderRadius: 10, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
+          >
+            {enregistrement ? "…" : valide ? "Revalider le rapport" : "Valider le rapport de santé spirituelle"}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 function ActivitesSemaine({ gem, membres, compte, cardStyle }) {
   const [dimanches, setDimanches] = useState([]);
@@ -4537,7 +4792,7 @@ function PageAide({ estPasteur, cardStyle }) {
 
   return (
     <div>
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>❓ Aide</h2>
+      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>❓ Aide</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 24 }}>
         Un guide rapide pour utiliser l'application. Clique sur une question pour voir la réponse.
       </p>
@@ -4816,7 +5071,7 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
 
   return (
     <div>
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>🚫 Absences</h2>
+      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>🚫 Absences</h2>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
         {[["hebdomadaire", "Hebdomadaire"], ["mensuelle", "Mensuelle"], ["annuelle", "Annuelle"]].map(([cle, label]) => (
@@ -5374,7 +5629,7 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
 
   return (
     <div>
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>👥 Membres</h2>
+      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>👥 Membres</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>{toutesLesPersonnes.length} personne(s) — membres et responsables confondus.</p>
 
       <input
@@ -5523,7 +5778,7 @@ function PageNouveaux({ membres, gems, tribus, departements, gemsAutorises, card
 
   return (
     <div>
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>🌱 Suivi des nouveaux convertis</h2>
+      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>🌱 Suivi des nouveaux convertis</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>{nouveaux.length} nouveau(x) converti(s) suivis à travers toute l'église.</p>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
@@ -5653,7 +5908,7 @@ function PageSanteResponsables({ tousLesComptes, gems, tribus, departements, res
     return (
       <div>
         <button className="btn-app" onClick={() => setResponsableSelectionne(null)} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 16, fontSize: 13 }}>← Retour à la liste</button>
-        <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{compteDetail.nom}</h2>
+        <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>{compteDetail.nom}</h2>
         <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 4 }}>{compteDetail.role === "pasteur" ? "Pasteur" : compteDetail.assistant ? "Assistant désigné" : "Responsable"}</p>
         <p style={{ fontSize: 13, color: GOLD_LIGHT, marginBottom: 20 }}>{infosResponsable(compteDetail)}</p>
 
@@ -5707,7 +5962,7 @@ function PageSanteResponsables({ tousLesComptes, gems, tribus, departements, res
 
   return (
     <div>
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>🌡️ Santé spirituelle des responsables</h2>
+      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>🌡️ Santé spirituelle des responsables</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>Suivi des fiches remplies chaque semaine par les responsables GEM, département et tribu.</p>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
@@ -5978,7 +6233,7 @@ function PageAnalyse({ gems, membres, cardStyle }) {
 
   return (
     <div>
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>🧠 Analyse intelligente</h2>
+      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>🧠 Analyse intelligente</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 8 }}>
         Détection automatique des tendances et recommandations, sur une fenêtre glissante de 4 semaines.
       </p>
@@ -6140,7 +6395,7 @@ function PageMonCompte({ compte, cardStyle, onMisAJour }) {
 
   return (
     <div style={{ maxWidth: 480 }}>
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>👤 Mon compte</h2>
+      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>👤 Mon compte</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>Tes informations et la gestion de ton mot de passe.</p>
 
       <div style={{ ...cardStyle, marginBottom: 20, border: `2px solid ${GOLD}`, background: "linear-gradient(135deg, rgba(208,175,28,0.12), rgba(232,202,74,0.04))" }}>
@@ -6322,7 +6577,7 @@ function PageSuppressions({ compte, cardStyle, onTraite }) {
 
   return (
     <div>
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Demandes de suppression ({demandes.length})</h2>
+      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>Demandes de suppression ({demandes.length})</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>
         Chaque suppression de membre doit être validée ici avant d'être effective.
       </p>
@@ -6440,7 +6695,7 @@ function PageMotsDePasse({ cardStyle, onTraite }) {
 
   return (
     <div>
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Mots de passe oubliés ({demandes.length})</h2>
+      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>Mots de passe oubliés ({demandes.length})</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>
         Ces demandes viennent de responsables qui n'arrivent plus à se connecter. Choisis un nouveau mot de passe pour eux et transmets-le leur directement.
       </p>
@@ -7209,7 +7464,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
   return (
     <div>
       {selecteurRole}
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>
+      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>
         {estDept ? "Mon département" : "Ma tribu"} — {parent?.nom || "…"}
       </h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>{gemsDuPerimetre.length} GEM sous ta responsabilité</p>
@@ -7707,7 +7962,7 @@ function DetailTribuDeptClassement({ type, item, gems, membres, onBack, cardStyl
   return (
     <div>
       <button className="btn-app" onClick={onBack} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 16, fontSize: 13 }}>← Retour au classement</button>
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>{type === "tribu" ? "🏛️" : "🏢"} {item.nom}</h2>
+      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>{type === "tribu" ? "🏛️" : "🏢"} {item.nom}</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>{gemsDuPerimetre.length} GEM · {membresDuPerimetre.length} membre(s)</p>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 20 }}>
@@ -9176,7 +9431,8 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
   const iconesUtilisees = [...new Set(actif.cles.map(([, icone]) => icone))];
 
   return (
-    <div style={{ backgroundColor: TEAL_900, border: `1px solid ${GOLD}`, borderRadius: 12, padding: 12, marginBottom: 20 }}>
+    <div style={{ position: "relative", overflow: "hidden", backgroundColor: TEAL_900, border: `1px solid ${GOLD}`, borderRadius: 12, padding: 12, marginBottom: 20 }}>
+      <div style={{ position: "absolute", bottom: -6, right: 4, pointerEvents: "none" }}><EpiDeBle size={44} opacity={0.1} /></div>
       <p style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>🏆 Classement — Top 3 du mois</p>
       <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
         {disponibles.map(o => (
@@ -9346,7 +9602,7 @@ function PageHistorique({ cardStyle }) {
 
   return (
     <div>
-      <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 4 }}>Historique</h2>
+      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>Historique</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>Évolution de l'assemblée dans le temps — {totalMembres} membres suivis au total.</p>
 
       {chargement ? (
