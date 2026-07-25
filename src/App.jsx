@@ -3089,6 +3089,13 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
   }
 
   async function validerRapportPresence() {
+    // Le motif d'absence est obligatoire — on bloque la validation tant qu'un
+    // absent n'a pas de motif renseigné.
+    const absentsSansMotif = membres.filter(m => presences[m.id] && !presences[m.id].present && !presences[m.id].motif?.trim());
+    if (absentsSansMotif.length > 0) {
+      toast(`⚠️ Renseigne le motif d'absence de ${absentsSansMotif.length === 1 ? absentsSansMotif[0].nom : `${absentsSansMotif.length} membres`} avant de valider le rapport.`, "erreur");
+      return;
+    }
     setValidationEnCours(true);
     const { error } = await supabase.from("validations_presence").upsert({
       gem_id: gem.id, dimanche_id: dimancheId, valide: true,
@@ -3353,8 +3360,8 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
                       defaultValue={motif}
                       onBlur={e => enregistrerMotif(m.id, e.target.value)}
                       onClick={e => e.stopPropagation()}
-                      placeholder="Motif de l'absence (optionnel)..."
-                      style={{ width: "100%", padding: "8px 14px", fontSize: 12, backgroundColor: TEAL_950, color: "#cdeae4", border: `1px solid ${TEAL_700}`, borderTop: "none", borderRadius: "0 0 8px 8px" }}
+                      placeholder="Motif de l'absence (obligatoire)..."
+                      style={{ width: "100%", padding: "8px 14px", fontSize: 12, backgroundColor: TEAL_950, color: "#cdeae4", border: `1px solid ${motif?.trim() ? TEAL_700 : "rgba(226,119,123,0.5)"}`, borderTop: "none", borderRadius: "0 0 8px 8px" }}
                     />
                   )}
                 </div>
@@ -6534,32 +6541,6 @@ function PageMonCompte({ compte, cardStyle, onMisAJour }) {
   const [quartier, setQuartier] = useState(compte.quartier || "");
   const [enregistrementProfil, setEnregistrementProfil] = useState(false);
 
-  const [derniereSante, setDerniereSante] = useState(null);
-  const [valeursSante, setValeursSante] = useState(null);
-  const [enregistrementSante, setEnregistrementSante] = useState(false);
-  const [chargementSante, setChargementSante] = useState(true);
-
-  useEffect(() => { chargerMaSante(); }, []);
-
-  async function chargerMaSante() {
-    setChargementSante(true);
-    const { data } = await supabase.from("sante_spirituelle_responsables").select("*").eq("compte_id", compte.id).order("date_maj", { ascending: false }).limit(1).maybeSingle();
-    setDerniereSante(data || null);
-    const init = {};
-    DIMENSIONS_SANTE.forEach(([cle]) => { init[cle] = data?.[cle] ?? 5; });
-    setValeursSante(init);
-    setChargementSante(false);
-  }
-
-  async function enregistrerMaSante() {
-    setEnregistrementSante(true);
-    const { error } = await supabase.from("sante_spirituelle_responsables").insert({ compte_id: compte.id, ...valeursSante });
-    setEnregistrementSante(false);
-    if (error) { toast("Impossible d'enregistrer : " + error.message, "erreur"); return; }
-    toast("✓ Ta fiche de santé spirituelle a été enregistrée. Sois béni ! 🙏", "succes");
-    chargerMaSante();
-  }
-
   function emailTechnique(tel) {
     return `${(tel || "").replace(/[^\d]/g, "")}@gestiongem.com`;
   }
@@ -6601,45 +6582,6 @@ function PageMonCompte({ compte, cardStyle, onMisAJour }) {
     <div style={{ maxWidth: 480 }}>
       <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>👤 Mon compte</h2>
       <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>Tes informations et la gestion de ton mot de passe.</p>
-
-      <div style={{ ...cardStyle, marginBottom: 20, border: `2px solid ${GOLD}`, background: "linear-gradient(135deg, rgba(208,175,28,0.12), rgba(232,202,74,0.04))" }}>
-        <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 4 }}>🌡️ Ma fiche de santé spirituelle</p>
-        <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 14 }}>À remplir chaque semaine — évalue chaque dimension de 0 (faible) à 10 (excellent).</p>
-        {chargementSante ? (
-          <Chargement />
-        ) : (
-          <>
-            {derniereSante && (
-              <p style={{ fontSize: 12, color: GOLD_LIGHT, marginBottom: 12 }}>
-                Dernière évaluation : {new Date(derniereSante.date_maj).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })} — score moyen : {moyenneSante(derniereSante)}/10
-              </p>
-            )}
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {DIMENSIONS_SANTE.map(([cle, label]) => (
-                <div key={cle}>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                    <label style={{ fontSize: 13 }}>{label}</label>
-                    <span style={{ fontSize: 13, fontWeight: 700, color: couleurScore(valeursSante[cle]) }}>{valeursSante[cle]}/10</span>
-                  </div>
-                  <input
-                    type="range" min="0" max="10" value={valeursSante[cle]}
-                    onChange={e => setValeursSante(v => ({ ...v, [cle]: Number(e.target.value) }))}
-                    style={{ width: "100%", accentColor: GOLD }}
-                  />
-                </div>
-              ))}
-            </div>
-            <button
-              className="btn-app"
-              disabled={enregistrementSante}
-              onClick={enregistrerMaSante}
-              style={{ marginTop: 16, padding: "12px 20px", borderRadius: 10, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, fontSize: 14, cursor: "pointer" }}
-            >
-              {enregistrementSante ? "…" : "💾 Enregistrer ma fiche"}
-            </button>
-          </>
-        )}
-      </div>
 
       <div style={{ ...cardStyle, marginBottom: 20 }}>
         <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>Informations</p>
@@ -9151,7 +9093,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
 /* ------------------------------- Messagerie ------------------------------- */
 
 function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
-  const [onglet, setOnglet] = useState("diffusion"); // diffusion | direct | rappels
+  const [onglet, setOnglet] = useState("diffusion"); // diffusion | direct | prive | rappels
   const [messages, setMessages] = useState([]);
   const [messagesDirects, setMessagesDirects] = useState([]);
   const [notificationsPerso, setNotificationsPerso] = useState([]);
@@ -9160,13 +9102,39 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
   const [imageMessage, setImageMessage] = useState(null);
   const [imageEnCours, setImageEnCours] = useState(false);
   const [chargement, setChargement] = useState(true);
+  const [tousLesComptes, setTousLesComptes] = useState([]);
+  const [messagesPrives, setMessagesPrives] = useState([]);
+  const [destinataireChoisi, setDestinataireChoisi] = useState(null);
+  const [rechercheDestinataire, setRechercheDestinataire] = useState("");
+  const [textePrive, setTextePrive] = useState("");
 
   useEffect(() => {
     chargerTout();
+    chargerComptes();
     if (!estPasteur) {
       supabase.from("comptes").update({ dernier_message_lu: new Date().toISOString() }).eq("id", compte.id).then(() => { if (onActionnee) onActionnee(); });
     }
   }, []);
+
+  async function chargerComptes() {
+    const { data } = await supabase.from("comptes").select("*").neq("id", compte.id).order("nom", { ascending: true });
+    setTousLesComptes(data || []);
+  }
+
+  async function chargerMessagesPrives() {
+    // Ne récupère que les messages où JE suis expéditeur ou destinataire —
+    // une vraie conversation privée, invisible aux autres.
+    const { data } = await supabase.from("messages_directs").select("*").not("destinataire_id", "is", null).or(`de_compte_id.eq.${compte.id},destinataire_id.eq.${compte.id}`).order("date", { ascending: true });
+    setMessagesPrives(data || []);
+  }
+
+  useEffect(() => { if (onglet === "prive") chargerMessagesPrives(); }, [onglet]);
+
+  async function envoyerMessagePrive() {
+    if (!textePrive.trim() || !destinataireChoisi) return;
+    const { error } = await supabase.from("messages_directs").insert({ texte: textePrive.trim(), de_compte_id: compte.id, destinataire_id: destinataireChoisi.id });
+    if (!error) { setTextePrive(""); chargerMessagesPrives(); }
+  }
 
   async function chargerTout() {
     setChargement(true);
@@ -9244,6 +9212,11 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
  className="btn-app"
  onClick={() => setOnglet("direct")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "direct" ? GOLD : TEAL_900, color: onglet === "direct" ? TEAL_950 : "#cdeae4" }}>
           {estPasteur ? "Boîte de réception" : "Écrire au pasteur"}{estPasteur && nonLus > 0 ? ` (${nonLus})` : ""}
+        </button>
+        <button
+ className="btn-app"
+ onClick={() => setOnglet("prive")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "prive" ? GOLD : TEAL_900, color: onglet === "prive" ? TEAL_950 : "#cdeae4" }}>
+          <span style={{display:"inline-flex",alignItems:"center",gap:6}}>🔒 Message privé</span>
         </button>
         <button
  className="btn-app"
@@ -9340,6 +9313,67 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
                 </div>
               ))}
             </div>
+          )}
+        </div>
+      ) : onglet === "prive" ? (
+        <div>
+          {!destinataireChoisi ? (
+            <>
+              <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 12 }}>Choisis la personne à qui écrire — elle seule verra ce message, personne d'autre.</p>
+              <input
+                value={rechercheDestinataire}
+                onChange={e => setRechercheDestinataire(e.target.value)}
+                placeholder="Rechercher un responsable par nom..."
+                style={{ width: "100%", maxWidth: 320, padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, marginBottom: 14 }}
+              />
+              {tousLesComptes.filter(c => c.nom.toLowerCase().includes(rechercheDestinataire.toLowerCase())).length === 0 ? (
+                <EtatVide icone={IconePersonne} titre="Aucun résultat" />
+              ) : (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {tousLesComptes.filter(c => c.nom.toLowerCase().includes(rechercheDestinataire.toLowerCase())).slice(0, 30).map(c => (
+                    <button key={c.id} className="btn-app card-app" onClick={() => setDestinataireChoisi(c)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontWeight: 700, fontSize: 14 }}>{c.nom}</span>
+                      <span style={{ fontSize: 11, color: "#a9d6cf" }}>{c.role === "pasteur" ? "Pasteur" : c.assistant ? "Assistant" : "Responsable"}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <button className="btn-app" onClick={() => setDestinataireChoisi(null)} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 14, fontSize: 13 }}>← Choisir une autre personne</button>
+              <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>🔒 Conversation avec {destinataireChoisi.nom}</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16, maxHeight: 420, overflowY: "auto" }}>
+                {messagesPrives.filter(m => (m.de_compte_id === compte.id && m.destinataire_id === destinataireChoisi.id) || (m.de_compte_id === destinataireChoisi.id && m.destinataire_id === compte.id)).length === 0 ? (
+                  <EtatVide icone={IconeMessage} titre="Aucun message pour l'instant" description="Écris le premier message ci-dessous." />
+                ) : (
+                  messagesPrives
+                    .filter(m => (m.de_compte_id === compte.id && m.destinataire_id === destinataireChoisi.id) || (m.de_compte_id === destinataireChoisi.id && m.destinataire_id === compte.id))
+                    .map(m => (
+                      <div key={m.id} style={{ alignSelf: m.de_compte_id === compte.id ? "flex-end" : "flex-start", maxWidth: "80%", backgroundColor: m.de_compte_id === compte.id ? "rgba(214,165,76,0.15)" : TEAL_900, border: `1px solid ${m.de_compte_id === compte.id ? "rgba(214,165,76,0.4)" : TEAL_700}`, borderRadius: 12, padding: "10px 14px" }}>
+                        <p style={{ whiteSpace: "pre-wrap", fontSize: 13, margin: 0 }}>{m.texte}</p>
+                        <p style={{ fontSize: 10, color: "#a9d6cf", marginTop: 4, marginBottom: 0 }}>{formaterDate(m.date)}</p>
+                      </div>
+                    ))
+                )}
+              </div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <input
+                  value={textePrive}
+                  onChange={e => setTextePrive(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") envoyerMessagePrive(); }}
+                  placeholder="Écris ton message..."
+                  style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}
+                />
+                <button
+                  className="btn-app"
+                  onClick={envoyerMessagePrive}
+                  style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer" }}
+                >
+                  Envoyer
+                </button>
+              </div>
+            </>
           )}
         </div>
       ) : (
