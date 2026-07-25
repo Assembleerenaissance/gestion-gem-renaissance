@@ -2464,7 +2464,7 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
       {chargement ? (
         <Chargement />
       ) : membresFiltres.length === 0 ? (
-        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun membre trouvé.</p>
+        <EtatVide icone={IconeRecherche} titre="Aucun membre trouvé" />
       ) : (
         <>
         <div className="fade-in" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -6096,7 +6096,7 @@ function PageSanteResponsables({ tousLesComptes, gems, tribus, departements, res
         <p style={{ fontSize: 13, color: GOLD_LIGHT, marginBottom: 20 }}>{infosResponsable(compteDetail)}</p>
 
         {!ficheDetail ? (
-          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucune fiche de santé spirituelle remplie pour l'instant.</p>
+          <EtatVide icone={IconeThermometre} titre="Aucune fiche remplie pour l'instant" />
         ) : (
           <>
             <div style={{ ...cardStyle, marginBottom: 20 }}>
@@ -7075,7 +7075,7 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
 
   function nomGem(gemId) { return gems.find(g => g.id === gemId)?.nom || ""; }
 
-  if (gems.length === 0) return <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun GEM dans ton périmètre pour l'instant.</p>;
+  if (gems.length === 0) return <EtatVide icone={IconeMaison} titre="Aucun GEM dans ton périmètre" />;
 
   return (
     <div>
@@ -7089,7 +7089,7 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
       </div>
 
       {dimanches.length === 0 ? (
-        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun dimanche enregistré pour l'instant.</p>
+        <EtatVide icone={IconeCalendrier} titre="Aucun dimanche enregistré" description="Le pointage de présence en créera un automatiquement." />
       ) : vue === "hebdomadaire" ? (
         <>
           <select value={dimancheChoisi || ""} onChange={e => setDimancheChoisi(e.target.value)} style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, marginBottom: 16 }}>
@@ -7320,7 +7320,7 @@ function ActivitesSemainePerimetre({ gems, membres, tribus, departements, cardSt
   const totalVisites = activites.reduce((s, a) => s + (a.visites_membres?.length || 0), 0);
   const totalAppels = activites.reduce((s, a) => s + (a.appels_membres?.length || 0), 0);
 
-  if (gems.length === 0) return <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun GEM dans ton périmètre pour l'instant.</p>;
+  if (gems.length === 0) return <EtatVide icone={IconeMaison} titre="Aucun GEM dans ton périmètre" />;
 
   return (
     <div>
@@ -7331,7 +7331,7 @@ function ActivitesSemainePerimetre({ gems, membres, tribus, departements, cardSt
       </div>
 
       {dimanches.length === 0 ? (
-        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun dimanche enregistré pour l'instant.</p>
+        <EtatVide icone={IconeCalendrier} titre="Aucun dimanche enregistré" description="Le pointage de présence en créera un automatiquement." />
       ) : (
         <>
           {vue === "semaine" ? (
@@ -7483,7 +7483,7 @@ function EvolutionPerimetre({ membres, cardStyle }) {
       <div style={{ ...cardStyle, marginBottom: 24 }}>
         <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>Présence par dimanche</p>
         {presenceParDimanche.length === 0 ? (
-          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun pointage de présence pour l'instant.</p>
+          <EtatVide icone={IconeGroupe} titre="Aucun pointage de présence pour l'instant" />
         ) : (
           <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height: 140, overflowX: "auto", paddingBottom: 4 }}>
             {presenceParDimanche.map((p, i) => (
@@ -7502,7 +7502,7 @@ function EvolutionPerimetre({ membres, cardStyle }) {
       <div style={cardStyle}>
         <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>Santé spirituelle moyenne par mois</p>
         {santeParMois.length === 0 ? (
-          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucune évaluation enregistrée pour l'instant.</p>
+          <EtatVide icone={IconeThermometre} titre="Aucune évaluation enregistrée" />
         ) : (
           <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 140, overflowX: "auto", paddingBottom: 4 }}>
             {santeParMois.map((s, i) => (
@@ -7557,7 +7557,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [assignationSure?.id, gemsDuPerimetrePourChargement.length]);
 
-  if (listeAssignations.length === 0) return <p style={{ color: "#a9d6cf" }}>Aucune responsabilité active trouvée.</p>;
+  if (listeAssignations.length === 0) return <div style={{ padding: 24 }}><EtatVide icone={IconePersonne} titre="Aucune responsabilité active" description="Ton compte n'a pas encore de rôle validé." /></div>;
 
   const assignation = listeAssignations[Math.min(indexRoleSelectionne, listeAssignations.length - 1)];
 
@@ -7715,7 +7715,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
           </div>
 
           {gemsDuPerimetre.length === 0 ? (
-            <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun GEM pour l'instant dans ton périmètre.</p>
+            <EtatVide icone={IconeMaison} titre="Aucun GEM dans ton périmètre" />
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {gemsDuPerimetre.map(g => (
@@ -8789,7 +8789,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
 
             {sousClassement === "hebdomadaire" && (
               dimanches.length === 0 ? (
-                <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun dimanche enregistré pour l'instant.</p>
+                <EtatVide icone={IconeCalendrier} titre="Aucun dimanche enregistré" description="Le pointage de présence en créera un automatiquement." />
               ) : (
                 <Classement
                   titre={`🏅 Classement des GEM — ${dateAffichee ? new Date(dateAffichee.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" }) : "ce dimanche"}`}
@@ -9325,7 +9325,7 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
         <div>
           <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>Rappels automatiques générés par l'application (ex : rapport hebdomadaire non validé).</p>
           {notificationsPerso.length === 0 ? (
-            <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun rappel pour l'instant.</p>
+            <EtatVide icone={IconeCloche} titre="Aucun rappel pour l'instant" />
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {notificationsPerso.map(n => (
@@ -9811,7 +9811,7 @@ function PageHistorique({ cardStyle }) {
           <div style={{ ...cardStyle, marginBottom: 24 }}>
             <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>Présence par dimanche</p>
             {presenceParDimanche.length === 0 ? (
-              <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun pointage de présence pour l'instant.</p>
+              <EtatVide icone={IconeGroupe} titre="Aucun pointage de présence pour l'instant" />
             ) : (
               <GraphiqueBarres
                 donnees={presenceParDimanche.map(p => ({
@@ -9827,7 +9827,7 @@ function PageHistorique({ cardStyle }) {
           <div style={{ ...cardStyle, marginBottom: 24 }}>
             <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>Taux de présence moyen par mois</p>
             {presenceParMois.length === 0 ? (
-              <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucune donnée mensuelle pour l'instant.</p>
+              <EtatVide icone={IconeCalendrier} titre="Aucune donnée mensuelle pour l'instant" />
             ) : (
               <GraphiqueBarres
                 donnees={presenceParMois.map(m => ({
@@ -9843,7 +9843,7 @@ function PageHistorique({ cardStyle }) {
           <div style={{ ...cardStyle, marginBottom: 24 }}>
             <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>Santé spirituelle moyenne par mois</p>
             {santeParMois.length === 0 ? (
-              <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucune évaluation enregistrée pour l'instant.</p>
+              <EtatVide icone={IconeThermometre} titre="Aucune évaluation enregistrée" />
             ) : (
               <GraphiqueBarres
                 donnees={santeParMois.map(s => ({
@@ -9860,7 +9860,7 @@ function PageHistorique({ cardStyle }) {
           <div style={cardStyle}>
             <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16, display: "flex", alignItems: "center", gap: 6 }}><IconeClipboard size={15} /> Rapports d'activités validés par mois</p>
             {activiteParMois.length === 0 ? (
-              <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun rapport d'activité enregistré pour l'instant.</p>
+              <EtatVide icone={IconeClipboard} titre="Aucun rapport d'activité enregistré" />
             ) : (
               <GraphiqueBarres
                 donnees={activiteParMois.map(a => ({
