@@ -34,6 +34,72 @@ function EpiDeBle({ size = 22, color, opacity = 1 }) {
   );
 }
 
+// Icônes en SVG intégré — aucune dépendance externe à installer, donc aucun
+// risque de casser le déploiement. Traits fins et cohérents, à la lucide.
+function IconeTelephone({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+    </svg>
+  );
+}
+function IconeMessage({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+    </svg>
+  );
+}
+function IconeRecherche({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="11" cy="11" r="8" /><path d="m21 21-4.3-4.3" />
+    </svg>
+  );
+}
+function IconeGroupe({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M22 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+}
+function IconeMaison({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><path d="M9 22V12h6v10" />
+    </svg>
+  );
+}
+function IconeCloche({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9" /><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0" />
+    </svg>
+  );
+}
+function IconeValide({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 6 9 17l-5-5" />
+    </svg>
+  );
+}
+function IconeAlerte({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="m21.73 18-8-14a2 2 0 0 0-3.46 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><path d="M12 9v4" /><path d="M12 17h.01" />
+    </svg>
+  );
+}
+function IconeTrophee({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 21h8" /><path d="M12 17v4" /><path d="M7 4h10v5a5 5 0 0 1-10 0z" /><path d="M17 4h3a2 2 0 0 1 2 2 5 5 0 0 1-5 5" /><path d="M7 4H4a2 2 0 0 0-2 2 5 5 0 0 0 5 5" />
+    </svg>
+  );
+}
+
 function StylesGlobaux() {
   return (
     <style>{`
@@ -1965,7 +2031,7 @@ function PrioritesPastorales({ membres, gems, regulariteParMembre, cardStyle }) 
                 {membre.telephone && (
                   <>
                     <a title="Appeler" href={`tel:${membre.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
-                      📞</a>
+                      <IconeTelephone size={15} /></a>
                     <a
                       href={`https://wa.me/${numeroPourWhatsApp(membre.telephone)}?text=${encodeURIComponent(`Bonjour ${membre.nom}, tu nous manques beaucoup ces derniers temps. Est-ce que tout va bien ? Nous t'aimons et espérons te revoir bientôt au culte. 🙏
 
@@ -1974,7 +2040,7 @@ function PrioritesPastorales({ membres, gems, regulariteParMembre, cardStyle }) 
                       rel="noopener noreferrer"
                       style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}
                     >
-                      💬</a>
+                      <IconeMessage size={15} /></a>
                   </>
                 )}
               </div>
@@ -2337,9 +2403,9 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
                     {m.telephone && (
                       <>
                         <a title="Appeler" href={`tel:${m.telephone}`} className="btn-app" style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
-                          📞</a>
+                          <IconeTelephone size={15} /></a>
                         <a title="Envoyer un message WhatsApp" href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" className="btn-app" style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
-                          💬</a>
+                          <IconeMessage size={15} /></a>
                       </>
                     )}
                     <button
@@ -3641,7 +3707,7 @@ function ActivitesSemaine({ gem, membres, compte, cardStyle }) {
           </div>
 
           <div style={{ ...cardStyle, marginBottom: 16 }}>
-            <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>📞 Appels effectués cette semaine</p>
+            <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}><IconeTelephone size={13} style={{ verticalAlign: "-2px", marginRight: 4 }} /> Appels effectués cette semaine</p>
             <p style={{ fontSize: 11, color: "#a9d6cf", marginBottom: 10 }}>Coche chaque membre appelé.</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {membres.map(m => {
@@ -4083,7 +4149,7 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
           <p style={{ fontWeight: 600 }}>{membre.nom}</p>
           {membre.telephone && (
             <a title="Appeler" href={`tel:${membre.telephone}`} onClick={e => e.stopPropagation()} style={{ fontSize: 12, color: "#a9d6cf", textDecoration: "none" }}>
-              📞 {membre.telephone}
+              <IconeTelephone size={12} style={{ verticalAlign: "-2px", marginRight: 4 }} /> {membre.telephone}
             </a>
           )}
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
@@ -5149,7 +5215,7 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
                       )}
                       {membre.telephone && (
                         <>
-                          <a title="Appeler" href={`tel:${membre.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}>📞</a>
+                          <a title="Appeler" href={`tel:${membre.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}><IconeTelephone size={15} /></a>
                           <a
                             title="WhatsApp"
                             href={`https://wa.me/${numeroPourWhatsApp(membre.telephone)}?text=${encodeURIComponent(`Bonjour ${membre.nom}, tu nous as manqué au culte. Est-ce que tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏
@@ -5158,7 +5224,7 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}
-                          >💬</a>
+                          ><IconeMessage size={15} /></a>
                         </>
                       )}
                     </div>
@@ -5181,7 +5247,7 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
                       </div>
                       {c.telephone && (
                         <div style={{ display: "flex", gap: 8 }}>
-                          <a title="Appeler" href={`tel:${c.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}>📞</a>
+                          <a title="Appeler" href={`tel:${c.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}><IconeTelephone size={15} /></a>
                           <a
                             title="WhatsApp"
                             href={`https://wa.me/${numeroPourWhatsApp(c.telephone)}?text=${encodeURIComponent(`Bonjour ${c.nom}, tu nous as manqué au culte. Est-ce que tout va bien ? 🙏
@@ -5190,7 +5256,7 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}
-                          >💬</a>
+                          ><IconeMessage size={15} /></a>
                         </div>
                       )}
                     </div>
@@ -5504,8 +5570,8 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
 
         {b.telephone && (
           <div style={{ display: "flex", gap: 10 }}>
-            <a href={`tel:${b.telephone}`} style={{ flex: 1, textAlign: "center", padding: "12px 0", borderRadius: 10, backgroundColor: GOLD_LIGHT, color: TEAL_950, fontWeight: 700, textDecoration: "none", fontSize: 14 }}>📞 Appeler</a>
-            <a href={`https://wa.me/${numeroWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, textAlign: "center", padding: "12px 0", borderRadius: 10, backgroundColor: "#25D366", color: "#fff", fontWeight: 700, textDecoration: "none", fontSize: 14 }}>💬 WhatsApp</a>
+            <a href={`tel:${b.telephone}`} style={{ flex: 1, textAlign: "center", padding: "12px 0", borderRadius: 10, backgroundColor: GOLD_LIGHT, color: TEAL_950, fontWeight: 700, textDecoration: "none", fontSize: 14 }}><IconeTelephone size={15} /> Appeler</a>
+            <a href={`https://wa.me/${numeroWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, textAlign: "center", padding: "12px 0", borderRadius: 10, backgroundColor: "#25D366", color: "#fff", fontWeight: 700, textDecoration: "none", fontSize: 14 }}><IconeMessage size={15} /> WhatsApp</a>
           </div>
         )}
       </div>
@@ -5593,8 +5659,8 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
 
         {p.telephone && (
           <div style={{ display: "flex", gap: 10, marginBottom: estPasteur && roleAGerer ? 10 : 0 }}>
-            <a href={`tel:${p.telephone}`} style={{ flex: 1, textAlign: "center", padding: "12px 0", borderRadius: 10, backgroundColor: GOLD_LIGHT, color: TEAL_950, fontWeight: 700, textDecoration: "none", fontSize: 14 }}>📞 Appeler</a>
-            <a href={`https://wa.me/${numeroWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, textAlign: "center", padding: "12px 0", borderRadius: 10, backgroundColor: "#25D366", color: "#fff", fontWeight: 700, textDecoration: "none", fontSize: 14 }}>💬 WhatsApp</a>
+            <a href={`tel:${p.telephone}`} style={{ flex: 1, textAlign: "center", padding: "12px 0", borderRadius: 10, backgroundColor: GOLD_LIGHT, color: TEAL_950, fontWeight: 700, textDecoration: "none", fontSize: 14 }}><IconeTelephone size={15} /> Appeler</a>
+            <a href={`https://wa.me/${numeroWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, textAlign: "center", padding: "12px 0", borderRadius: 10, backgroundColor: "#25D366", color: "#fff", fontWeight: 700, textDecoration: "none", fontSize: 14 }}><IconeMessage size={15} /> WhatsApp</a>
           </div>
         )}
 
@@ -6304,7 +6370,7 @@ function PageAnalyse({ gems, membres, cardStyle }) {
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <span style={{ fontSize: 12, fontWeight: 700, color: RED_LIGHT }}>{tauxPrecedent}% → {tauxActuel}%</span>
                         {membre.telephone && (
-                          <a title="Appeler" href={`tel:${membre.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}>📞</a>
+                          <a title="Appeler" href={`tel:${membre.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}><IconeTelephone size={15} /></a>
                         )}
                       </div>
                     </div>
@@ -6991,9 +7057,9 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
                         {m.telephone && (
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                             <a title="Appeler" href={`tel:${m.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
-                              📞</a>
+                              <IconeTelephone size={15} /></a>
                             <a title="Envoyer un message WhatsApp" href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
-                              💬</a>
+                              <IconeMessage size={15} /></a>
                           </div>
                         )}
                       </div>
@@ -7046,9 +7112,9 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
                         {m.telephone && (
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                             <a title="Appeler" href={`tel:${m.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
-                              📞</a>
+                              <IconeTelephone size={15} /></a>
                             <a title="Envoyer un message WhatsApp" href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
-                              💬</a>
+                              <IconeMessage size={15} /></a>
                           </div>
                         )}
                       </div>
@@ -7222,7 +7288,7 @@ function ActivitesSemainePerimetre({ gems, membres, tribus, departements, cardSt
                                     <p style={{ fontWeight: 700, color: GOLD_LIGHT }}>Semaine du {new Date(dim.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</p>
                                   )}
                                   <p><b>🏠 Visites :</b> {(a.visites_membres || []).length > 0 ? a.visites_membres.map(nomMembre).join(", ") : "Aucune"}</p>
-                                  <p><b>📞 Appels :</b> {(a.appels_membres || []).length > 0 ? a.appels_membres.map(nomMembre).join(", ") : "Aucun"}</p>
+                                  <p><b><IconeTelephone size={12} style={{ verticalAlign: "-2px", marginRight: 4 }} /> Appels :</b> {(a.appels_membres || []).length > 0 ? a.appels_membres.map(nomMembre).join(", ") : "Aucun"}</p>
                                   <p><b>🙏 Prière :</b> {a.priere_jour || a.priere_heures ? `${a.priere_jour || ""} ${a.priere_heures || ""}`.trim() : "Non renseignée"}</p>
                                   {a.jeune && <p><b>🕊️ Jeûne :</b> {a.jeune}</p>}
                                   {a.agape && <p><b>🍽️ Agapé :</b> {a.agape}</p>}
@@ -8798,9 +8864,9 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                         {m.telephone && (
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                             <a title="Appeler" href={`tel:${m.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
-                              📞</a>
+                              <IconeTelephone size={15} /></a>
                             <a title="Envoyer un message WhatsApp" href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
-                              💬</a>
+                              <IconeMessage size={15} /></a>
                           </div>
                         )}
                       </div>
