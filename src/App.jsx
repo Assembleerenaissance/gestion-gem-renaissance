@@ -329,21 +329,33 @@ function StylesGlobaux() {
 
       .btn-app { transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease; }
       .btn-app:hover:not(:disabled) { filter: brightness(1.12); transform: translateY(-1px); }
-      .btn-app:active:not(:disabled) { transform: translateY(0); filter: brightness(0.95); }
+      .btn-app:active:not(:disabled) { transform: translateY(0) scale(0.97); filter: brightness(0.95); }
       .btn-app:disabled { opacity: 0.6; cursor: not-allowed; }
-      .card-app { transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease; }
-      .card-app:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(0,0,0,0.25); }
-      .fade-in { animation: fadeInApp 0.22s ease; }
+      .card-app { transition: transform 0.18s cubic-bezier(0.22,1,0.36,1), box-shadow 0.18s ease, border-color 0.15s ease; }
+      .card-app:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0,0,0,0.22); }
+      .fade-in { animation: fadeInApp 0.24s cubic-bezier(0.22,1,0.36,1); }
       .barre-graphique { transition: opacity 0.15s ease; }
       .barre-graphique:hover { opacity: 0.75; }
-      @keyframes fadeInApp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes fadeInApp { from { opacity: 0; transform: translateY(8px) scale(0.99); } to { opacity: 1; transform: translateY(0) scale(1); } }
       @keyframes tourner { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
       .spinner-app { display: inline-block; width: 15px; height: 15px; border: 2px solid rgba(214,165,76,0.25); border-top-color: var(--gold); border-radius: 50%; animation: tourner 0.7s linear infinite; flex-shrink: 0; }
       @keyframes chuteConfetti {
         0% { transform: translateY(0) rotate(0deg); opacity: 1; }
         100% { transform: translateY(100vh) rotate(600deg); opacity: 0.3; }
       }
-      .transition-page { animation: fadeInApp 0.28s ease; }
+      .transition-page { animation: fadeInApp 0.32s cubic-bezier(0.22,1,0.36,1); }
+
+      /* Entrée échelonnée pour les listes de cartes — chaque élément apparaît
+         juste après le précédent, effet "cascade" plus vivant qu'un bloc statique. */
+      @keyframes entreeCascade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      .liste-cascade > * { animation: entreeCascade 0.32s cubic-bezier(0.22,1,0.36,1) backwards; }
+      .liste-cascade > *:nth-child(1) { animation-delay: 0.02s; }
+      .liste-cascade > *:nth-child(2) { animation-delay: 0.06s; }
+      .liste-cascade > *:nth-child(3) { animation-delay: 0.10s; }
+      .liste-cascade > *:nth-child(4) { animation-delay: 0.14s; }
+      .liste-cascade > *:nth-child(5) { animation-delay: 0.18s; }
+      .liste-cascade > *:nth-child(n+6) { animation-delay: 0.20s; }
+
       input, select, textarea { transition: border-color 0.15s ease, box-shadow 0.15s ease; }
       input:focus, select:focus, textarea:focus { outline: none; box-shadow: 0 0 0 2px rgba(214,165,76,0.45); }
       button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--gold-light); outline-offset: 2px; border-radius: 6px; }
@@ -1577,7 +1589,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme }) {
                 return (
                   <div style={{ marginBottom: 24 }}>
                     <p style={{ fontSize: 13, fontWeight: 700, color: GOLD_LIGHT, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>{titre}</p>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                       {items.map(it => (
                         <button
                           key={it.cible}
@@ -2202,7 +2214,7 @@ function AnniversairesAVenir({ membres, gems, tribus, departements, cardStyle })
   return (
     <div style={{ marginBottom: 28 }}>
       <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><IconeGateau size={16} /> Anniversaires à venir (3 prochains jours)</p>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {anniversaires.map(({ membre, date, diffJours }) => (
           <div key={membre.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
             <div>
@@ -2240,7 +2252,7 @@ function AnniversairesResponsables({ comptes, cardStyle }) {
   return (
     <div style={{ marginBottom: 28 }}>
       <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><IconeGateau size={16} /> Anniversaires des responsables (14 prochains jours)</p>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {anniversaires.map(({ compte, date, diffJours }) => (
           <div key={compte.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
             <div>
@@ -2306,7 +2318,7 @@ function PrioritesPastorales({ membres, gems, regulariteParMembre, cardStyle }) 
       {membresAlerte.length === 0 ? (
         <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>Aucun membre en absence répétée pour l'instant — tout va bien.</p>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {membresAffiches.map(({ membre, regularite }) => (
             <div key={membre.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, borderColor: RED_LIGHT }}>
               <div>
@@ -3528,7 +3540,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
         )}
       </div>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>Tous les membres</p>
         {membres.length === 0 ? (
           <EtatVide icone={IconeGroupe} titre="Aucun membre pour l'instant" description="Ajoute le premier membre de ce GEM avec le formulaire ci-dessus." />
@@ -3812,7 +3824,7 @@ function RapportSanteSemaine({ gem, membres, compte, cardStyle }) {
         {membres.length === 0 ? (
           <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>Ajoute d'abord un membre dans l'onglet "Membres & Présence".</p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {membres.map(m => {
               const valeurs = valeursParMembre[m.id] || {};
               const moyenne = moyenneSante(valeurs);
@@ -4430,7 +4442,7 @@ function CommentaireIntelligent({ stats, titre }) {
   return (
     <div style={{ backgroundColor: "rgba(208,175,28,0.08)", border: `1px solid ${GOLD}`, borderRadius: 12, padding: 16, marginBottom: 20 }}>
       <p style={{ fontWeight: 700, fontSize: 13, color: GOLD_LIGHT, marginBottom: 10 }}>{titre || "🧠 Analyse intelligente"}</p>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {phrases.map((p, i) => (
           <p key={i} style={{ fontSize: 13, color: CREAM, margin: 0, lineHeight: 1.5 }}>{p}</p>
         ))}
@@ -4658,7 +4670,7 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
         <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${TEAL_700}` }}>
           <div style={{ ...cardStyle, marginBottom: 14, padding: 14 }}>
             <p style={{ fontWeight: 600, fontSize: 12, color: GOLD_LIGHT, marginBottom: 10 }}>✏️ Informations du membre</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: 140 }}>
                   <label style={{ fontSize: 10, color: "var(--text-secondary)", display: "block", marginBottom: 2 }}>Nom complet</label>
@@ -4801,7 +4813,7 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
               ) : visites.length === 0 ? (
                 <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>Aucune visite enregistrée pour l'instant.</p>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {visites.map(v => (
                     <div key={v.id} style={{ backgroundColor: TEAL_900, borderRadius: 8, padding: 10, border: `1px solid ${TEAL_700}` }}>
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
@@ -5389,7 +5401,7 @@ function PageAide({ estPasteur, cardStyle }) {
       {toutesLesSections.map((section, si) => (
         <div key={si} style={{ marginBottom: 24 }}>
           <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 10, color: GOLD_LIGHT }}>{section.titre}</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {section.items.map(([question, reponse], ii) => {
               const cle = `${si}-${ii}`;
               const estOuvert = ouvert === cle;
@@ -5722,7 +5734,7 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
           {absents.length === 0 ? (
             <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>Aucun absent pour l'instant — tout le monde est pointé présent. 🙏</p>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {absents.map(({ membre, absencesConsecutives, motif }) => (
                 <div key={membre.id} style={{ ...cardStyle, borderColor: absencesConsecutives >= 2 ? RED_LIGHT : TEAL_700 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
@@ -5761,7 +5773,7 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
           {responsablesAbsents.length > 0 && (
             <div style={{ marginTop: 24 }}>
               <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>👤 Responsables GEM absents ce dimanche ({responsablesAbsents.length})</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {responsablesAbsents.map(({ compte: c, gem }) => (
                   <div key={c.id} style={{ ...cardStyle, borderColor: RED_LIGHT }}>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
@@ -6059,7 +6071,7 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
         </div>
 
         <div style={{ ...cardStyle, marginBottom: 16 }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--text-secondary)", fontSize: 13 }}>Téléphone</span><span style={{ fontSize: 13, fontWeight: 600 }}>{b.telephone || "—"}</span></div>
             <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--text-secondary)", fontSize: 13 }}>Quartier</span><span style={{ fontSize: 13, fontWeight: 600 }}>{b.quartier || "—"}</span></div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -6138,7 +6150,7 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
         </div>
 
         <div style={{ ...cardStyle, marginBottom: 16 }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--text-secondary)", fontSize: 13 }}>Téléphone</span><span style={{ fontSize: 13, fontWeight: 600 }}>{p.telephone || "—"}</span></div>
             <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--text-secondary)", fontSize: 13 }}>Quartier</span><span style={{ fontSize: 13, fontWeight: 600 }}>{p.quartier || "—"}</span></div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
@@ -6252,7 +6264,7 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
         resultatsBoss.length === 0 ? (
           <EtatVide icone={IconeEtoile} titre="Aucun BOSS trouvé" description="Les BOSS sont les membres inscrits dans un GEM de type département." />
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {resultatsBoss.map(b => (
               <button key={b.id} className="btn-app card-app" onClick={() => setBossOuvert(b)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, borderColor: b.absencesConsecutives >= 2 ? RED_LIGHT : cardStyle.border }}>
                 <div>
@@ -6287,7 +6299,7 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
       ) : resultats.length === 0 ? (
         <EtatVide icone={IconeRecherche} titre="Aucune personne trouvée" />
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {resultats.map(p => {
             const tauxReg = p.types.includes("membre") ? regulariteParMembre?.[p.membreId]?.tauxRegularite : null;
             return (
@@ -6391,7 +6403,7 @@ function PageNouveaux({ membres, gems, tribus, departements, gemsAutorises, card
       {resultats.length === 0 ? (
         <EtatVide icone={IconePousse} titre="Aucun nouveau converti trouvé" />
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {resultats.map(m => {
             const moyenne = moyenneSante(santeParMembre[m.id]);
             return (
@@ -6504,7 +6516,7 @@ function PageSanteResponsables({ tousLesComptes, gems, tribus, departements, res
           <>
             <div style={{ ...cardStyle, marginBottom: 20 }}>
               <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 12 }}>Dernière évaluation — {new Date(ficheDetail.date_maj).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {DIMENSIONS_SANTE.map(([cle, label]) => (
                   <div key={cle} style={{ display: "flex", justifyContent: "space-between" }}>
                     <span style={{ fontSize: 13, color: "var(--text-secondary-2)" }}>{label}</span>
@@ -6532,7 +6544,7 @@ function PageSanteResponsables({ tousLesComptes, gems, tribus, departements, res
               </div>
             )}
             <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 12 }}>Historique ({historiqueDetail.length} évaluation{historiqueDetail.length > 1 ? "s" : ""})</p>
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {historiqueDetail.map(h => (
                 <div key={h.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between" }}>
                   <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{new Date(h.date_maj).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</span>
@@ -6584,7 +6596,7 @@ function PageSanteResponsables({ tousLesComptes, gems, tribus, departements, res
         style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_850, color: CREAM, border: `1px solid ${TEAL_700}`, marginBottom: 16, width: "100%", maxWidth: 320 }}
       />
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {resultatsRecherche.length === 0 ? (
           <EtatVide icone={IconePersonne} titre="Aucun responsable trouvé" />
         ) : (
@@ -6878,7 +6890,7 @@ function PageAnalyse({ gems, membres, cardStyle }) {
             <>
               <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>🔻 Membres en décrochage progressif</p>
               <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 10 }}>Étaient réguliers le mois dernier, mais leur présence a nettement chuté ce mois-ci.</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {membresEnDeclin.map(({ membre, tauxPrecedent, tauxActuel }) => {
                   const gemMembre = gems.find(g => g.id === membre.gem_id);
                   return (
@@ -7496,7 +7508,7 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
               {membres.filter(m => presences[m.id] === false).length === 0 ? (
                 <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>Aucun absent pointé pour ce dimanche.</p>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {membres.filter(m => presences[m.id] === false).map(m => {
                     const numeroWhatsApp = numeroPourWhatsApp(m.telephone);
                     const messageWhatsApp = encodeURIComponent(`Bonjour ${m.nom}, tu nous as manqué au culte de ce dimanche. Tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏
@@ -7552,7 +7564,7 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
               ) : membres.filter(m => presencesMois.filter(p => p.membre_id === m.id && p.present).length === 0).length === 0 ? (
                 <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>Aucun membre totalement absent ce mois — bon signe !</p>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {membres.filter(m => presencesMois.filter(p => p.membre_id === m.id && p.present).length === 0).map(m => {
                     const numeroWhatsApp = numeroPourWhatsApp(m.telephone);
                     const messageWhatsApp = encodeURIComponent(`Bonjour ${m.nom}, nous ne t'avons pas vu ce mois-ci au culte. Tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏
@@ -7699,7 +7711,7 @@ function ActivitesSemainePerimetre({ gems, membres, tribus, departements, cardSt
               </div>
 
               <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>Détail par GEM</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {gems.map(g => {
                   const activitesGem = activites.filter(a => a.gem_id === g.id);
                   const act = vue === "semaine" ? activitesGem[0] : null;
@@ -8305,7 +8317,7 @@ function SousPageAttribuerRole({ compte, tribus, departements, onChange, cardSty
       ) : comptesFiltres.length === 0 ? (
         <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>Aucun compte disponible (tous les comptes inscrits ont déjà un rôle actif).</p>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {comptesFiltres.map(c => (
             <button key={c.id} onClick={() => choisir(c)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontWeight: 700 }}>{c.nom}</span>
@@ -9043,7 +9055,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
         {liste.length === 0 ? (
           <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>Pas assez de données pour établir un classement.</p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {liste.map((item, i) => (
               <div key={item.nom + i} className={onClicItem ? "btn-app" : ""} onClick={onClicItem ? () => onClicItem(item) : undefined} style={{ ...cardStyle, cursor: onClicItem ? "pointer" : "default" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
@@ -9072,7 +9084,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
         {liste.length === 0 ? (
           <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>Pas assez de pointages pour établir ce classement.</p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {liste.map((item, i) => (
               <div key={item.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
@@ -9262,7 +9274,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
               {gems.length === 0 ? (
                 <EtatVide icone={IconeMaison} titre="Aucun GEM créé pour l'instant" />
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {gems.map(g => {
                     const membresGem = membres.filter(m => m.gem_id === g.id);
                     const presentsGem = membresGem.filter(m => presences[m.id]).length;
@@ -9313,7 +9325,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
               {membres.filter(m => presences[m.id] === false).length === 0 ? (
                 <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>Aucun absent pointé pour ce dimanche.</p>
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {membres.filter(m => presences[m.id] === false).map(m => {
                     const gemMembre = gems.find(g => g.id === m.gem_id);
                     const numeroWhatsApp = numeroPourWhatsApp(m.telephone);
@@ -9715,7 +9727,7 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
               {tousLesComptes.filter(c => c.nom.toLowerCase().includes(rechercheDestinataire.toLowerCase())).length === 0 ? (
                 <EtatVide icone={IconePersonne} titre="Aucun résultat" />
               ) : (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {tousLesComptes.filter(c => c.nom.toLowerCase().includes(rechercheDestinataire.toLowerCase())).slice(0, 30).map(c => (
                     <button key={c.id} className="btn-app card-app" onClick={() => setDestinataireChoisi(c)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span style={{ fontWeight: 700, fontSize: 14 }}>{c.nom}</span>
@@ -9918,7 +9930,7 @@ function PageCalendrier({ estPasteur, compte, onOuverture, cardStyle }) {
           {formOuvert ? (
             <div style={cardStyle}>
               <p style={{ fontWeight: 600, marginBottom: 10, fontSize: 14 }}>Nouvel événement</p>
-              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <input value={titre} onChange={e => setTitre(e.target.value)} placeholder="Titre de l'événement" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
                 <input value={debut} onChange={e => setDebut(e.target.value)} type="datetime-local" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
                 <input value={lieu} onChange={e => setLieu(e.target.value)} placeholder="Lieu (optionnel)" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
@@ -10070,7 +10082,7 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
           </button>
         ))}
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+      <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {actif.items.slice(0, 3).map((item, i) => (
           <div key={item.gemId || item.id} style={{ borderBottom: i < 2 ? `1px solid ${TEAL_800}` : "none", paddingBottom: i < 2 ? 6 : 0 }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
