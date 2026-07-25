@@ -1775,7 +1775,9 @@ function PrioritesPastorales({ membres, gems, regulariteParMembre, cardStyle }) 
                     <a title="Appeler" href={`tel:${membre.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
                       📞</a>
                     <a
-                      href={`https://wa.me/${numeroPourWhatsApp(membre.telephone)}?text=${encodeURIComponent(`Bonjour ${membre.nom}, tu nous manques beaucoup ces derniers temps. Est-ce que tout va bien ? Nous t'aimons et espérons te revoir bientôt au culte. 🙏`)}`}
+                      href={`https://wa.me/${numeroPourWhatsApp(membre.telephone)}?text=${encodeURIComponent(`Bonjour ${membre.nom}, tu nous manques beaucoup ces derniers temps. Est-ce que tout va bien ? Nous t'aimons et espérons te revoir bientôt au culte. 🙏
+
+— Pasteur Dimitri Koffi`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}
@@ -2095,7 +2097,9 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
             const regularite = regulariteParMembre?.[m.id];
             const moyenne = moyenneSante(santeParMembre[m.id]);
             const numeroWhatsApp = numeroPourWhatsApp(m.telephone);
-            const messageWhatsApp = encodeURIComponent(`Bonjour ${m.nom}, comment vas-tu ? 🙏`);
+            const messageWhatsApp = encodeURIComponent(`Bonjour ${m.nom}, comment vas-tu ? 🙏
+
+— Pasteur Dimitri Koffi`);
             return (
               <div key={m.id} className="card-app" style={cardStyle}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
@@ -4703,7 +4707,9 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
                           <a title="Appeler" href={`tel:${membre.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}>📞</a>
                           <a
                             title="WhatsApp"
-                            href={`https://wa.me/${numeroPourWhatsApp(membre.telephone)}?text=${encodeURIComponent(`Bonjour ${membre.nom}, tu nous as manqué au culte. Est-ce que tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏`)}`}
+                            href={`https://wa.me/${numeroPourWhatsApp(membre.telephone)}?text=${encodeURIComponent(`Bonjour ${membre.nom}, tu nous as manqué au culte. Est-ce que tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏
+
+— Pasteur Dimitri Koffi`)}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}
@@ -4733,7 +4739,9 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
                           <a title="Appeler" href={`tel:${c.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}>📞</a>
                           <a
                             title="WhatsApp"
-                            href={`https://wa.me/${numeroPourWhatsApp(c.telephone)}?text=${encodeURIComponent(`Bonjour ${c.nom}, tu nous as manqué au culte. Est-ce que tout va bien ? 🙏`)}`}
+                            href={`https://wa.me/${numeroPourWhatsApp(c.telephone)}?text=${encodeURIComponent(`Bonjour ${c.nom}, tu nous as manqué au culte. Est-ce que tout va bien ? 🙏
+
+— Pasteur Dimitri Koffi`)}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}
@@ -6525,7 +6533,9 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {membres.filter(m => presences[m.id] === false).map(m => {
                     const numeroWhatsApp = numeroPourWhatsApp(m.telephone);
-                    const messageWhatsApp = encodeURIComponent(`Bonjour ${m.nom}, tu nous as manqué au culte de ce dimanche. Tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏`);
+                    const messageWhatsApp = encodeURIComponent(`Bonjour ${m.nom}, tu nous as manqué au culte de ce dimanche. Tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏
+
+— Pasteur Dimitri Koffi`);
                     return (
                       <div key={m.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
                         <div>
@@ -6579,7 +6589,9 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {membres.filter(m => presencesMois.filter(p => p.membre_id === m.id && p.present).length === 0).map(m => {
                     const numeroWhatsApp = numeroPourWhatsApp(m.telephone);
-                    const messageWhatsApp = encodeURIComponent(`Bonjour ${m.nom}, nous ne t'avons pas vu ce mois-ci au culte. Tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏`);
+                    const messageWhatsApp = encodeURIComponent(`Bonjour ${m.nom}, nous ne t'avons pas vu ce mois-ci au culte. Tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏
+
+— Pasteur Dimitri Koffi`);
                     return (
                       <div key={m.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
                         <div>
@@ -8323,7 +8335,9 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                   {membres.filter(m => presences[m.id] === false).map(m => {
                     const gemMembre = gems.find(g => g.id === m.gem_id);
                     const numeroWhatsApp = numeroPourWhatsApp(m.telephone);
-                    const messageWhatsApp = encodeURIComponent(`Bonjour ${m.nom}, tu nous as manqué au culte de ce dimanche. Tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏`);
+                    const messageWhatsApp = encodeURIComponent(`Bonjour ${m.nom}, tu nous as manqué au culte de ce dimanche. Tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏
+
+— Pasteur Dimitri Koffi`);
                     return (
                       <div key={m.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
                         <div>
