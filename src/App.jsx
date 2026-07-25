@@ -411,10 +411,10 @@ function BoiteDemandeSuppression({ nomMembre, onEnvoyer, onAnnuler }) {
   }
 
   return (
-    <div className="fade-in" style={{ position: "fixed", inset: 0, backgroundColor: "rgba(5,20,18,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
-      <div style={{ backgroundColor: "#17594E", border: "1px solid #227A6B", borderRadius: 16, padding: 24, maxWidth: 420, width: "100%", boxShadow: "0 20px 50px rgba(0,0,0,0.4)" }}>
-        <p style={{ fontWeight: 700, fontSize: 17, marginBottom: 10, color: "#FFFFFF" }}>Demander la suppression de {nomMembre}</p>
-        <p style={{ fontSize: 13, color: "#cdeae4", marginBottom: 14, lineHeight: 1.5 }}>
+    <div className="fade-in" style={{ position: "fixed", inset: 0, backgroundColor: "rgba(4,18,16,0.72)", backdropFilter: "blur(2px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
+      <div style={{ backgroundColor: "#17594E", border: "1px solid rgba(226,119,123,0.4)", borderRadius: 16, padding: 24, maxWidth: 420, width: "100%", boxShadow: "0 24px 60px rgba(0,0,0,0.45)" }}>
+        <p className="titre-moisson" style={{ fontWeight: 600, fontSize: 18, marginBottom: 10, color: "#F6F1E4" }}>Demander la suppression de {nomMembre}</p>
+        <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 14, lineHeight: 1.55 }}>
           Cette suppression sera soumise au pasteur et aux assistants pour validation — le membre ne sera pas retiré immédiatement.
         </p>
         <textarea
@@ -422,14 +422,14 @@ function BoiteDemandeSuppression({ nomMembre, onEnvoyer, onAnnuler }) {
           onChange={e => { setMotif(e.target.value); setErreur(""); }}
           rows={3}
           placeholder="Motif de la suppression (obligatoire)..."
-          style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: "#124D43", color: "#FFFFFF", border: "1px solid #2C917F", resize: "vertical", fontSize: 13 }}
+          style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: "#124D43", color: "#F6F1E4", border: "1px solid #2C917F", resize: "vertical", fontSize: 13 }}
         />
         {erreur && <p style={{ color: "#E2777B", fontSize: 12, marginTop: 6 }}>{erreur}</p>}
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap", marginTop: 16 }}>
-          <button className="btn-app" onClick={onAnnuler} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: "transparent", color: "#cdeae4", border: "1px solid #2C917F", fontWeight: 600, cursor: "pointer" }}>
+          <button className="btn-app" onClick={onAnnuler} style={{ padding: "10px 18px", borderRadius: 9, backgroundColor: "transparent", color: "#B9D3CB", border: "1px solid #2C917F", fontWeight: 600, cursor: "pointer" }}>
             Annuler
           </button>
-          <button className="btn-app" onClick={valider} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: "#E2777B", color: "#fff", border: "none", fontWeight: 700, cursor: "pointer" }}>
+          <button className="btn-app" onClick={valider} style={{ padding: "10px 18px", borderRadius: 9, backgroundColor: "#E2777B", backgroundImage: "linear-gradient(135deg, #ea9a9d, #E2777B)", color: "#fff", border: "none", fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 14px rgba(226,119,123,0.3)" }}>
             Envoyer la demande
           </button>
         </div>
@@ -3406,20 +3406,20 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
         />
       )}
       {apercuImport && (
-        <div className="fade-in" style={{ position: "fixed", inset: 0, backgroundColor: "rgba(5,20,18,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
-          <div style={{ backgroundColor: "#17594E", border: "1px solid #227A6B", borderRadius: 16, padding: 24, maxWidth: 480, width: "100%", maxHeight: "80vh", overflowY: "auto", boxShadow: "0 20px 50px rgba(0,0,0,0.4)" }}>
-            <p style={{ fontWeight: 700, fontSize: 17, marginBottom: 10, color: "#FFFFFF" }}>Confirmer l'import — {apercuImport.length} membre(s)</p>
+        <div className="fade-in" style={{ position: "fixed", inset: 0, backgroundColor: "rgba(4,18,16,0.72)", backdropFilter: "blur(2px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
+          <div style={{ backgroundColor: "#17594E", border: "1px solid #227A6B", borderRadius: 16, padding: 24, maxWidth: 480, width: "100%", maxHeight: "80vh", overflowY: "auto", boxShadow: "0 24px 60px rgba(0,0,0,0.45)" }}>
+            <p className="titre-moisson" style={{ fontWeight: 600, fontSize: 18, marginBottom: 10, color: "#F6F1E4" }}>Confirmer l'import — {apercuImport.length} membre(s)</p>
             <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
               {apercuImport.slice(0, 15).map((l, i) => (
-                <p key={i} style={{ fontSize: 12, color: "#cdeae4" }}>• {l.nom} — {l.telephone}{l.quartier ? ` (${l.quartier})` : ""}</p>
+                <p key={i} style={{ fontSize: 12, color: "#B9D3CB" }}>• {l.nom} — {l.telephone}{l.quartier ? ` (${l.quartier})` : ""}</p>
               ))}
               {apercuImport.length > 15 && <p style={{ fontSize: 12, color: "#a9d6cf", fontStyle: "italic" }}>+ {apercuImport.length - 15} autre(s)…</p>}
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
-              <button className="btn-app" onClick={() => setApercuImport(null)} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: "transparent", color: "#cdeae4", border: "1px solid #2C917F", fontWeight: 600, cursor: "pointer" }}>
+              <button className="btn-app" onClick={() => setApercuImport(null)} style={{ padding: "10px 18px", borderRadius: 9, backgroundColor: "transparent", color: "#B9D3CB", border: "1px solid #2C917F", fontWeight: 600, cursor: "pointer" }}>
                 Annuler
               </button>
-              <button className="btn-app" disabled={importEnCours} onClick={confirmerImport} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: "#D6A54C", color: "#0B4038", border: "none", fontWeight: 700, cursor: "pointer" }}>
+              <button className="btn-app" disabled={importEnCours} onClick={confirmerImport} style={{ padding: "10px 18px", borderRadius: 9, backgroundColor: "#D6A54C", backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: "#0B4038", border: "none", fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 14px rgba(214,165,76,0.28)" }}>
                 {importEnCours ? "…" : `Importer ${apercuImport.length} membre(s)`}
               </button>
             </div>
@@ -3450,9 +3450,9 @@ function EditionResponsableGem({ compteResponsable, onFerme, onEnregistre }) {
   }
 
   return (
-    <div style={{ position: "fixed", inset: 0, backgroundColor: "rgba(5,20,18,0.75)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
-      <div style={{ backgroundColor: TEAL_950, border: `1px solid ${GOLD}`, borderRadius: 14, padding: 22, maxWidth: 400, width: "100%" }}>
-        <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>✏️ Modifier le responsable</p>
+    <div className="fade-in" style={{ position: "fixed", inset: 0, backgroundColor: "rgba(4,18,16,0.72)", backdropFilter: "blur(2px)", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div style={{ backgroundColor: TEAL_950, border: `1px solid ${GOLD}`, borderRadius: 16, padding: 22, maxWidth: 400, width: "100%", boxShadow: "0 24px 60px rgba(0,0,0,0.45)" }}>
+        <p className="titre-moisson" style={{ fontWeight: 600, fontSize: 17, marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}><IconePersonne size={17} /> Modifier le responsable</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div>
             <label style={{ fontSize: 11, color: "#a9d6cf", display: "block", marginBottom: 4 }}>Nom</label>
