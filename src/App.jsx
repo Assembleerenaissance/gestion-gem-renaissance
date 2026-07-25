@@ -2657,6 +2657,32 @@ function numeroPourWhatsApp(tel) {
 }
 
 // Redimensionne une photo côté navigateur avant stockage (évite d'alourdir la base).
+// Redimensionne une image jointe (événement, message) en conservant ses proportions —
+// contrairement aux photos de membres qui sont recadrées en carré, ici on garde
+// l'image entière, juste réduite pour ne pas alourdir la base de données.
+function redimensionnerImageAttachee(fichier) {
+  return new Promise((resolve, reject) => {
+    const lecteur = new FileReader();
+    lecteur.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const maxTaille = 1000;
+        const ratio = Math.min(1, maxTaille / Math.max(img.width, img.height));
+        const largeur = Math.round(img.width * ratio), hauteur = Math.round(img.height * ratio);
+        const canvas = document.createElement("canvas");
+        canvas.width = largeur; canvas.height = hauteur;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, largeur, hauteur);
+        resolve(canvas.toDataURL("image/jpeg", 0.8));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    lecteur.onerror = reject;
+    lecteur.readAsDataURL(fichier);
+  });
+}
+
 function redimensionnerPhoto(fichier) {
   return new Promise((resolve, reject) => {
     const lecteur = new FileReader();
@@ -8672,6 +8698,8 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
   const [notificationsPerso, setNotificationsPerso] = useState([]);
   const [comptesParId, setComptesParId] = useState({});
   const [texte, setTexte] = useState("");
+  const [imageMessage, setImageMessage] = useState(null);
+  const [imageEnCours, setImageEnCours] = useState(false);
   const [chargement, setChargement] = useState(true);
 
   useEffect(() => {
@@ -8706,11 +8734,23 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
     chargerTout();
   }
 
+  async function gererSelectionImageMessage(fichier) {
+    if (!fichier) return;
+    setImageEnCours(true);
+    try {
+      const dataUrl = await redimensionnerImageAttachee(fichier);
+      setImageMessage(dataUrl);
+    } catch {
+      toast("Impossible de charger cette image.", "erreur");
+    }
+    setImageEnCours(false);
+  }
+
   async function envoyerDiffusion() {
-    if (!texte.trim()) return;
+    if (!texte.trim() && !imageMessage) return;
     const texteFinal = compte.role === "pasteur" ? `${texte.trim()}\n\n— Pasteur Dimitri Koffi` : texte.trim();
-    const { error } = await supabase.from("messages").insert({ texte: texteFinal, de_compte_id: compte.id });
-    if (!error) { setTexte(""); chargerTout(); }
+    const { error } = await supabase.from("messages").insert({ texte: texteFinal, image: imageMessage || null, de_compte_id: compte.id });
+    if (!error) { setTexte(""); setImageMessage(null); chargerTout(); }
   }
 
   async function envoyerDirect() {
@@ -8761,6 +8801,20 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
             <div style={{ ...cardStyle, marginBottom: 16 }}>
               <p style={{ fontWeight: 600, marginBottom: 8, fontSize: 14 }}>Envoyer un message à tous</p>
               <textarea value={texte} onChange={e => setTexte(e.target.value)} rows={3} placeholder="Écris ton message ici..." style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, resize: "vertical" }} />
+              <div style={{ marginTop: 8 }}>
+                {imageMessage ? (
+                  <div style={{ position: "relative", display: "inline-block" }}>
+                    <img src={imageMessage} alt="Aperçu" style={{ maxWidth: "100%", maxHeight: 160, borderRadius: 8, border: `1px solid ${TEAL_600}` }} />
+                    <button className="btn-app" onClick={() => setImageMessage(null)} style={{ position: "absolute", top: 6, right: 6, width: 26, height: 26, borderRadius: 999, backgroundColor: RED_LIGHT, color: "#fff", border: "none", fontWeight: 700, cursor: "pointer" }}>✕</button>
+                  </div>
+                ) : (
+                  <label style={{ fontSize: 12, color: GOLD_LIGHT, cursor: "pointer" }}>
+                    📎 Joindre une image
+                    <input type="file" accept="image/*" onChange={e => gererSelectionImageMessage(e.target.files[0])} disabled={imageEnCours} style={{ display: "none" }} />
+                  </label>
+                )}
+                {imageEnCours && <p style={{ fontSize: 11, color: "#a9d6cf", marginTop: 4 }}>Chargement de l'image…</p>}
+              </div>
               <button
  className="btn-app"
  onClick={envoyerDiffusion} style={{ marginTop: 8, padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, cursor: "pointer" }}>Envoyer</button>
@@ -8773,6 +8827,9 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
               {messages.map(m => (
                 <div key={m.id} style={cardStyle}>
                   <p style={{ whiteSpace: "pre-wrap" }}>{m.texte}</p>
+                  {m.image && (
+                    <img src={m.image} alt="Pièce jointe" style={{ maxWidth: "100%", maxHeight: 260, borderRadius: 8, marginTop: 8, border: `1px solid ${TEAL_700}` }} />
+                  )}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, flexWrap: "wrap", gap: 8 }}>
                     <p style={{ fontSize: 11, color: "#a9d6cf", margin: 0 }}>{formaterDate(m.date)}</p>
                     <button
@@ -8864,6 +8921,8 @@ function PageCalendrier({ estPasteur, compte, onOuverture, cardStyle }) {
   const [debut, setDebut] = useState("");
   const [lieu, setLieu] = useState("");
   const [description, setDescription] = useState("");
+  const [image, setImage] = useState(null);
+  const [imageEnCours, setImageEnCours] = useState(false);
   const [erreur, setErreur] = useState("");
 
   useEffect(() => {
@@ -8878,15 +8937,27 @@ function PageCalendrier({ estPasteur, compte, onOuverture, cardStyle }) {
     setChargement(false);
   }
 
+  async function gererSelectionImage(fichier) {
+    if (!fichier) return;
+    setImageEnCours(true);
+    try {
+      const dataUrl = await redimensionnerImageAttachee(fichier);
+      setImage(dataUrl);
+    } catch {
+      toast("Impossible de charger cette image.", "erreur");
+    }
+    setImageEnCours(false);
+  }
+
   async function creerEvenement() {
     setErreur("");
     if (!titre.trim() || !debut) { setErreur("Le titre et la date sont obligatoires."); return; }
     const { error } = await supabase.from("evenements").insert({
       titre: titre.trim(), debut: new Date(debut).toISOString(),
-      lieu: lieu.trim() || null, description: description.trim() || null, cree_par: compte.id,
+      lieu: lieu.trim() || null, description: description.trim() || null, image: image || null, cree_par: compte.id,
     });
     if (error) { setErreur(error.message); return; }
-    setTitre(""); setDebut(""); setLieu(""); setDescription(""); setFormOuvert(false);
+    setTitre(""); setDebut(""); setLieu(""); setDescription(""); setImage(null); setFormOuvert(false);
     chargerEvenements();
   }
 
@@ -8937,6 +9008,9 @@ function PageCalendrier({ estPasteur, compte, onOuverture, cardStyle }) {
             </p>
             {e.lieu && <p style={{ fontSize: 12, color: "#a9d6cf", marginTop: 2 }}>📍 {e.lieu}</p>}
             {e.description && <p style={{ fontSize: 13, marginTop: 6 }}>{e.description}</p>}
+            {e.image && (
+              <img src={e.image} alt={e.titre} style={{ maxWidth: "100%", maxHeight: 260, borderRadius: 8, marginTop: 8, border: `1px solid ${TEAL_700}` }} />
+            )}
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
             <button
@@ -8970,6 +9044,18 @@ function PageCalendrier({ estPasteur, compte, onOuverture, cardStyle }) {
                 <input value={debut} onChange={e => setDebut(e.target.value)} type="datetime-local" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
                 <input value={lieu} onChange={e => setLieu(e.target.value)} placeholder="Lieu (optionnel)" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
                 <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Description (optionnelle)" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, resize: "vertical" }} />
+                <div>
+                  <label style={{ fontSize: 12, color: "#a9d6cf", display: "block", marginBottom: 6 }}>📎 Image / affiche jointe (optionnelle)</label>
+                  {image ? (
+                    <div style={{ position: "relative", display: "inline-block" }}>
+                      <img src={image} alt="Aperçu" style={{ maxWidth: "100%", maxHeight: 180, borderRadius: 8, border: `1px solid ${TEAL_600}` }} />
+                      <button className="btn-app" onClick={() => setImage(null)} style={{ position: "absolute", top: 6, right: 6, width: 26, height: 26, borderRadius: 999, backgroundColor: RED_LIGHT, color: "#fff", border: "none", fontWeight: 700, cursor: "pointer" }}>✕</button>
+                    </div>
+                  ) : (
+                    <input type="file" accept="image/*" onChange={e => gererSelectionImage(e.target.files[0])} disabled={imageEnCours} style={{ fontSize: 12, color: "#cdeae4" }} />
+                  )}
+                  {imageEnCours && <p style={{ fontSize: 11, color: "#a9d6cf", marginTop: 4 }}>Chargement de l'image…</p>}
+                </div>
                 {erreur && <p style={{ color: RED_LIGHT, fontSize: 12 }}>{erreur}</p>}
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
