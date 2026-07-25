@@ -21,6 +21,33 @@ const VERT_DOUX = "#8FCBA8";
 // État vide soigné — remplace le simple texte gris par une invitation à agir,
 // avec une icône discrète dans un halo doré. Utilisé partout où il n'y a
 // encore aucune donnée (fréquent tant que l'église remplit l'application).
+// Avatar en initiales — chaque personne obtient une couleur cohérente (dérivée
+// de son nom, toujours la même), tirée d'une palette en harmonie avec l'identité
+// de l'app plutôt que toujours le même doré uniforme.
+const PALETTE_AVATARS = [
+  { fond: "#D6A54C", texte: "#0B4038" }, // or
+  { fond: "#8FCBA8", texte: "#0B4038" }, // vert doux
+  { fond: "#7BAFC4", texte: "#0B4038" }, // bleu-teal clair
+  { fond: "#C98A6B", texte: "#F6F1E4" }, // terre cuite
+  { fond: "#A98FCB", texte: "#F6F1E4" }, // mauve doux
+  { fond: "#E2777B", texte: "#F6F1E4" }, // corail
+];
+function AvatarInitiales({ nom, taille = 64 }) {
+  const initiales = (nom || "?").split(" ").filter(Boolean).slice(0, 2).map(x => x[0]).join("").toUpperCase();
+  let hash = 0;
+  for (let i = 0; i < (nom || "").length; i++) hash = (hash * 31 + nom.charCodeAt(i)) % PALETTE_AVATARS.length;
+  const { fond, texte } = PALETTE_AVATARS[Math.abs(hash) % PALETTE_AVATARS.length];
+  return (
+    <div style={{
+      width: taille, height: taille, borderRadius: "50%", backgroundColor: fond, color: texte,
+      display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700,
+      fontSize: taille * 0.36, flexShrink: 0, boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+    }}>
+      {initiales}
+    </div>
+  );
+}
+
 function EtatVide({ icone: Icone, titre, description }) {
   return (
     <div style={{ textAlign: "center", padding: "36px 16px" }}>
@@ -531,7 +558,7 @@ class LimiteErreurs extends React.Component {
       return (
         <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", backgroundColor: TEAL_950, color: CREAM, padding: 24, textAlign: "center" }}>
           <p style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Une erreur inattendue est survenue</p>
-          <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20, maxWidth: 400 }}>Aucune donnée n'a été perdue. Recharge la page pour continuer.</p>
+          <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 20, maxWidth: 400 }}>Aucune donnée n'a été perdue. Recharge la page pour continuer.</p>
           <button
  className="btn-app"
  onClick={() => window.location.reload()} style={{ padding: "10px 20px", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer" }}>
@@ -580,7 +607,7 @@ function EcranVerrouillage({ compte, onDeverrouille }) {
       <div style={{ width: "100%", maxWidth: 360, backgroundColor: "rgba(17,106,95,0.92)", backdropFilter: "blur(6px)", border: `1px solid ${TEAL_700}`, borderRadius: 16, padding: 24, textAlign: "center" }}>
         <p style={{ fontSize: 32, marginBottom: 8 }}>🔒</p>
         <h1 style={{ color: CREAM, fontSize: 18, fontWeight: 700, marginBottom: 4 }}>Application verrouillée</h1>
-        <p style={{ color: "#cdeae4", fontSize: 13, marginBottom: 20 }}>Bienvenue {compte.nom}, ressaisis ton mot de passe pour continuer.</p>
+        <p style={{ color: "#D8E8E1", fontSize: 13, marginBottom: 20 }}>Bienvenue {compte.nom}, ressaisis ton mot de passe pour continuer.</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10, textAlign: "left" }}>
           <input
             value={motDePasse}
@@ -591,7 +618,7 @@ function EcranVerrouillage({ compte, onDeverrouille }) {
             autoFocus
             style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_850, color: CREAM, border: `1px solid ${TEAL_700}` }}
           />
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#cdeae4", cursor: "pointer" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#D8E8E1", cursor: "pointer" }}>
             <input type="checkbox" checked={motDePasseVisible} onChange={e => setMotDePasseVisible(e.target.checked)} />
             Afficher le mot de passe
           </label>
@@ -599,7 +626,7 @@ function EcranVerrouillage({ compte, onDeverrouille }) {
           <button className="btn-app" disabled={chargement} onClick={deverrouiller} style={{ padding: "12px 0", borderRadius: 8, fontWeight: 700, fontSize: 14, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", cursor: "pointer" }}>
             {chargement ? "…" : "Déverrouiller"}
           </button>
-          <button className="btn-app" onClick={seDeconnecter} style={{ padding: "8px 0", borderRadius: 8, fontWeight: 600, fontSize: 12, backgroundColor: "transparent", color: "#a9d6cf", border: "none", cursor: "pointer" }}>
+          <button className="btn-app" onClick={seDeconnecter} style={{ padding: "8px 0", borderRadius: 8, fontWeight: 600, fontSize: 12, backgroundColor: "transparent", color: "#B9D3CB", border: "none", cursor: "pointer" }}>
             Ce n'est pas moi — Se déconnecter
           </button>
         </div>
@@ -848,29 +875,33 @@ function EcranConnexion() {
     <div
       style={{
         minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
-        backgroundImage: `linear-gradient(180deg, rgba(13,92,82,0.55) 0%, rgba(13,92,82,0.92) 100%), url(${BERGER_IMG})`,
+        backgroundImage: `linear-gradient(180deg, rgba(11,64,56,0.5) 0%, rgba(11,64,56,0.94) 100%), url(${BERGER_IMG})`,
         backgroundSize: "cover", backgroundPosition: "center",
       }}
     >
-      <div style={{ width: "100%", maxWidth: mode === "inscription" ? 420 : 380, maxHeight: "92vh", overflowY: "auto", backgroundColor: "rgba(17,106,95,0.92)", backdropFilter: "blur(6px)", border: `1px solid ${TEAL_700}`, borderRadius: 16, padding: 24 }}>
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
-          <img src={LOGO_VH} alt="Vases d'Honneur" style={{ height: 72, width: "auto" }} />
+      <div className="fade-in" style={{ width: "100%", maxWidth: mode === "inscription" ? 420 : 380, maxHeight: "92vh", overflowY: "auto", backgroundColor: "rgba(18,77,67,0.94)", backdropFilter: "blur(10px)", border: "1px solid rgba(239,203,119,0.22)", borderRadius: 20, padding: 28, boxShadow: "0 30px 70px rgba(0,0,0,0.45)" }}>
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
+          <img src={LOGO_VH} alt="Vases d'Honneur" style={{ height: 76, width: "auto", filter: "drop-shadow(0 6px 16px rgba(0,0,0,0.35))" }} />
         </div>
-        <h1 className="titre-moisson" style={{ color: CREAM, fontSize: 26, fontWeight: 600, marginBottom: 4, textAlign: "center" }}>Gestion des GEM</h1>
-        <p style={{ color: "#cdeae4", fontSize: 13, marginBottom: 20, textAlign: "center" }}>Assemblée RENAISSANCE -Bouaflé</p>
-        <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 4 }}>
+          <EpiDeBle size={16} />
+          <h1 className="titre-moisson" style={{ color: "#F6F1E4", fontSize: 27, fontWeight: 600, margin: 0, textAlign: "center" }}>Gestion des GEM</h1>
+          <EpiDeBle size={16} />
+        </div>
+        <p style={{ color: "#D8E8E1", fontSize: 13, marginBottom: 22, textAlign: "center", letterSpacing: 0.3 }}>Assemblée RENAISSANCE · Bouaflé</p>
+        <div style={{ display: "flex", gap: 6, marginBottom: 18, backgroundColor: "rgba(11,64,56,0.4)", borderRadius: 11, padding: 4 }}>
           <button
  className="btn-app"
- onClick={() => { setMode("connexion"); setMotDePasseOublieOuvert(false); if (telephone === "+225 ") setTelephone(""); }} style={{ flex: 1, padding: "8px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, backgroundColor: mode === "connexion" ? TEAL_700 : "transparent", color: mode === "connexion" ? GOLD_LIGHT : "#cdeae4", border: `1px solid ${TEAL_600}` }}>Se connecter</button>
+ onClick={() => { setMode("connexion"); setMotDePasseOublieOuvert(false); if (telephone === "+225 ") setTelephone(""); }} style={{ flex: 1, padding: "9px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, backgroundColor: mode === "connexion" ? "#D6A54C" : "transparent", backgroundImage: mode === "connexion" ? "linear-gradient(135deg, #EFCB77, #D6A54C)" : "none", color: mode === "connexion" ? "#0B4038" : "#D8E8E1", border: "none", boxShadow: mode === "connexion" ? "0 3px 10px rgba(214,165,76,0.3)" : "none" }}>Se connecter</button>
           <button
  className="btn-app"
- onClick={() => { setMode("inscription"); setMotDePasseOublieOuvert(false); if (!telephone.trim()) setTelephone("+225 "); }} style={{ flex: 1, padding: "8px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, backgroundColor: mode === "inscription" ? TEAL_700 : "transparent", color: mode === "inscription" ? GOLD_LIGHT : "#cdeae4", border: `1px solid ${TEAL_600}` }}>Inscription</button>
+ onClick={() => { setMode("inscription"); setMotDePasseOublieOuvert(false); if (!telephone.trim()) setTelephone("+225 "); }} style={{ flex: 1, padding: "9px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, backgroundColor: mode === "inscription" ? "#D6A54C" : "transparent", backgroundImage: mode === "inscription" ? "linear-gradient(135deg, #EFCB77, #D6A54C)" : "none", color: mode === "inscription" ? "#0B4038" : "#D8E8E1", border: "none", boxShadow: mode === "inscription" ? "0 3px 10px rgba(214,165,76,0.3)" : "none" }}>Inscription</button>
         </div>
 
         {mode === "connexion" && motDePasseOublieOuvert ? (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             <p style={{ color: CREAM, fontWeight: 700, fontSize: 14 }}>Mot de passe oublié</p>
-            <p style={{ color: "#cdeae4", fontSize: 12, lineHeight: 1.4 }}>
+            <p style={{ color: "#D8E8E1", fontSize: 12, lineHeight: 1.4 }}>
               L'application n'envoie pas d'e-mail. Indique ton numéro de téléphone : ta demande sera transmise au pasteur pour réinitialiser ton mot de passe.
             </p>
             <input value={telephoneOubli} onChange={e => setTelephoneOubli(e.target.value)} placeholder="Ton numéro de téléphone" type="tel" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_850, color: CREAM, border: `1px solid ${TEAL_700}` }} />
@@ -880,7 +911,7 @@ function EcranConnexion() {
             </button>
             <button
  className="btn-app"
- onClick={() => { setMotDePasseOublieOuvert(false); setMessageOubli(""); }} style={{ padding: "8px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, backgroundColor: "transparent", color: "#cdeae4", border: "none", cursor: "pointer" }}>
+ onClick={() => { setMotDePasseOublieOuvert(false); setMessageOubli(""); }} style={{ padding: "8px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, backgroundColor: "transparent", color: "#D8E8E1", border: "none", cursor: "pointer" }}>
               ← Retour à la connexion
             </button>
           </div>
@@ -900,7 +931,7 @@ function EcranConnexion() {
               name="mot-de-passe"
               style={inputPasswordStyle}
             />
-            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#cdeae4", cursor: "pointer", marginTop: -4 }}>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#D8E8E1", cursor: "pointer", marginTop: -4 }}>
               <input type="checkbox" checked={motDePasseVisible} onChange={e => setMotDePasseVisible(e.target.checked)} />
               Afficher le mot de passe
             </label>
@@ -1219,8 +1250,8 @@ function TableauDeBord({ compte }) {
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <img src={LOGO_VH} alt="Vases d'Honneur" style={{ height: 36, width: "auto" }} />
           <div>
-            <p style={{ fontSize: 13, color: "#cdeae4", margin: 0 }}>Bienvenue, <b style={{ color: CREAM }}>{compte.nom}</b></p>
-            <p style={{ fontSize: 11, color: "#a9d6cf", margin: 0 }}>{compte.role === "pasteur" ? "Pasteur" : compte.assistant ? "Assistant désigné" : "Responsable"}</p>
+            <p style={{ fontSize: 13, color: "#D8E8E1", margin: 0 }}>Bienvenue, <b style={{ color: CREAM }}>{compte.nom}</b></p>
+            <p style={{ fontSize: 11, color: "#B9D3CB", margin: 0 }}>{compte.role === "pasteur" ? "Pasteur" : compte.assistant ? "Assistant désigné" : "Responsable"}</p>
           </div>
         </div>
         <div style={{ position: "relative", flex: "1 1 220px", maxWidth: 320 }}>
@@ -1246,7 +1277,7 @@ function TableauDeBord({ compte }) {
                       </span>
                     )}
                   </p>
-                  <p style={{ fontSize: 11, color: "#a9d6cf", margin: 0 }}>
+                  <p style={{ fontSize: 11, color: "#B9D3CB", margin: 0 }}>
                     {r.type === "membre" ? `${nomGemMembre(r.data)} · ${r.data.telephone}` : (r.data.telephone || "Téléphone non renseigné")}
                   </p>
                 </button>
@@ -1267,25 +1298,25 @@ function TableauDeBord({ compte }) {
               {aResponsabilitePersonnelle && (
                 <button
  className="btn-app"
- onClick={() => { setPage("mon_espace"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "mon_espace" ? TEAL_700 : "transparent", color: page === "mon_espace" ? GOLD_LIGHT : "#cdeae4" }}>Mon espace</button>
+ onClick={() => { setPage("mon_espace"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "mon_espace" ? TEAL_700 : "transparent", color: page === "mon_espace" ? GOLD_LIGHT : "#D8E8E1" }}>Mon espace</button>
               )}
               {compte.role !== "pasteur" && (
                 <button
  className="btn-app"
- onClick={() => { setPage("demande_role_supp"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "demande_role_supp" ? TEAL_700 : "transparent", color: page === "demande_role_supp" ? GOLD_LIGHT : "#cdeae4" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>+ Rôle supplémentaire</span></button>
+ onClick={() => { setPage("demande_role_supp"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "demande_role_supp" ? TEAL_700 : "transparent", color: page === "demande_role_supp" ? GOLD_LIGHT : "#D8E8E1" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>+ Rôle supplémentaire</span></button>
               )}
               <button
  className="btn-app"
- onClick={() => { setPage("dashboard"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "dashboard" ? TEAL_700 : "transparent", color: page === "dashboard" ? GOLD_LIGHT : "#cdeae4" }}>Tableau de bord</button>
+ onClick={() => { setPage("dashboard"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "dashboard" ? TEAL_700 : "transparent", color: page === "dashboard" ? GOLD_LIGHT : "#D8E8E1" }}>Tableau de bord</button>
               <button
  className="btn-app"
- onClick={() => { setPage("tribus"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "tribus" ? TEAL_700 : "transparent", color: page === "tribus" ? GOLD_LIGHT : "#cdeae4" }}>Tribus</button>
+ onClick={() => { setPage("tribus"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "tribus" ? TEAL_700 : "transparent", color: page === "tribus" ? GOLD_LIGHT : "#D8E8E1" }}>Tribus</button>
               <button
  className="btn-app"
- onClick={() => { setPage("departements"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "departements" ? TEAL_700 : "transparent", color: page === "departements" ? GOLD_LIGHT : "#cdeae4" }}>Départements</button>
+ onClick={() => { setPage("departements"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "departements" ? TEAL_700 : "transparent", color: page === "departements" ? GOLD_LIGHT : "#D8E8E1" }}>Départements</button>
               <button
  className="btn-app"
- onClick={() => { setPage("demandes"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "demandes" ? TEAL_700 : "transparent", color: page === "demandes" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
+ onClick={() => { setPage("demandes"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "demandes" ? TEAL_700 : "transparent", color: page === "demandes" ? GOLD_LIGHT : "#D8E8E1", position: "relative" }}>
                 Demandes
                 {nbDemandesAttente > 0 && (
                   <span style={{ position: "absolute", top: -6, right: -6, backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
@@ -1295,16 +1326,16 @@ function TableauDeBord({ compte }) {
               </button>
               <button
  className="btn-app"
- onClick={() => { setPage("rapports"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "rapports" ? TEAL_700 : "transparent", color: page === "rapports" ? GOLD_LIGHT : "#cdeae4" }}>Rapports</button>
+ onClick={() => { setPage("rapports"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "rapports" ? TEAL_700 : "transparent", color: page === "rapports" ? GOLD_LIGHT : "#D8E8E1" }}>Rapports</button>
               <button
  className="btn-app"
- onClick={() => { setPage("historique"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "historique" ? TEAL_700 : "transparent", color: page === "historique" ? GOLD_LIGHT : "#cdeae4" }}>Historique</button>
+ onClick={() => { setPage("historique"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "historique" ? TEAL_700 : "transparent", color: page === "historique" ? GOLD_LIGHT : "#D8E8E1" }}>Historique</button>
               <button
  className="btn-app"
- onClick={() => { setPage("analyse"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "analyse" ? TEAL_700 : "transparent", color: page === "analyse" ? GOLD_LIGHT : "#cdeae4" }}>🧠 Analyse</button>
+ onClick={() => { setPage("analyse"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "analyse" ? TEAL_700 : "transparent", color: page === "analyse" ? GOLD_LIGHT : "#D8E8E1" }}>🧠 Analyse</button>
               <button
  className="btn-app"
- onClick={() => { setPage("calendrier"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "calendrier" ? TEAL_700 : "transparent", color: page === "calendrier" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
+ onClick={() => { setPage("calendrier"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "calendrier" ? TEAL_700 : "transparent", color: page === "calendrier" ? GOLD_LIGHT : "#D8E8E1", position: "relative" }}>
                 Calendrier
                 {nbNouveauxEvenements > 0 && (
                   <span style={{ position: "absolute", top: -6, right: -6, backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
@@ -1314,7 +1345,7 @@ function TableauDeBord({ compte }) {
               </button>
               <button
  className="btn-app"
- onClick={() => { setPage("messagerie"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "messagerie" ? TEAL_700 : "transparent", color: page === "messagerie" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
+ onClick={() => { setPage("messagerie"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "messagerie" ? TEAL_700 : "transparent", color: page === "messagerie" ? GOLD_LIGHT : "#D8E8E1", position: "relative" }}>
                 Messagerie
                 {nbMessagesNonLus > 0 && (
                   <span style={{ position: "absolute", top: -6, right: -6, backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
@@ -1324,7 +1355,7 @@ function TableauDeBord({ compte }) {
               </button>
               <button
  className="btn-app"
- onClick={() => { setPage("mots_de_passe"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "mots_de_passe" ? TEAL_700 : "transparent", color: page === "mots_de_passe" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
+ onClick={() => { setPage("mots_de_passe"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "mots_de_passe" ? TEAL_700 : "transparent", color: page === "mots_de_passe" ? GOLD_LIGHT : "#D8E8E1", position: "relative" }}>
                 Mots de passe
                 {nbDemandesMdp > 0 && (
                   <span style={{ position: "absolute", top: -6, right: -6, backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
@@ -1334,7 +1365,7 @@ function TableauDeBord({ compte }) {
               </button>
               <button
  className="btn-app"
- onClick={() => { setPage("suppressions"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "suppressions" ? TEAL_700 : "transparent", color: page === "suppressions" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
+ onClick={() => { setPage("suppressions"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "suppressions" ? TEAL_700 : "transparent", color: page === "suppressions" ? GOLD_LIGHT : "#D8E8E1", position: "relative" }}>
                 Suppressions
                 {nbDemandesSuppression > 0 && (
                   <span style={{ position: "absolute", top: -6, right: -6, backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
@@ -1344,46 +1375,46 @@ function TableauDeBord({ compte }) {
               </button>
               <button
  className="btn-app"
- onClick={() => { setPage("corbeille"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "corbeille" ? TEAL_700 : "transparent", color: page === "corbeille" ? GOLD_LIGHT : "#cdeae4", display: "flex", alignItems: "center", gap: 6 }}>
+ onClick={() => { setPage("corbeille"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "corbeille" ? TEAL_700 : "transparent", color: page === "corbeille" ? GOLD_LIGHT : "#D8E8E1", display: "flex", alignItems: "center", gap: 6 }}>
                 <IconePoubelle size={15} /> Corbeille
               </button>
               <button
  className="btn-app"
- onClick={() => { setPage("sante_responsables"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "sante_responsables" ? TEAL_700 : "transparent", color: page === "sante_responsables" ? GOLD_LIGHT : "#cdeae4", display: "flex", alignItems: "center", gap: 6 }}>
+ onClick={() => { setPage("sante_responsables"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "sante_responsables" ? TEAL_700 : "transparent", color: page === "sante_responsables" ? GOLD_LIGHT : "#D8E8E1", display: "flex", alignItems: "center", gap: 6 }}>
                 <IconeThermometre size={15} /> Santé responsables
               </button>
               <button
  className="btn-app"
- onClick={() => { setPage("nouveaux"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "nouveaux" ? TEAL_700 : "transparent", color: page === "nouveaux" ? GOLD_LIGHT : "#cdeae4", display: "flex", alignItems: "center", gap: 6 }}>
+ onClick={() => { setPage("nouveaux"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "nouveaux" ? TEAL_700 : "transparent", color: page === "nouveaux" ? GOLD_LIGHT : "#D8E8E1", display: "flex", alignItems: "center", gap: 6 }}>
                 <IconePousse size={15} /> Nouveaux
               </button>
               <button
  className="btn-app"
- onClick={() => { setPage("membres"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "membres" ? TEAL_700 : "transparent", color: page === "membres" ? GOLD_LIGHT : "#cdeae4", display: "flex", alignItems: "center", gap: 6 }}>
+ onClick={() => { setPage("membres"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "membres" ? TEAL_700 : "transparent", color: page === "membres" ? GOLD_LIGHT : "#D8E8E1", display: "flex", alignItems: "center", gap: 6 }}>
                 <IconeGroupe size={15} /> Membres
               </button>
               <button
  className="btn-app"
- onClick={() => { setPage("absences"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "absences" ? TEAL_700 : "transparent", color: page === "absences" ? GOLD_LIGHT : "#cdeae4", display: "flex", alignItems: "center", gap: 6 }}>
+ onClick={() => { setPage("absences"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "absences" ? TEAL_700 : "transparent", color: page === "absences" ? GOLD_LIGHT : "#D8E8E1", display: "flex", alignItems: "center", gap: 6 }}>
                 <IconeInterdit size={15} /> Absences
               </button>
               {compte.role === "pasteur" && (
                 <button
  className="btn-app"
- onClick={() => { setPage("assistants"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "assistants" ? TEAL_700 : "transparent", color: page === "assistants" ? GOLD_LIGHT : "#cdeae4" }}>Rôles & Accès</button>
+ onClick={() => { setPage("assistants"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "assistants" ? TEAL_700 : "transparent", color: page === "assistants" ? GOLD_LIGHT : "#D8E8E1" }}>Rôles & Accès</button>
               )}
             </>
           ) : (
             <>
               <button
  className="btn-app"
- onClick={() => setPage("dashboard")} style={{ ...btnStyle, backgroundColor: (page !== "messagerie" && page !== "calendrier" && page !== "demande_role_supp") ? TEAL_700 : "transparent", color: (page !== "messagerie" && page !== "calendrier" && page !== "demande_role_supp") ? GOLD_LIGHT : "#cdeae4" }}>Mon espace</button>
+ onClick={() => setPage("dashboard")} style={{ ...btnStyle, backgroundColor: (page !== "messagerie" && page !== "calendrier" && page !== "demande_role_supp") ? TEAL_700 : "transparent", color: (page !== "messagerie" && page !== "calendrier" && page !== "demande_role_supp") ? GOLD_LIGHT : "#D8E8E1" }}>Mon espace</button>
               <button
  className="btn-app"
- onClick={() => setPage("demande_role_supp")} style={{ ...btnStyle, backgroundColor: page === "demande_role_supp" ? TEAL_700 : "transparent", color: page === "demande_role_supp" ? GOLD_LIGHT : "#cdeae4" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>+ Rôle supplémentaire</span></button>
+ onClick={() => setPage("demande_role_supp")} style={{ ...btnStyle, backgroundColor: page === "demande_role_supp" ? TEAL_700 : "transparent", color: page === "demande_role_supp" ? GOLD_LIGHT : "#D8E8E1" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>+ Rôle supplémentaire</span></button>
               <button
  className="btn-app"
- onClick={() => setPage("calendrier")} style={{ ...btnStyle, backgroundColor: page === "calendrier" ? TEAL_700 : "transparent", color: page === "calendrier" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
+ onClick={() => setPage("calendrier")} style={{ ...btnStyle, backgroundColor: page === "calendrier" ? TEAL_700 : "transparent", color: page === "calendrier" ? GOLD_LIGHT : "#D8E8E1", position: "relative" }}>
                 Calendrier
                 {nbNouveauxEvenements > 0 && (
                   <span style={{ position: "absolute", top: -6, right: -6, backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
@@ -1393,7 +1424,7 @@ function TableauDeBord({ compte }) {
               </button>
               <button
  className="btn-app"
- onClick={() => setPage("messagerie")} style={{ ...btnStyle, backgroundColor: page === "messagerie" ? TEAL_700 : "transparent", color: page === "messagerie" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
+ onClick={() => setPage("messagerie")} style={{ ...btnStyle, backgroundColor: page === "messagerie" ? TEAL_700 : "transparent", color: page === "messagerie" ? GOLD_LIGHT : "#D8E8E1", position: "relative" }}>
                 Messagerie
                 {nbMessagesNonLus > 0 && (
                   <span style={{ position: "absolute", top: -6, right: -6, backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 10, fontWeight: 700, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>
@@ -1405,13 +1436,13 @@ function TableauDeBord({ compte }) {
           )}
           <button
  className="btn-app"
- onClick={() => { setPage("mon_compte"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "mon_compte" ? TEAL_700 : "transparent", color: page === "mon_compte" ? GOLD_LIGHT : "#cdeae4" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><IconePersonne size={15} /> Mon compte</span></button>
+ onClick={() => { setPage("mon_compte"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "mon_compte" ? TEAL_700 : "transparent", color: page === "mon_compte" ? GOLD_LIGHT : "#D8E8E1" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><IconePersonne size={15} /> Mon compte</span></button>
           <button
  className="btn-app"
- onClick={() => { setPage("aide"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "aide" ? TEAL_700 : "transparent", color: page === "aide" ? GOLD_LIGHT : "#cdeae4" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><IconeAide size={15} /> Aide</span></button>
+ onClick={() => { setPage("aide"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "aide" ? TEAL_700 : "transparent", color: page === "aide" ? GOLD_LIGHT : "#D8E8E1" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><IconeAide size={15} /> Aide</span></button>
           <button
  className="btn-app"
- onClick={seDeconnecter} style={{ ...btnStyle, backgroundColor: "transparent", color: "#cdeae4" }}>Déconnexion</button>
+ onClick={seDeconnecter} style={{ ...btnStyle, backgroundColor: "transparent", color: "#D8E8E1" }}>Déconnexion</button>
         </div>
       </div>
 
@@ -1519,7 +1550,7 @@ function TableauDeBord({ compte }) {
 
       <div key={page} className="transition-page" style={{ padding: 24 }}>
         {chargement ? (
-          <p style={{ color: "#cdeae4" }}>Chargement des données…</p>
+          <p style={{ color: "#D8E8E1" }}>Chargement des données…</p>
         ) : page === "aide" ? (
           <PageAide estPasteur={estPasteur} cardStyle={cardStyle} />
         ) : page === "mon_compte" ? (
@@ -1659,21 +1690,21 @@ function TableauDeBord({ compte }) {
                 <p style={{ fontSize: 26, fontWeight: 700, color: rapportsPresenceSemaine.valides === rapportsPresenceSemaine.total && rapportsPresenceSemaine.total > 0 ? "#6fcf97" : GOLD_LIGHT }}>
                   <NombreAnime valeur={rapportsPresenceSemaine.valides} /> / {rapportsPresenceSemaine.total}
                 </p>
-                <p style={{ fontSize: 11, color: "#a9d6cf" }}>GEM ayant validé leur présence</p>
+                <p style={{ fontSize: 11, color: "#B9D3CB" }}>GEM ayant validé leur présence</p>
               </div>
               <div className="card-app" style={cardStyle}>
                 <p style={{ fontSize: 12, color: "#FFFFFF", textTransform: "uppercase" }}>Activités validées</p>
                 <p style={{ fontSize: 26, fontWeight: 700, color: rapportsActivitesSemaine.valides === rapportsActivitesSemaine.total && rapportsActivitesSemaine.total > 0 ? "#6fcf97" : GOLD_LIGHT }}>
                   <NombreAnime valeur={rapportsActivitesSemaine.valides} /> / {rapportsActivitesSemaine.total}
                 </p>
-                <p style={{ fontSize: 11, color: "#a9d6cf" }}>GEM ayant validé leurs activités</p>
+                <p style={{ fontSize: 11, color: "#B9D3CB" }}>GEM ayant validé leurs activités</p>
               </div>
               <button className="btn-app card-app" onClick={() => { setPage("absences"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...cardStyle, cursor: "pointer", textAlign: "left", borderColor: absencesSemaine.nombre > 0 ? RED_LIGHT : cardStyle.border }}>
                 <p style={{ fontSize: 12, color: "#FFFFFF", textTransform: "uppercase" }}>🚫 Absents ce dimanche</p>
                 <p style={{ fontSize: 26, fontWeight: 700, color: absencesSemaine.nombre === 0 ? "#6fcf97" : RED_LIGHT }}>
                   <NombreAnime valeur={absencesSemaine.nombre} /> ({absencesSemaine.pourcentage}%)
                 </p>
-                <p style={{ fontSize: 11, color: "#a9d6cf" }}>Clique pour voir le détail</p>
+                <p style={{ fontSize: 11, color: "#B9D3CB" }}>Clique pour voir le détail</p>
               </button>
               {(() => {
                 const listeBossDashboard = calculerListeBoss(membres, gems, tribus, departements, regulariteParMembre, [], tousLesComptes);
@@ -1684,7 +1715,7 @@ function TableauDeBord({ compte }) {
                     <p style={{ fontSize: 26, fontWeight: 700, color: GOLD_LIGHT }}>
                       <NombreAnime valeur={listeBossDashboard.length} />
                     </p>
-                    <p style={{ fontSize: 11, color: bossIrreguliersDashboard.length > 0 ? RED_LIGHT : "#a9d6cf" }}>
+                    <p style={{ fontSize: 11, color: bossIrreguliersDashboard.length > 0 ? RED_LIGHT : "#B9D3CB" }}>
                       {bossIrreguliersDashboard.length > 0 ? `⚠️ ${bossIrreguliersDashboard.length} irrégulier(s)` : "Voir dans Membres"}
                     </p>
                   </button>
@@ -1698,7 +1729,7 @@ function TableauDeBord({ compte }) {
  onClick={exporterDonneesJSON} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
                 💾 Exporter toutes les données (JSON)
               </button>
-              <p style={{ fontSize: 11, color: "#a9d6cf", marginTop: 6 }}>Sauvegarde complète de secours — à faire régulièrement.</p>
+              <p style={{ fontSize: 11, color: "#B9D3CB", marginTop: 6 }}>Sauvegarde complète de secours — à faire régulièrement.</p>
             </div>
           </>
         ) : page === "tribus" ? (
@@ -1850,11 +1881,11 @@ function HistoriquePerimetre({ gems, membres, cardStyle }) {
   return (
     <div>
       <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4, display: "flex", alignItems: "center", gap: 10 }}><IconeCroissance size={22} /> Historique</h2>
-      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>Vue d'ensemble de ton périmètre dans le temps.</p>
+      <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 20 }}>Vue d'ensemble de ton périmètre dans le temps.</p>
 
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
         {[["hebdomadaire", "Hebdomadaire"], ["mensuelle", "Mensuelle"], ["annuelle", "Annuelle"]].map(([cle, label]) => (
-          <button key={cle} className="btn-app" onClick={() => setVue(cle)} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === cle ? GOLD : TEAL_900, color: vue === cle ? TEAL_950 : "#cdeae4" }}>
+          <button key={cle} className="btn-app" onClick={() => setVue(cle)} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === cle ? GOLD : TEAL_900, color: vue === cle ? TEAL_950 : "#D8E8E1" }}>
             {label}
           </button>
         ))}
@@ -1862,7 +1893,7 @@ function HistoriquePerimetre({ gems, membres, cardStyle }) {
 
       {vue === "hebdomadaire" && (
         presenceParDimanche.length === 0 ? (
-          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Pas encore de dimanche pointé pour ce périmètre.</p>
+          <p style={{ color: "#B9D3CB", fontSize: 13 }}>Pas encore de dimanche pointé pour ce périmètre.</p>
         ) : (
           <>
             <div style={{ ...cardStyle, marginBottom: 20 }}>
@@ -1882,7 +1913,7 @@ function HistoriquePerimetre({ gems, membres, cardStyle }) {
 
       {vue === "mensuelle" && (
         presenceParMois.length === 0 ? (
-          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Pas encore de mois pointé pour ce périmètre.</p>
+          <p style={{ color: "#B9D3CB", fontSize: 13 }}>Pas encore de mois pointé pour ce périmètre.</p>
         ) : (
           <>
             <div style={{ ...cardStyle, marginBottom: 20 }}>
@@ -1910,7 +1941,7 @@ function HistoriquePerimetre({ gems, membres, cardStyle }) {
 
       {vue === "annuelle" && (
         presenceParAnnee.length === 0 ? (
-          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Pas encore d'année pointée pour ce périmètre.</p>
+          <p style={{ color: "#B9D3CB", fontSize: 13 }}>Pas encore d'année pointée pour ce périmètre.</p>
         ) : (
           <>
             <div style={{ ...cardStyle, marginBottom: 20 }}>
@@ -1991,7 +2022,7 @@ function ResumePerimetre({ gems, membres, onVoirAbsences, cardStyle }) {
         <button className="btn-app card-app" onClick={onVoirAbsences} disabled={!onVoirAbsences} style={{ ...cardStyle, textAlign: "left", cursor: onVoirAbsences ? "pointer" : "default", borderColor: absencesCount > 0 ? RED_LIGHT : cardStyle.border }}>
           <p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>🚫 Absents ce dimanche</p>
           <p style={{ fontSize: 18, fontWeight: 700 }}>
-            {tauxPresence !== null ? <><span style={{ color: RED_LIGHT }}>{absencesCount}</span> <span style={{ fontSize: 13, color: "#a9d6cf" }}>({100 - tauxPresence}%)</span></> : "—"}
+            {tauxPresence !== null ? <><span style={{ color: RED_LIGHT }}>{absencesCount}</span> <span style={{ fontSize: 13, color: "#B9D3CB" }}>({100 - tauxPresence}%)</span></> : "—"}
           </p>
         </button>
       </div>
@@ -2058,7 +2089,7 @@ function AnniversairesAVenir({ membres, gems, tribus, departements, cardStyle })
           <div key={membre.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
             <div>
               <p style={{ fontWeight: 700, marginBottom: 2 }}>{membre.nom}</p>
-              <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomGem(membre.gem_id)}{provenance(membre.gem_id) ? ` — ${provenance(membre.gem_id)}` : ""}</p>
+              <p style={{ fontSize: 12, color: "#B9D3CB" }}>{nomGem(membre.gem_id)}{provenance(membre.gem_id) ? ` — ${provenance(membre.gem_id)}` : ""}</p>
             </div>
             <span style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, backgroundColor: "#EFCB77", borderRadius: 999, padding: "6px 12px" }}>
               {diffJours === 0 ? "🎉 Aujourd'hui !" : diffJours === 1 ? "Demain" : `Dans ${diffJours} jours`} — {date.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
@@ -2096,7 +2127,7 @@ function AnniversairesResponsables({ comptes, cardStyle }) {
           <div key={compte.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
             <div>
               <p style={{ fontWeight: 700, marginBottom: 2 }}>{compte.nom}</p>
-              <p style={{ fontSize: 12, color: "#a9d6cf" }}>{compte.role === "pasteur" ? "Pasteur" : compte.assistant ? "Assistant" : "Responsable"} · {compte.quartier || "Quartier non renseigné"}</p>
+              <p style={{ fontSize: 12, color: "#B9D3CB" }}>{compte.role === "pasteur" ? "Pasteur" : compte.assistant ? "Assistant" : "Responsable"} · {compte.quartier || "Quartier non renseigné"}</p>
             </div>
             <span style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, backgroundColor: "#EFCB77", borderRadius: 999, padding: "6px 12px" }}>
               {diffJours === 0 ? "🎉 Aujourd'hui !" : diffJours === 1 ? "Demain" : `Dans ${diffJours} jours`} — {date.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
@@ -2121,7 +2152,7 @@ function Pagination({ page, setPage, totalPages }) {
       >
         ← Précédent
       </button>
-      <span style={{ fontSize: 13, color: "#a9d6cf" }}>Page {page} / {totalPages}</span>
+      <span style={{ fontSize: 13, color: "#B9D3CB" }}>Page {page} / {totalPages}</span>
       <button
         className="btn-app"
         onClick={() => setPage(p => Math.min(totalPages, p + 1))}
@@ -2155,14 +2186,14 @@ function PrioritesPastorales({ membres, gems, regulariteParMembre, cardStyle }) 
     <div>
       <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><IconeAlerte size={16} /> Priorités pastorales — membres à visiter ({membresAlerte.length})</p>
       {membresAlerte.length === 0 ? (
-        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun membre en absence répétée pour l'instant — tout va bien.</p>
+        <p style={{ color: "#B9D3CB", fontSize: 13 }}>Aucun membre en absence répétée pour l'instant — tout va bien.</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {membresAffiches.map(({ membre, regularite }) => (
             <div key={membre.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, borderColor: RED_LIGHT }}>
               <div>
                 <p style={{ fontWeight: 700, marginBottom: 2 }}>{membre.nom}</p>
-                <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomGem(membre.gem_id)}</p>
+                <p style={{ fontSize: 12, color: "#B9D3CB" }}>{nomGem(membre.gem_id)}</p>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "6px 12px" }}>⚠️ {regularite.absencesConsecutives} absences consécutives</span>
@@ -2265,10 +2296,10 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
                   {type === "tribu" ? "Patriarche/Matriarche" : "Responsable"} : {responsable.compte.nom}
                 </p>
               ) : (
-                <p style={{ fontSize: 11, color: "#a9d6cf", fontStyle: "italic", marginBottom: 10 }}>Aucun responsable désigné</p>
+                <p style={{ fontSize: 11, color: "#B9D3CB", fontStyle: "italic", marginBottom: 10 }}>Aucun responsable désigné</p>
               )}
               {gemsDuParent.length === 0 ? (
-                <p style={{ fontSize: 12, color: "#a9d6cf", fontStyle: "italic" }}>Aucun GEM pour l'instant.</p>
+                <p style={{ fontSize: 12, color: "#B9D3CB", fontStyle: "italic" }}>Aucun GEM pour l'instant.</p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {gemsDuParent.map(g => {
@@ -2276,7 +2307,7 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
                     return (
                       <button key={g.id} onClick={() => onOpenGem(g)} style={{ textAlign: "left", padding: "8px 10px", borderRadius: 8, backgroundColor: TEAL_700, color: GOLD_LIGHT, border: "none", fontSize: 13, cursor: "pointer", display: "flex", flexDirection: "column", gap: 2 }}>
                         <span>{g.nom}</span>
-                        <span style={{ fontSize: 11, fontWeight: 400, color: respGem ? "#cdeae4" : "#7fae9f" }}>
+                        <span style={{ fontSize: 11, fontWeight: 400, color: respGem ? "#D8E8E1" : "#B9D3CB" }}>
                           {respGem ? respGem.nom : "Sans responsable"}
                         </span>
                       </button>
@@ -2295,7 +2326,7 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
                 ) : (
                   <button
  className="btn-app"
- onClick={() => setCreationPour(it.id)} style={{ marginTop: 10, fontSize: 12, color: "#a9d6cf", background: "none", border: "none", cursor: "pointer" }}>+ Créer un GEM ici</button>
+ onClick={() => setCreationPour(it.id)} style={{ marginTop: 10, fontSize: 12, color: "#B9D3CB", background: "none", border: "none", cursor: "pointer" }}>+ Créer un GEM ici</button>
                 )
               )}
             </div>
@@ -2406,9 +2437,9 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
     <div>
       <button
  className="btn-app"
- onClick={onBack} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 12, fontSize: 13 }}>← Retour</button>
+ onClick={onBack} style={{ background: "none", border: "none", color: "#B9D3CB", cursor: "pointer", marginBottom: 12, fontSize: 13 }}>← Retour</button>
       <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>{parent.nom}</h2>
-      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>{membresDuParent.length} membre{membresDuParent.length > 1 ? "s" : ""} au total, répartis sur {gemsDuParent.length} GEM</p>
+      <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 20 }}>{membresDuParent.length} membre{membresDuParent.length > 1 ? "s" : ""} au total, répartis sur {gemsDuParent.length} GEM</p>
 
       <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><IconeClipboard size={15} /> GEM de ce {type === "tribu" ? "tribu" : "département"} ({gemsDuParent.length})</p>
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
@@ -2430,7 +2461,7 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
                       style={{ flex: 1, minWidth: 140, padding: 8, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}
                     />
                     <button className="btn-app" onClick={() => renommerGem(g.id)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer", fontSize: 12 }}>Enregistrer</button>
-                    <button className="btn-app" onClick={() => setGemEnEdition(null)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: "transparent", color: "#a9d6cf", border: `1px solid ${TEAL_600}`, cursor: "pointer", fontSize: 12 }}>Annuler</button>
+                    <button className="btn-app" onClick={() => setGemEnEdition(null)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: "transparent", color: "#B9D3CB", border: `1px solid ${TEAL_600}`, cursor: "pointer", fontSize: 12 }}>Annuler</button>
                   </div>
                 ) : (
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
@@ -2443,7 +2474,7 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
                           </span>
                         )}
                       </p>
-                      <p style={{ fontSize: 12, color: "#a9d6cf" }}>
+                      <p style={{ fontSize: 12, color: "#B9D3CB" }}>
                         {nbMembresGem} membre{nbMembresGem > 1 ? "s" : ""}
                         {nomResponsable ? ` · Responsable : ${nomResponsable}` : " · Aucun responsable désigné"}
                       </p>
@@ -2509,7 +2540,7 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
                     )}
                     <div>
                       <p style={{ fontWeight: 700, marginBottom: 2 }}>{m.nom}</p>
-                      <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 4 }}>{nomGem(m.gem_id)} · {m.telephone}</p>
+                      <p style={{ fontSize: 12, color: "#B9D3CB", marginBottom: 4 }}>{nomGem(m.gem_id)} · {m.telephone}</p>
                       <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
                         <span style={{ fontSize: 11, fontWeight: 700, color: couleurScore(moyenne), backgroundColor: TEAL_900, borderRadius: 999, padding: "2px 8px" }}>
                           🌡️ Santé : {moyenne !== null ? `${moyenne}/10` : "Non évaluée"}
@@ -2530,7 +2561,7 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
                           </span>
                         )}
                         {!regularite && (
-                          <span style={{ fontSize: 11, color: "#a9d6cf", backgroundColor: TEAL_900, borderRadius: 999, padding: "2px 8px" }}>
+                          <span style={{ fontSize: 11, color: "#B9D3CB", backgroundColor: TEAL_900, borderRadius: 999, padding: "2px 8px" }}>
                             Régularité non disponible
                           </span>
                         )}
@@ -2796,7 +2827,7 @@ function genererAfficheImage({ titre, sousTitre, corps, piedDePage, nomFichier }
     ctx.font = "bold 34px Arial";
     ctx.fillText("ASSEMBLÉE RENAISSANCE", largeur / 2, 130);
     ctx.font = "24px Arial";
-    ctx.fillStyle = "#cdeae4";
+    ctx.fillStyle = "#D8E8E1";
     ctx.fillText("Bouaflé", largeur / 2, 168);
 
     // Ligne de séparation
@@ -2834,7 +2865,7 @@ function genererAfficheImage({ titre, sousTitre, corps, piedDePage, nomFichier }
 
     // Pied de page
     ctx.font = "italic 26px Arial";
-    ctx.fillStyle = "#a9d6cf";
+    ctx.fillStyle = "#B9D3CB";
     ctx.fillText(piedDePage || "Pasteur Dimitri Koffi", largeur / 2, hauteur - 60);
 
     // Bande dorée en bas
@@ -3216,9 +3247,9 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
     <div>
       {onBack && <button
  className="btn-app"
- onClick={onBack} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 12, fontSize: 13 }}>← Retour</button>}
+ onClick={onBack} style={{ background: "none", border: "none", color: "#B9D3CB", cursor: "pointer", marginBottom: 12, fontSize: 13 }}>← Retour</button>}
       <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>{gem.nom}</h2>
-      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>{membres.length} membre{membres.length > 1 ? "s" : ""}</p>
+      <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 20 }}>{membres.length} membre{membres.length > 1 ? "s" : ""}</p>
 
       <BanniereRappelPointage rappel={rappelPointage} />
 
@@ -3226,21 +3257,21 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
         <button
           className="btn-app"
           onClick={() => setSousOnglet("membres")}
-          style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "membres" ? GOLD : TEAL_900, color: sousOnglet === "membres" ? TEAL_950 : "#cdeae4", display: "inline-flex", alignItems: "center", gap: 6 }}
+          style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "membres" ? GOLD : TEAL_900, color: sousOnglet === "membres" ? TEAL_950 : "#D8E8E1", display: "inline-flex", alignItems: "center", gap: 6 }}
         >
           <IconeGroupe size={14} /> Membres & Présence
         </button>
         <button
           className="btn-app"
           onClick={() => setSousOnglet("activites")}
-          style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "activites" ? GOLD : TEAL_900, color: sousOnglet === "activites" ? TEAL_950 : "#cdeae4", display: "inline-flex", alignItems: "center", gap: 6 }}
+          style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "activites" ? GOLD : TEAL_900, color: sousOnglet === "activites" ? TEAL_950 : "#D8E8E1", display: "inline-flex", alignItems: "center", gap: 6 }}
         >
           <IconeClipboard size={14} /> Activités de la semaine
         </button>
         <button
           className="btn-app"
           onClick={() => setSousOnglet("sante")}
-          style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "sante" ? GOLD : TEAL_900, color: sousOnglet === "sante" ? TEAL_950 : "#cdeae4", display: "inline-flex", alignItems: "center", gap: 6 }}
+          style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "sante" ? GOLD : TEAL_900, color: sousOnglet === "sante" ? TEAL_950 : "#D8E8E1", display: "inline-flex", alignItems: "center", gap: 6 }}
         >
           <IconeThermometre size={14} /> Santé spirituelle
         </button>
@@ -3274,7 +3305,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
  className="btn-app"
  onClick={ajouterMembre} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer" }}>Ajouter</button>
         </div>
-        <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 12, color: "#a9d6cf", cursor: "pointer" }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, fontSize: 12, color: "#B9D3CB", cursor: "pointer" }}>
           <input type="checkbox" checked={nouveauConverti} onChange={e => setNouveauConverti(e.target.checked)} />
           Nouveau converti — suivre son parcours d'intégration
         </label>
@@ -3308,7 +3339,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
             </option>
           ))}
         </select>
-        <p style={{ fontSize: 11, color: "#a9d6cf", marginBottom: 12 }}>Coche chaque membre présent au culte de ce dimanche.</p>
+        <p style={{ fontSize: 11, color: "#B9D3CB", marginBottom: 12 }}>Coche chaque membre présent au culte de ce dimanche.</p>
 
         {!chargementResponsable && responsableGem && (
           <div style={{ border: `2px solid ${GOLD}`, borderRadius: 8, padding: "10px 14px", marginBottom: 12, backgroundColor: "rgba(208,175,28,0.08)" }}>
@@ -3319,14 +3350,14 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
                 <span style={{ fontSize: 10, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, borderRadius: 999, padding: "2px 8px", marginLeft: 8 }}><IconePersonne size={10} style={{verticalAlign:"-1px",marginRight:3}} /> Responsable</span>
               </span>
             </label>
-            <p style={{ fontSize: 11, color: "#a9d6cf", marginTop: 4 }}>{responsableGem.compte.telephone}{responsableGem.compte.quartier ? ` · ${responsableGem.compte.quartier}` : ""}</p>
+            <p style={{ fontSize: 11, color: "#B9D3CB", marginTop: 4 }}>{responsableGem.compte.telephone}{responsableGem.compte.quartier ? ` · ${responsableGem.compte.quartier}` : ""}</p>
           </div>
         )}
 
         {chargementPresences ? (
-          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Chargement…</p>
+          <p style={{ color: "#B9D3CB", fontSize: 13 }}>Chargement…</p>
         ) : membres.length === 0 ? (
-          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Ajoute d'abord un membre ci-dessus.</p>
+          <p style={{ color: "#B9D3CB", fontSize: 13 }}>Ajoute d'abord un membre ci-dessus.</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
             {membres.map(m => {
@@ -3351,7 +3382,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
                       />
                       <span>{m.nom}</span>
                     </span>
-                    <span style={{ fontSize: 12, fontWeight: 700, color: present ? GOLD_LIGHT : "#a9d6cf" }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: present ? GOLD_LIGHT : "#B9D3CB" }}>
                       {present ? "✓ Présent" : "Absent"}
                     </span>
                   </label>
@@ -3361,7 +3392,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
                       onBlur={e => enregistrerMotif(m.id, e.target.value)}
                       onClick={e => e.stopPropagation()}
                       placeholder="Motif de l'absence (obligatoire)..."
-                      style={{ width: "100%", padding: "8px 14px", fontSize: 12, backgroundColor: TEAL_950, color: "#cdeae4", border: `1px solid ${motif?.trim() ? TEAL_700 : "rgba(226,119,123,0.5)"}`, borderTop: "none", borderRadius: "0 0 8px 8px" }}
+                      style={{ width: "100%", padding: "8px 14px", fontSize: 12, backgroundColor: TEAL_950, color: "#D8E8E1", border: `1px solid ${motif?.trim() ? TEAL_700 : "rgba(226,119,123,0.5)"}`, borderTop: "none", borderRadius: "0 0 8px 8px" }}
                     />
                   )}
                 </div>
@@ -3420,7 +3451,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
               {apercuImport.slice(0, 15).map((l, i) => (
                 <p key={i} style={{ fontSize: 12, color: "#B9D3CB" }}>• {l.nom} — {l.telephone}{l.quartier ? ` (${l.quartier})` : ""}</p>
               ))}
-              {apercuImport.length > 15 && <p style={{ fontSize: 12, color: "#a9d6cf", fontStyle: "italic" }}>+ {apercuImport.length - 15} autre(s)…</p>}
+              {apercuImport.length > 15 && <p style={{ fontSize: 12, color: "#B9D3CB", fontStyle: "italic" }}>+ {apercuImport.length - 15} autre(s)…</p>}
             </div>
             <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
               <button className="btn-app" onClick={() => setApercuImport(null)} style={{ padding: "10px 18px", borderRadius: 9, backgroundColor: "transparent", color: "#B9D3CB", border: "1px solid #2C917F", fontWeight: 600, cursor: "pointer" }}>
@@ -3462,24 +3493,24 @@ function EditionResponsableGem({ compteResponsable, onFerme, onEnregistre }) {
         <p className="titre-moisson" style={{ fontWeight: 600, fontSize: 17, marginBottom: 14, display: "flex", alignItems: "center", gap: 8 }}><IconePersonne size={17} /> Modifier le responsable</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div>
-            <label style={{ fontSize: 11, color: "#a9d6cf", display: "block", marginBottom: 4 }}>Nom</label>
+            <label style={{ fontSize: 11, color: "#B9D3CB", display: "block", marginBottom: 4 }}>Nom</label>
             <input value={nom} onChange={e => setNom(e.target.value)} style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
           </div>
           <div>
-            <label style={{ fontSize: 11, color: "#a9d6cf", display: "block", marginBottom: 4 }}>Téléphone</label>
+            <label style={{ fontSize: 11, color: "#B9D3CB", display: "block", marginBottom: 4 }}>Téléphone</label>
             <input value={telephone} onChange={e => setTelephone(e.target.value)} style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
           </div>
           <div>
-            <label style={{ fontSize: 11, color: "#a9d6cf", display: "block", marginBottom: 4 }}>Quartier</label>
+            <label style={{ fontSize: 11, color: "#B9D3CB", display: "block", marginBottom: 4 }}>Quartier</label>
             <input value={quartier} onChange={e => setQuartier(e.target.value)} style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
           </div>
           <div>
-            <label style={{ fontSize: 11, color: "#a9d6cf", display: "block", marginBottom: 4 }}>🎂 Date de naissance (jour et mois)</label>
+            <label style={{ fontSize: 11, color: "#B9D3CB", display: "block", marginBottom: 4 }}>🎂 Date de naissance (jour et mois)</label>
             <SelecteurJourMois value={dateNaissance} onChange={setDateNaissance} />
           </div>
         </div>
         <div style={{ display: "flex", gap: 10, marginTop: 18 }}>
-          <button className="btn-app" onClick={onFerme} style={{ flex: 1, padding: "10px 0", borderRadius: 8, backgroundColor: "transparent", color: "#cdeae4", border: `1px solid ${TEAL_600}`, cursor: "pointer" }}>Annuler</button>
+          <button className="btn-app" onClick={onFerme} style={{ flex: 1, padding: "10px 0", borderRadius: 8, backgroundColor: "transparent", color: "#D8E8E1", border: `1px solid ${TEAL_600}`, cursor: "pointer" }}>Annuler</button>
           <button className="btn-app" disabled={enregistrement} onClick={enregistrer} style={{ flex: 1, padding: "10px 0", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer" }}>
             {enregistrement ? "…" : "Enregistrer"}
           </button>
@@ -3617,7 +3648,7 @@ function RapportSanteSemaine({ gem, membres, compte, cardStyle }) {
             </option>
           ))}
         </select>
-        <p style={{ fontSize: 11, color: "#a9d6cf", marginBottom: 12 }}>Évalue chaque membre de 0 (faible) à 10 (excellent), puis valide le rapport de la semaine.</p>
+        <p style={{ fontSize: 11, color: "#B9D3CB", marginBottom: 12 }}>Évalue chaque membre de 0 (faible) à 10 (excellent), puis valide le rapport de la semaine.</p>
 
         {responsableGem && valeursResponsable && (
           <div style={{ border: `2px solid ${GOLD}`, borderRadius: 8, marginBottom: 14, backgroundColor: "rgba(208,175,28,0.08)" }}>
@@ -3637,7 +3668,7 @@ function RapportSanteSemaine({ gem, membres, compte, cardStyle }) {
                 {DIMENSIONS_SANTE.map(([cle, label]) => (
                   <div key={cle}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                      <label style={{ fontSize: 12, color: "#cdeae4" }}>{label}</label>
+                      <label style={{ fontSize: 12, color: "#D8E8E1" }}>{label}</label>
                       <span style={{ fontSize: 12, fontWeight: 700, color: couleurScore(valeursResponsable[cle]) }}>{valeursResponsable[cle]}/10</span>
                     </div>
                     <input
@@ -3661,7 +3692,7 @@ function RapportSanteSemaine({ gem, membres, compte, cardStyle }) {
         )}
 
         {membres.length === 0 ? (
-          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Ajoute d'abord un membre dans l'onglet "Membres & Présence".</p>
+          <p style={{ color: "#B9D3CB", fontSize: 13 }}>Ajoute d'abord un membre dans l'onglet "Membres & Présence".</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {membres.map(m => {
@@ -3683,7 +3714,7 @@ function RapportSanteSemaine({ gem, membres, compte, cardStyle }) {
                       {DIMENSIONS_SANTE.map(([cle, label]) => (
                         <div key={cle}>
                           <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                            <label style={{ fontSize: 12, color: "#cdeae4" }}>{label}</label>
+                            <label style={{ fontSize: 12, color: "#D8E8E1" }}>{label}</label>
                             <span style={{ fontSize: 12, fontWeight: 700, color: couleurScore(valeurs[cle]) }}>{valeurs[cle]}/10</span>
                           </div>
                           <input
@@ -3811,7 +3842,7 @@ function ActivitesSemaine({ gem, membres, compte, cardStyle }) {
 
   return (
     <div>
-      <label style={{ display: "block", fontSize: 12, color: "#a9d6cf", marginBottom: 6 }}>Semaine concernée</label>
+      <label style={{ display: "block", fontSize: 12, color: "#B9D3CB", marginBottom: 6 }}>Semaine concernée</label>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
         <select
           value={dimancheId || ""}
@@ -3832,12 +3863,12 @@ function ActivitesSemaine({ gem, membres, compte, cardStyle }) {
       </div>
 
       {membres.length === 0 ? (
-        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Ajoute d'abord des membres à ce GEM pour pouvoir remplir les activités.</p>
+        <p style={{ color: "#B9D3CB", fontSize: 13 }}>Ajoute d'abord des membres à ce GEM pour pouvoir remplir les activités.</p>
       ) : (
         <>
           <div style={{ ...cardStyle, marginBottom: 16 }}>
             <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>🏠 Visites effectuées cette semaine</p>
-            <p style={{ fontSize: 11, color: "#a9d6cf", marginBottom: 10 }}>Coche chaque membre visité.</p>
+            <p style={{ fontSize: 11, color: "#B9D3CB", marginBottom: 10 }}>Coche chaque membre visité.</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {membres.map(m => {
                 const coche = (activite.visites_membres || []).includes(m.id);
@@ -3853,7 +3884,7 @@ function ActivitesSemaine({ gem, membres, compte, cardStyle }) {
 
           <div style={{ ...cardStyle, marginBottom: 16 }}>
             <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}><IconeTelephone size={13} style={{ verticalAlign: "-2px", marginRight: 4 }} /> Appels effectués cette semaine</p>
-            <p style={{ fontSize: 11, color: "#a9d6cf", marginBottom: 10 }}>Coche chaque membre appelé.</p>
+            <p style={{ fontSize: 11, color: "#B9D3CB", marginBottom: 10 }}>Coche chaque membre appelé.</p>
             <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
               {membres.map(m => {
                 const coche = (activite.appels_membres || []).includes(m.id);
@@ -4022,7 +4053,7 @@ function calculerListeBoss(membres, gems, tribus, departements, regulariteParMem
 }
 
 function couleurScore(score) {
-  if (score === null) return "#a9d6cf";
+  if (score === null) return "#B9D3CB";
   if (score >= 7) return GOLD_LIGHT;
   if (score >= 4) return "#e8c25a";
   return RED_LIGHT;
@@ -4293,7 +4324,7 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
           <div>
           <p style={{ fontWeight: 600 }}>{membre.nom}</p>
           {membre.telephone && (
-            <a title="Appeler" href={`tel:${membre.telephone}`} onClick={e => e.stopPropagation()} style={{ fontSize: 12, color: "#a9d6cf", textDecoration: "none" }}>
+            <a title="Appeler" href={`tel:${membre.telephone}`} onClick={e => e.stopPropagation()} style={{ fontSize: 12, color: "#B9D3CB", textDecoration: "none" }}>
               <IconeTelephone size={12} style={{ verticalAlign: "-2px", marginRight: 4 }} /> {membre.telephone}
             </a>
           )}
@@ -4330,7 +4361,7 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
           <span style={{ fontSize: 12, fontWeight: 700, color: couleurScore(moyenne) }}>
             {moyenne !== null ? `Santé ${moyenne}/10` : "Non évaluée"}
           </span>
-          <span style={{ color: "#a9d6cf" }}>{ouvert ? "▲" : "▼"}</span>
+          <span style={{ color: "#B9D3CB" }}>{ouvert ? "▲" : "▼"}</span>
         </div>
       </button>
 
@@ -4341,7 +4372,7 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: 140 }}>
-                  <label style={{ fontSize: 10, color: "#a9d6cf", display: "block", marginBottom: 2 }}>Nom complet</label>
+                  <label style={{ fontSize: 10, color: "#B9D3CB", display: "block", marginBottom: 2 }}>Nom complet</label>
                   <input
                     value={editNom}
                     onChange={e => setEditNom(e.target.value)}
@@ -4350,7 +4381,7 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
                   />
                 </div>
                 <div style={{ flex: 1, minWidth: 140 }}>
-                  <label style={{ fontSize: 10, color: "#a9d6cf", display: "block", marginBottom: 2 }}>Téléphone</label>
+                  <label style={{ fontSize: 10, color: "#B9D3CB", display: "block", marginBottom: 2 }}>Téléphone</label>
                   <input
                     value={editTelephone}
                     onChange={e => setEditTelephone(e.target.value)}
@@ -4361,7 +4392,7 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
               </div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: 140 }}>
-                  <label style={{ fontSize: 10, color: "#a9d6cf", display: "block", marginBottom: 2 }}>Quartier</label>
+                  <label style={{ fontSize: 10, color: "#B9D3CB", display: "block", marginBottom: 2 }}>Quartier</label>
                   <input
                     value={editQuartier}
                     onChange={e => setEditQuartier(e.target.value)}
@@ -4371,7 +4402,7 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
                   />
                 </div>
                 <div style={{ flex: 1, minWidth: 140 }}>
-                  <label style={{ fontSize: 10, color: "#a9d6cf", display: "block", marginBottom: 2 }}>🎂 Date de naissance (jour et mois)</label>
+                  <label style={{ fontSize: 10, color: "#B9D3CB", display: "block", marginBottom: 2 }}>🎂 Date de naissance (jour et mois)</label>
                   <SelecteurJourMois value={editDateNaissance} onChange={setEditDateNaissance} />
                 </div>
               </div>
@@ -4401,18 +4432,18 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
           <div style={{ display: "flex", gap: 6, marginBottom: 14 }}>
             <button
  className="btn-app"
- onClick={() => setSousOnglet("sante")} style={{ flex: 1, padding: "6px 0", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "sante" ? TEAL_700 : TEAL_900, color: sousOnglet === "sante" ? GOLD_LIGHT : "#cdeae4" }}>
+ onClick={() => setSousOnglet("sante")} style={{ flex: 1, padding: "6px 0", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "sante" ? TEAL_700 : TEAL_900, color: sousOnglet === "sante" ? GOLD_LIGHT : "#D8E8E1" }}>
               Santé spirituelle
             </button>
             <button
  className="btn-app"
- onClick={() => setSousOnglet("visites")} style={{ flex: 1, padding: "6px 0", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "visites" ? TEAL_700 : TEAL_900, color: sousOnglet === "visites" ? GOLD_LIGHT : "#cdeae4" }}>
+ onClick={() => setSousOnglet("visites")} style={{ flex: 1, padding: "6px 0", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "visites" ? TEAL_700 : TEAL_900, color: sousOnglet === "visites" ? GOLD_LIGHT : "#D8E8E1" }}>
               Journal des visites
             </button>
             {membre.nouveau_converti && (
               <button
  className="btn-app"
- onClick={() => setSousOnglet("parcours")} style={{ flex: 1, padding: "6px 0", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "parcours" ? TEAL_700 : TEAL_900, color: sousOnglet === "parcours" ? GOLD_LIGHT : "#cdeae4" }}>
+ onClick={() => setSousOnglet("parcours")} style={{ flex: 1, padding: "6px 0", borderRadius: 6, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "parcours" ? TEAL_700 : TEAL_900, color: sousOnglet === "parcours" ? GOLD_LIGHT : "#D8E8E1" }}>
                 Parcours
               </button>
             )}
@@ -4422,7 +4453,7 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
             <>
               {historiquePresence && historiquePresence.length > 0 && (
                 <div style={{ marginBottom: 16, padding: 10, backgroundColor: TEAL_900, borderRadius: 8 }}>
-                  <p style={{ fontSize: 11, color: "#a9d6cf", marginBottom: 8 }}>Présence — 8 derniers dimanches</p>
+                  <p style={{ fontSize: 11, color: "#B9D3CB", marginBottom: 8 }}>Présence — 8 derniers dimanches</p>
                   <div style={{ display: "flex", alignItems: "flex-end", gap: 4, height: 36 }}>
                     {historiquePresence.map((h, i) => (
                       <div
@@ -4434,7 +4465,7 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
                   </div>
                 </div>
               )}
-              <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 10 }}>Évalue chaque dimension de 0 (faible) à 10 (excellent).</p>
+              <p style={{ fontSize: 12, color: "#B9D3CB", marginBottom: 10 }}>Évalue chaque dimension de 0 (faible) à 10 (excellent).</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                 {DIMENSIONS_SANTE.map(([cle, label]) => (
                   <div key={cle}>
@@ -4459,10 +4490,10 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
           ) : sousOnglet === "visites" ? (
             <>
               <div style={{ marginBottom: 16 }}>
-                <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 8 }}>Enregistrer une nouvelle visite</p>
+                <p style={{ fontSize: 12, color: "#B9D3CB", marginBottom: 8 }}>Enregistrer une nouvelle visite</p>
                 <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
                   {["positive", "mitigee", "sans_suite"].map(r => (
-                    <button key={r} onClick={() => setResultatVisite(r)} style={{ flex: 1, padding: "6px 4px", borderRadius: 6, fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: resultatVisite === r ? GOLD : TEAL_900, color: resultatVisite === r ? TEAL_950 : "#cdeae4" }}>
+                    <button key={r} onClick={() => setResultatVisite(r)} style={{ flex: 1, padding: "6px 4px", borderRadius: 6, fontSize: 11, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: resultatVisite === r ? GOLD : TEAL_900, color: resultatVisite === r ? TEAL_950 : "#D8E8E1" }}>
                       {libelleResultat(r)}
                     </button>
                   ))}
@@ -4475,18 +4506,18 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
                 </button>
               </div>
 
-              <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 8 }}>Historique</p>
+              <p style={{ fontSize: 12, color: "#B9D3CB", marginBottom: 8 }}>Historique</p>
               {chargementVisites ? (
-                <p style={{ fontSize: 12, color: "#a9d6cf" }}>Chargement…</p>
+                <p style={{ fontSize: 12, color: "#B9D3CB" }}>Chargement…</p>
               ) : visites.length === 0 ? (
-                <p style={{ fontSize: 12, color: "#a9d6cf" }}>Aucune visite enregistrée pour l'instant.</p>
+                <p style={{ fontSize: 12, color: "#B9D3CB" }}>Aucune visite enregistrée pour l'instant.</p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {visites.map(v => (
                     <div key={v.id} style={{ backgroundColor: TEAL_900, borderRadius: 8, padding: 10, border: `1px solid ${TEAL_700}` }}>
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                         <span style={{ fontSize: 11, fontWeight: 700, color: couleurResultat(v.resultat) }}>{libelleResultat(v.resultat)}</span>
-                        <span style={{ fontSize: 10, color: "#a9d6cf" }}>{new Date(v.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}</span>
+                        <span style={{ fontSize: 10, color: "#B9D3CB" }}>{new Date(v.date).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}</span>
                       </div>
                       {v.note && <p style={{ fontSize: 12 }}>{v.note}</p>}
                     </div>
@@ -4496,7 +4527,7 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
             </>
           ) : (
             <>
-              <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 14 }}>Étapes du parcours d'intégration de ce nouveau converti.</p>
+              <p style={{ fontSize: 12, color: "#B9D3CB", marginBottom: 14 }}>Étapes du parcours d'intégration de ce nouveau converti.</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
                 {ETAPES_CONVERSION.map((etape, i) => {
                   const indexActuel = ETAPES_CONVERSION.indexOf(membre.etape_conversion || "accueil");
@@ -4511,11 +4542,11 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
                       <span style={{
                         width: 22, height: 22, borderRadius: 999, display: "flex", alignItems: "center", justifyContent: "center",
                         fontSize: 11, fontWeight: 700, flexShrink: 0,
-                        backgroundColor: atteinte ? GOLD : TEAL_900, color: atteinte ? TEAL_950 : "#a9d6cf",
+                        backgroundColor: atteinte ? GOLD : TEAL_900, color: atteinte ? TEAL_950 : "#B9D3CB",
                       }}>
                         {atteinte ? "✓" : i + 1}
                       </span>
-                      <span style={{ fontSize: 13, fontWeight: estActuelle ? 700 : 400, color: atteinte ? CREAM : "#a9d6cf" }}>
+                      <span style={{ fontSize: 13, fontWeight: estActuelle ? 700 : 400, color: atteinte ? CREAM : "#B9D3CB" }}>
                         {LIBELLES_ETAPES[etape]}
                       </span>
                     </div>
@@ -4595,7 +4626,7 @@ function DemanderResponsabilite({ compte, tribus, departements, mesAssignations,
     return (
       <div style={{ ...cardStyle, maxWidth: 480 }}>
         <p style={{ fontWeight: 700, marginBottom: 8 }}>Demande envoyée ✅</p>
-        <p style={{ fontSize: 13, color: "#a9d6cf" }}>
+        <p style={{ fontSize: 13, color: "#B9D3CB" }}>
           Ta demande de responsabilité a bien été enregistrée. Le Pasteur Dimitri Koffi, ou un assistant désigné, doit encore la valider{aDejaUneResponsabilite ? " avant qu'elle apparaisse dans ton espace" : " avant que tu puisses accéder à ton espace"}. Reviens un peu plus tard — cet écran se mettra à jour automatiquement une fois validée.
         </p>
       </div>
@@ -4605,7 +4636,7 @@ function DemanderResponsabilite({ compte, tribus, departements, mesAssignations,
   return (
     <div style={{ maxWidth: 480 }}>
       <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>{aDejaUneResponsabilite ? "Demander un rôle supplémentaire" : "Demander une responsabilité"}</h2>
-      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>
+      <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 20 }}>
         {aDejaUneResponsabilite
           ? "Tu peux demander une responsabilité supplémentaire sur ton compte existant — pas besoin de créer un nouveau compte. Une fois validée, tu la retrouveras via le sélecteur dans \"Mon espace\"."
           : "Ton compte n'a pas encore de responsabilité active. Choisis ce que tu souhaites gérer — le pasteur validera ta demande."}
@@ -4655,7 +4686,7 @@ function SelecteurRole({ roleDemande, setRoleDemande, parentType, setParentType,
             }}
           >
             <p style={{ fontWeight: 700, fontSize: 14, color: roleDemande === val ? GOLD_LIGHT : CREAM, marginBottom: 4 }}>{label}</p>
-            <p style={{ fontSize: 12, color: "#a9d6cf", lineHeight: 1.4 }}>{description}</p>
+            <p style={{ fontSize: 12, color: "#B9D3CB", lineHeight: 1.4 }}>{description}</p>
           </button>
         ))}
       </div>
@@ -4759,15 +4790,15 @@ function PageDemandes({ tribus, departements, compte, onTraite, cardStyle }) {
       {chargement ? (
         <Chargement />
       ) : demandes.length === 0 ? (
-        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucune demande en attente pour le moment.</p>
+        <p style={{ color: "#B9D3CB", fontSize: 13 }}>Aucune demande en attente pour le moment.</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {demandes.map(d => (
             <div key={d.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
               <div>
                 <p style={{ fontWeight: 700, marginBottom: 2 }}>{comptesParId[d.compte_id]?.nom || "…"}</p>
-                <p style={{ fontSize: 12, color: "#a9d6cf" }}>{libelleDemande(d)}</p>
-                <p style={{ fontSize: 11, color: "#a9d6cf" }}>{comptesParId[d.compte_id]?.telephone}</p>
+                <p style={{ fontSize: 12, color: "#B9D3CB" }}>{libelleDemande(d)}</p>
+                <p style={{ fontSize: 11, color: "#B9D3CB" }}>{comptesParId[d.compte_id]?.telephone}</p>
               </div>
               <div style={{ display: "flex", gap: 8 }}>
                 <button
@@ -4869,13 +4900,13 @@ function PageCorbeille({ compte, gems, cardStyle, onTraite }) {
           </button>
         )}
       </div>
-      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>
+      <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 20 }}>
         Les membres supprimés restent récupérables ici pendant 30 jours avant d'être effacés définitivement.
       </p>
       {chargement ? (
         <Chargement />
       ) : entrees.length === 0 ? (
-        <p style={{ color: "#a9d6cf", fontSize: 13 }}>La corbeille est vide.</p>
+        <p style={{ color: "#B9D3CB", fontSize: 13 }}>La corbeille est vide.</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {entrees.map(e => (
@@ -4883,7 +4914,7 @@ function PageCorbeille({ compte, gems, cardStyle, onTraite }) {
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
                 <div>
                   <p style={{ fontWeight: 700, marginBottom: 2 }}>{e.nom}</p>
-                  <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomGem(e.gem_id)} · {e.telephone}</p>
+                  <p style={{ fontSize: 12, color: "#B9D3CB" }}>{nomGem(e.gem_id)} · {e.telephone}</p>
                   {e.motif && <p style={{ fontSize: 12, color: "#e8c25a", marginTop: 4 }}>Motif de suppression : {e.motif}</p>}
                   <p style={{ fontSize: 11, color: RED_LIGHT, marginTop: 4, fontWeight: 700 }}>
                     ⏳ Effacement définitif dans {joursRestants(e.supprime_le)} jour(s)
@@ -5004,7 +5035,7 @@ function PageAide({ estPasteur, cardStyle }) {
   return (
     <div>
       <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>❓ Aide</h2>
-      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 24 }}>
+      <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 24 }}>
         Un guide rapide pour utiliser l'application. Clique sur une question pour voir la réponse.
       </p>
       {toutesLesSections.map((section, si) => (
@@ -5022,10 +5053,10 @@ function PageAide({ estPasteur, cardStyle }) {
                     style={{ width: "100%", background: "none", border: "none", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", color: CREAM, textAlign: "left", fontSize: 13, fontWeight: 600 }}
                   >
                     <span>{question}</span>
-                    <span style={{ color: "#a9d6cf", flexShrink: 0, marginLeft: 10 }}>{estOuvert ? "▲" : "▼"}</span>
+                    <span style={{ color: "#B9D3CB", flexShrink: 0, marginLeft: 10 }}>{estOuvert ? "▲" : "▼"}</span>
                   </button>
                   {estOuvert && (
-                    <p className="fade-in" style={{ fontSize: 13, color: "#cdeae4", lineHeight: 1.5, marginTop: 10, paddingTop: 10, borderTop: `1px solid ${TEAL_700}` }}>
+                    <p className="fade-in" style={{ fontSize: 13, color: "#D8E8E1", lineHeight: 1.5, marginTop: 10, paddingTop: 10, borderTop: `1px solid ${TEAL_700}` }}>
                       {reponse}
                     </p>
                   )}
@@ -5036,7 +5067,7 @@ function PageAide({ estPasteur, cardStyle }) {
         </div>
       ))}
       <div style={{ ...cardStyle, textAlign: "center", marginTop: 8 }}>
-        <p style={{ fontSize: 13, color: "#cdeae4", margin: 0 }}>
+        <p style={{ fontSize: 13, color: "#D8E8E1", margin: 0 }}>
           Une question sans réponse ici ? Contacte le pasteur ou un assistant directement via la Messagerie.
         </p>
       </div>
@@ -5286,7 +5317,7 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
 
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
         {[["hebdomadaire", "Hebdomadaire"], ["mensuelle", "Mensuelle"], ["annuelle", "Annuelle"]].map(([cle, label]) => (
-          <button key={cle} className="btn-app" onClick={() => setVueAbsences(cle)} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vueAbsences === cle ? GOLD : TEAL_900, color: vueAbsences === cle ? TEAL_950 : "#cdeae4" }}>
+          <button key={cle} className="btn-app" onClick={() => setVueAbsences(cle)} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vueAbsences === cle ? GOLD : TEAL_900, color: vueAbsences === cle ? TEAL_950 : "#D8E8E1" }}>
             {label}
           </button>
         ))}
@@ -5294,7 +5325,7 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
 
       {vueAbsences === "hebdomadaire" && (
         <>
-          <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>
+          <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 16 }}>
             {dimancheRecent ? `Dimanche ${new Date(dimancheRecent.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}` : "Aucun dimanche enregistré"} — {absents.length} absent(s) sur {membresDuPerimetre.length}
           </p>
 
@@ -5304,7 +5335,7 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
                 <div style={{ ...cardStyle, borderColor: RED_LIGHT }}>
                   <p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>GEM le plus touché</p>
                   <p style={{ fontSize: 16, fontWeight: 700 }}>{pireGem.nom}</p>
-                  <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 4 }}>{provenance(pireGem.gemId)}</p>
+                  <p style={{ fontSize: 12, color: "#B9D3CB", marginBottom: 4 }}>{provenance(pireGem.gemId)}</p>
                   <p style={{ fontSize: 20, fontWeight: 700, color: RED_LIGHT }}>{pireGem.taux}% d'absence</p>
                 </div>
               )}
@@ -5341,7 +5372,7 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
           )}
 
           {absents.length === 0 ? (
-            <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun absent pour l'instant — tout le monde est pointé présent. 🙏</p>
+            <p style={{ color: "#B9D3CB", fontSize: 13 }}>Aucun absent pour l'instant — tout le monde est pointé présent. 🙏</p>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {absents.map(({ membre, absencesConsecutives, motif }) => (
@@ -5349,7 +5380,7 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
                     <div>
                       <p style={{ fontWeight: 700, marginBottom: 2 }}>{membre.nom}</p>
-                      <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomGem(membre.gem_id)} — {provenance(membre.gem_id)}</p>
+                      <p style={{ fontSize: 12, color: "#B9D3CB" }}>{nomGem(membre.gem_id)} — {provenance(membre.gem_id)}</p>
                       {motif && <p style={{ fontSize: 12, color: GOLD_LIGHT, marginTop: 4 }}>Motif : {motif}</p>}
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -5388,7 +5419,7 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
                       <div>
                         <p style={{ fontWeight: 700, marginBottom: 2 }}>{c.nom} <span style={{ fontSize: 10, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, borderRadius: 999, padding: "2px 8px", marginLeft: 4 }}><IconePersonne size={10} style={{verticalAlign:"-1px",marginRight:3}} /> Responsable</span></p>
-                        <p style={{ fontSize: 12, color: "#a9d6cf" }}>{gem?.nom || "GEM inconnu"} — {provenance(gem?.id)}</p>
+                        <p style={{ fontSize: 12, color: "#B9D3CB" }}>{gem?.nom || "GEM inconnu"} — {provenance(gem?.id)}</p>
                       </div>
                       {c.telephone && (
                         <div style={{ display: "flex", gap: 8 }}>
@@ -5416,7 +5447,7 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
       {vueAbsences === "mensuelle" && (
         chargementMois ? <Chargement /> : (
           <>
-            <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>
+            <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 16 }}>
               {dimanchesMoisCourant.length} dimanche(s) pointé(s) ce mois-ci
             </p>
             {courbeMensuelle.length >= 2 ? (
@@ -5436,7 +5467,7 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
                 />
               </div>
             ) : (
-              <p style={{ color: "#a9d6cf", fontSize: 13, marginBottom: 20 }}>Pas encore assez de mois pointés pour tracer une courbe.</p>
+              <p style={{ color: "#B9D3CB", fontSize: 13, marginBottom: 20 }}>Pas encore assez de mois pointés pour tracer une courbe.</p>
             )}
             <CommentaireIntelligent
               titre="🧠 Analyse intelligente du mois"
@@ -5449,7 +5480,7 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
       {vueAbsences === "annuelle" && (
         chargementAnnee ? <Chargement /> : (
           <>
-            <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>
+            <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 16 }}>
               {dimanchesAnneeCourante.length} dimanche(s) pointé(s) cette année
             </p>
             {courbeAnnuelle.length >= 2 ? (
@@ -5466,7 +5497,7 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
                 />
               </div>
             ) : (
-              <p style={{ color: "#a9d6cf", fontSize: 13, marginBottom: 20 }}>Pas encore assez d'années pointées pour tracer une courbe.</p>
+              <p style={{ color: "#B9D3CB", fontSize: 13, marginBottom: 20 }}>Pas encore assez d'années pointées pour tracer une courbe.</p>
             )}
             <CommentaireIntelligent
               titre="🧠 Analyse intelligente de l'année"
@@ -5670,11 +5701,9 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
     const motifIrregularite = ficheIrreguliere ? (motifsRecents?.[ficheIrreguliere.id] || "") : "";
     return (
       <div>
-        <button className="btn-app" onClick={() => setBossOuvert(null)} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 16, fontSize: 13 }}>← Retour à la liste</button>
+        <button className="btn-app" onClick={() => setBossOuvert(null)} style={{ background: "none", border: "none", color: "#B9D3CB", cursor: "pointer", marginBottom: 16, fontSize: 13 }}>← Retour à la liste</button>
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
-          <div style={{ width: 64, height: 64, borderRadius: "50%", backgroundColor: TEAL_700, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 700, color: GOLD_LIGHT, border: `2px solid ${GOLD}` }}>
-            {b.nom.split(" ").filter(Boolean).slice(0, 2).map(x => x[0]).join("").toUpperCase()}
-          </div>
+          <AvatarInitiales nom={b.nom} taille={64} />
           <div>
             <p style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{b.nom}</p>
             <p style={{ fontSize: 12, color: GOLD_LIGHT, margin: 0, display: "flex", alignItems: "center", gap: 5 }}><IconeEtoile size={12} /> BOSS — Bon Ouvrier au Service du Seigneur</p>
@@ -5683,24 +5712,24 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
 
         <div style={{ ...cardStyle, marginBottom: 16 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>Téléphone</span><span style={{ fontSize: 13, fontWeight: 600 }}>{b.telephone || "—"}</span></div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>Quartier</span><span style={{ fontSize: 13, fontWeight: 600 }}>{b.quartier || "—"}</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#B9D3CB", fontSize: 13 }}>Téléphone</span><span style={{ fontSize: 13, fontWeight: 600 }}>{b.telephone || "—"}</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#B9D3CB", fontSize: 13 }}>Quartier</span><span style={{ fontSize: 13, fontWeight: 600 }}>{b.quartier || "—"}</span></div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "#a9d6cf", fontSize: 13 }}>🎂 Anniversaire</span>
+              <span style={{ color: "#B9D3CB", fontSize: 13 }}>🎂 Anniversaire</span>
               <span style={{ fontSize: 13, fontWeight: 600 }}>{b.dateNaissance ? new Date(b.dateNaissance + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : "—"}</span>
             </div>
             {b.nomTribu && (
-              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>Tribu</span><span style={{ fontSize: 13, fontWeight: 600 }}>{b.nomTribu}</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#B9D3CB", fontSize: 13 }}>Tribu</span><span style={{ fontSize: 13, fontWeight: 600 }}>{b.nomTribu}</span></div>
             )}
             <div>
-              <p style={{ color: "#a9d6cf", fontSize: 13, marginBottom: 4 }}>Sert dans {b.services.length} département{b.services.length > 1 ? "s" : ""}</p>
+              <p style={{ color: "#B9D3CB", fontSize: 13, marginBottom: 4 }}>Sert dans {b.services.length} département{b.services.length > 1 ? "s" : ""}</p>
               {b.services.map((s, i) => (
                 <p key={i} style={{ fontSize: 13, fontWeight: 600, margin: "2px 0" }}>• {s.nom}{s.gemNom ? ` (${s.gemNom})` : ""}</p>
               ))}
             </div>
             {b.tauxMoyen !== null && (
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "#a9d6cf", fontSize: 13 }}>📊 Taux de régularité moyen</span>
+                <span style={{ color: "#B9D3CB", fontSize: 13 }}>📊 Taux de régularité moyen</span>
                 <span style={{ fontSize: 13, fontWeight: 700, color: b.tauxMoyen >= 70 ? "#6fcf97" : b.tauxMoyen >= 40 ? GOLD_LIGHT : RED_LIGHT }}>{b.tauxMoyen}%</span>
               </div>
             )}
@@ -5747,14 +5776,12 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
 
     return (
       <div>
-        <button className="btn-app" onClick={() => setPersonneOuverte(null)} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 16, fontSize: 13 }}>← Retour à la liste</button>
+        <button className="btn-app" onClick={() => setPersonneOuverte(null)} style={{ background: "none", border: "none", color: "#B9D3CB", cursor: "pointer", marginBottom: 16, fontSize: 13 }}>← Retour à la liste</button>
         <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
           {p.photo ? (
             <img src={p.photo} alt={p.nom} style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover", border: `2px solid ${GOLD}` }} />
           ) : (
-            <div style={{ width: 64, height: 64, borderRadius: "50%", backgroundColor: TEAL_700, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 700, color: GOLD_LIGHT, border: `2px solid ${GOLD}` }}>
-              {p.nom.split(" ").filter(Boolean).slice(0, 2).map(x => x[0]).join("").toUpperCase()}
-            </div>
+            <AvatarInitiales nom={p.nom} taille={64} />
           )}
           <div>
             <p style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{p.nom}</p>
@@ -5764,16 +5791,16 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
 
         <div style={{ ...cardStyle, marginBottom: 16 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>Téléphone</span><span style={{ fontSize: 13, fontWeight: 600 }}>{p.telephone || "—"}</span></div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>Quartier</span><span style={{ fontSize: 13, fontWeight: 600 }}>{p.quartier || "—"}</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#B9D3CB", fontSize: 13 }}>Téléphone</span><span style={{ fontSize: 13, fontWeight: 600 }}>{p.telephone || "—"}</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#B9D3CB", fontSize: 13 }}>Quartier</span><span style={{ fontSize: 13, fontWeight: 600 }}>{p.quartier || "—"}</span></div>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "#a9d6cf", fontSize: 13 }}>🎂 Anniversaire</span>
+              <span style={{ color: "#B9D3CB", fontSize: 13 }}>🎂 Anniversaire</span>
               <span style={{ fontSize: 13, fontWeight: 600 }}>{p.dateNaissance ? new Date(p.dateNaissance + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : "—"}</span>
             </div>
 
             {p.roles.map((r, i) => (
               <div key={i} style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "#a9d6cf", fontSize: 13 }}>
+                <span style={{ color: "#B9D3CB", fontSize: 13 }}>
                   {r.type === "membre" ? "GEM" : r.type === "gem" ? "Responsable de" : r.type === "departement_resp" ? "Département" : "Tribu"}
                 </span>
                 <span style={{ fontSize: 13, fontWeight: 600 }}>
@@ -5786,18 +5813,18 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
 
             {estMembre && (
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "#a9d6cf", fontSize: 13 }}>Absences (dimanches pointés)</span>
+                <span style={{ color: "#B9D3CB", fontSize: 13 }}>Absences (dimanches pointés)</span>
                 <span style={{ fontSize: 13, fontWeight: 700, color: (absencesRecentes[p.membreId]?.absences || 0) >= 2 ? RED_LIGHT : "#6fcf97" }}>{absencesRecentes[p.membreId]?.absences || 0} / {absencesRecentes[p.membreId]?.total || 0}</span>
               </div>
             )}
             {estMembre && regularite && regularite.tauxRegularite !== null && (
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "#a9d6cf", fontSize: 13 }}>📊 Taux de régularité au culte</span>
+                <span style={{ color: "#B9D3CB", fontSize: 13 }}>📊 Taux de régularité au culte</span>
                 <span style={{ fontSize: 13, fontWeight: 700, color: regularite.tauxRegularite >= 70 ? "#6fcf97" : regularite.tauxRegularite >= 40 ? GOLD_LIGHT : RED_LIGHT }}>{regularite.tauxRegularite}%</span>
               </div>
             )}
             {moyenne !== null && (
-              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#a9d6cf", fontSize: 13 }}>🌡️ Santé spirituelle</span><span style={{ fontSize: 13, fontWeight: 700, color: couleurScore(moyenne) }}>{moyenne}/10</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "#B9D3CB", fontSize: 13 }}>🌡️ Santé spirituelle</span><span style={{ fontSize: 13, fontWeight: 700, color: couleurScore(moyenne) }}>{moyenne}/10</span></div>
             )}
           </div>
         </div>
@@ -5841,7 +5868,7 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
   return (
     <div>
       <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4, display: "flex", alignItems: "center", gap: 10 }}><IconeGroupe size={22} /> Membres</h2>
-      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>{toutesLesPersonnes.length} personne(s) — membres et responsables confondus.</p>
+      <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 20 }}>{toutesLesPersonnes.length} personne(s) — membres et responsables confondus.</p>
 
       <input
         value={recherche}
@@ -5860,7 +5887,7 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
               ⚠️ Membres irréguliers (2+ absences / 4 dimanches)
             </button>
             {["", "membre", "gem", "departement_resp", "tribu_resp"].map(r => (
-              <button key={r} className="btn-app" onClick={() => setFiltreRole(r)} style={{ padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${TEAL_600}`, cursor: "pointer", backgroundColor: filtreRole === r ? GOLD : "transparent", color: filtreRole === r ? TEAL_950 : "#cdeae4" }}>
+              <button key={r} className="btn-app" onClick={() => setFiltreRole(r)} style={{ padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${TEAL_600}`, cursor: "pointer", backgroundColor: filtreRole === r ? GOLD : "transparent", color: filtreRole === r ? TEAL_950 : "#D8E8E1" }}>
                 {r === "" ? "Tous" : libelleRole(r)}
               </button>
             ))}
@@ -5882,7 +5909,7 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
               <button key={b.id} className="btn-app card-app" onClick={() => setBossOuvert(b)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, borderColor: b.absencesConsecutives >= 2 ? RED_LIGHT : cardStyle.border }}>
                 <div>
                   <p style={{ fontWeight: 700, margin: 0 }}>{b.nom}</p>
-                  <p style={{ fontSize: 11, color: "#a9d6cf", margin: 0 }}>
+                  <p style={{ fontSize: 11, color: "#B9D3CB", margin: 0 }}>
                     {b.nomTribu ? `Tribu de ${b.nomTribu} · ` : ""}{b.services.map(s => s.nom).join(", ")}
                   </p>
                   {b.absencesConsecutives >= 2 && (() => {
@@ -5919,7 +5946,7 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
               <button key={p.id} className="btn-app card-app" onClick={() => setPersonneOuverte(p)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
                 <div>
                   <p style={{ fontWeight: 700, margin: 0 }}>{p.nom}</p>
-                  <p style={{ fontSize: 11, color: "#a9d6cf", margin: 0 }}>{libelleRoles(p)}</p>
+                  <p style={{ fontSize: 11, color: "#B9D3CB", margin: 0 }}>{libelleRoles(p)}</p>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   {tauxReg !== null && tauxReg !== undefined && (
@@ -5990,7 +6017,7 @@ function PageNouveaux({ membres, gems, tribus, departements, gemsAutorises, card
   return (
     <div>
       <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4, display: "flex", alignItems: "center", gap: 10 }}><IconePousse size={22} /> Suivi des nouveaux convertis</h2>
-      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>{nouveaux.length} nouveau(x) converti(s) suivis à travers toute l'église.</p>
+      <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 20 }}>{nouveaux.length} nouveau(x) converti(s) suivis à travers toute l'église.</p>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
         {repartition.map(r => (
@@ -6024,13 +6051,13 @@ function PageNouveaux({ membres, gems, tribus, departements, gemsAutorises, card
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
                   <div>
                     <p style={{ fontWeight: 700, marginBottom: 2 }}>{m.nom}</p>
-                    <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomGem(m.gem_id)} — {rattachement(m.gem_id)}</p>
+                    <p style={{ fontSize: 12, color: "#B9D3CB" }}>{nomGem(m.gem_id)} — {rattachement(m.gem_id)}</p>
                   </div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, borderRadius: 999, padding: "4px 10px" }}>
                       🌱 {LIBELLES_ETAPES_SUIVI[m.etape_conversion || "accueil"]}
                     </span>
-                    <span style={{ fontSize: 11, fontWeight: 700, color: moyenne !== null ? couleurScore(moyenne) : "#a9d6cf", backgroundColor: TEAL_900, borderRadius: 999, padding: "4px 10px" }}>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: moyenne !== null ? couleurScore(moyenne) : "#B9D3CB", backgroundColor: TEAL_900, borderRadius: 999, padding: "4px 10px" }}>
                       🌡️ {moyenne !== null ? `${moyenne}/10` : "Non évaluée"}
                     </span>
                   </div>
@@ -6118,9 +6145,9 @@ function PageSanteResponsables({ tousLesComptes, gems, tribus, departements, res
   if (compteDetail) {
     return (
       <div>
-        <button className="btn-app" onClick={() => setResponsableSelectionne(null)} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 16, fontSize: 13 }}>← Retour à la liste</button>
+        <button className="btn-app" onClick={() => setResponsableSelectionne(null)} style={{ background: "none", border: "none", color: "#B9D3CB", cursor: "pointer", marginBottom: 16, fontSize: 13 }}>← Retour à la liste</button>
         <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>{compteDetail.nom}</h2>
-        <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 4 }}>{compteDetail.role === "pasteur" ? "Pasteur" : compteDetail.assistant ? "Assistant désigné" : "Responsable"}</p>
+        <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 4 }}>{compteDetail.role === "pasteur" ? "Pasteur" : compteDetail.assistant ? "Assistant désigné" : "Responsable"}</p>
         <p style={{ fontSize: 13, color: GOLD_LIGHT, marginBottom: 20 }}>{infosResponsable(compteDetail)}</p>
 
         {!ficheDetail ? (
@@ -6132,7 +6159,7 @@ function PageSanteResponsables({ tousLesComptes, gems, tribus, departements, res
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {DIMENSIONS_SANTE.map(([cle, label]) => (
                   <div key={cle} style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span style={{ fontSize: 13, color: "#cdeae4" }}>{label}</span>
+                    <span style={{ fontSize: 13, color: "#D8E8E1" }}>{label}</span>
                     <span style={{ fontSize: 13, fontWeight: 700, color: couleurScore(ficheDetail[cle]) }}>{ficheDetail[cle]}/10</span>
                   </div>
                 ))}
@@ -6160,7 +6187,7 @@ function PageSanteResponsables({ tousLesComptes, gems, tribus, departements, res
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {historiqueDetail.map(h => (
                 <div key={h.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ fontSize: 13, color: "#a9d6cf" }}>{new Date(h.date_maj).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</span>
+                  <span style={{ fontSize: 13, color: "#B9D3CB" }}>{new Date(h.date_maj).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</span>
                   <span style={{ fontSize: 13, fontWeight: 700, color: couleurScore(moyenneSante(h)) }}>{moyenneSante(h)}/10</span>
                 </div>
               ))}
@@ -6174,7 +6201,7 @@ function PageSanteResponsables({ tousLesComptes, gems, tribus, departements, res
   return (
     <div>
       <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4, display: "flex", alignItems: "center", gap: 10 }}><IconeThermometre size={22} /> Santé spirituelle des responsables</h2>
-      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>Suivi des fiches remplies chaque semaine par les responsables GEM, département et tribu.</p>
+      <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 20 }}>Suivi des fiches remplies chaque semaine par les responsables GEM, département et tribu.</p>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14, marginBottom: 24 }}>
         <div className="card-app" style={cardStyle}>
@@ -6225,9 +6252,9 @@ function PageSanteResponsables({ tousLesComptes, gems, tribus, departements, res
               >
                 <div>
                   <p style={{ fontWeight: 700, marginBottom: 2 }}>{c.nom}</p>
-                  <p style={{ fontSize: 12, color: "#a9d6cf" }}>{c.role === "pasteur" ? "Pasteur" : c.assistant ? "Assistant désigné" : "Responsable"}</p>
+                  <p style={{ fontSize: 12, color: "#B9D3CB" }}>{c.role === "pasteur" ? "Pasteur" : c.assistant ? "Assistant désigné" : "Responsable"}</p>
                 </div>
-                <span style={{ fontSize: 13, fontWeight: 700, color: moyenne !== null ? couleurScore(moyenne) : "#a9d6cf", backgroundColor: TEAL_900, borderRadius: 999, padding: "6px 12px" }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: moyenne !== null ? couleurScore(moyenne) : "#B9D3CB", backgroundColor: TEAL_900, borderRadius: 999, padding: "6px 12px" }}>
                   {moyenne !== null ? `${moyenne}/10` : "Aucune fiche"}
                 </span>
               </button>
@@ -6445,7 +6472,7 @@ function PageAnalyse({ gems, membres, cardStyle }) {
   return (
     <div>
       <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4, display: "flex", alignItems: "center", gap: 10 }}><IconeAnalyse size={22} /> Analyse intelligente</h2>
-      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 8 }}>
+      <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 8 }}>
         Détection automatique des tendances et recommandations, sur une fenêtre glissante de 4 semaines.
       </p>
       {periodes?.recente && periodes?.precedente && (
@@ -6457,7 +6484,7 @@ function PageAnalyse({ gems, membres, cardStyle }) {
       {chargement ? (
         <Chargement />
       ) : !periodes?.precedente ? (
-        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Pas encore assez de dimanches enregistrés (au moins 5) pour comparer deux périodes de 4 semaines — reviens dans quelques semaines.</p>
+        <p style={{ color: "#B9D3CB", fontSize: 13 }}>Pas encore assez de dimanches enregistrés (au moins 5) pour comparer deux périodes de 4 semaines — reviens dans quelques semaines.</p>
       ) : (
         <>
           <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>📌 Constats et recommandations</p>
@@ -6465,7 +6492,7 @@ function PageAnalyse({ gems, membres, cardStyle }) {
             {constats.map((c, i) => (
               <div key={i} style={{ ...cardStyle, borderLeft: `4px solid ${c.type === "alerte" ? RED_LIGHT : "#6fcf97"}` }}>
                 <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>{c.titre}</p>
-                <p style={{ fontSize: 13, color: "#cdeae4", marginBottom: 8 }}>{c.detail}</p>
+                <p style={{ fontSize: 13, color: "#D8E8E1", marginBottom: 8 }}>{c.detail}</p>
                 <p style={{ fontSize: 12, color: GOLD_LIGHT, fontStyle: "italic" }}>💡 {c.action}</p>
               </div>
             ))}
@@ -6502,7 +6529,7 @@ function PageAnalyse({ gems, membres, cardStyle }) {
           {membresEnDeclin.length > 0 && (
             <>
               <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>🔻 Membres en décrochage progressif</p>
-              <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 10 }}>Étaient réguliers le mois dernier, mais leur présence a nettement chuté ce mois-ci.</p>
+              <p style={{ fontSize: 12, color: "#B9D3CB", marginBottom: 10 }}>Étaient réguliers le mois dernier, mais leur présence a nettement chuté ce mois-ci.</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {membresEnDeclin.map(({ membre, tauxPrecedent, tauxActuel }) => {
                   const gemMembre = gems.find(g => g.id === membre.gem_id);
@@ -6510,7 +6537,7 @@ function PageAnalyse({ gems, membres, cardStyle }) {
                     <div key={membre.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
                       <div>
                         <p style={{ fontWeight: 700, margin: 0 }}>{membre.nom}</p>
-                        <p style={{ fontSize: 12, color: "#a9d6cf", margin: 0 }}>{gemMembre?.nom || "GEM inconnu"}</p>
+                        <p style={{ fontSize: 12, color: "#B9D3CB", margin: 0 }}>{gemMembre?.nom || "GEM inconnu"}</p>
                       </div>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <span style={{ fontSize: 12, fontWeight: 700, color: RED_LIGHT }}>{tauxPrecedent}% → {tauxActuel}%</span>
@@ -6581,24 +6608,24 @@ function PageMonCompte({ compte, cardStyle, onMisAJour }) {
   return (
     <div style={{ maxWidth: 480 }}>
       <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>👤 Mon compte</h2>
-      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>Tes informations et la gestion de ton mot de passe.</p>
+      <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 20 }}>Tes informations et la gestion de ton mot de passe.</p>
 
       <div style={{ ...cardStyle, marginBottom: 20 }}>
         <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>Informations</p>
-        <p style={{ fontSize: 13, color: "#cdeae4", marginBottom: 4 }}><b>Nom :</b> {compte.nom}</p>
-        <p style={{ fontSize: 13, color: "#cdeae4", marginBottom: 4 }}><b>Téléphone :</b> {compte.telephone}</p>
-        <p style={{ fontSize: 13, color: "#cdeae4" }}><b>Rôle :</b> {compte.role === "pasteur" ? "Pasteur" : compte.assistant ? "Assistant désigné" : "Responsable"}</p>
+        <p style={{ fontSize: 13, color: "#D8E8E1", marginBottom: 4 }}><b>Nom :</b> {compte.nom}</p>
+        <p style={{ fontSize: 13, color: "#D8E8E1", marginBottom: 4 }}><b>Téléphone :</b> {compte.telephone}</p>
+        <p style={{ fontSize: 13, color: "#D8E8E1" }}><b>Rôle :</b> {compte.role === "pasteur" ? "Pasteur" : compte.assistant ? "Assistant désigné" : "Responsable"}</p>
       </div>
 
       <div style={{ ...cardStyle, marginBottom: 20 }}>
         <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>✏️ Compléter mon profil</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div>
-            <label style={{ fontSize: 11, color: "#a9d6cf", display: "block", marginBottom: 4 }}>🎂 Date de naissance (jour et mois)</label>
+            <label style={{ fontSize: 11, color: "#B9D3CB", display: "block", marginBottom: 4 }}>🎂 Date de naissance (jour et mois)</label>
             <SelecteurJourMois value={dateNaissance} onChange={setDateNaissance} />
           </div>
           <div>
-            <label style={{ fontSize: 11, color: "#a9d6cf", display: "block", marginBottom: 4 }}>Quartier</label>
+            <label style={{ fontSize: 11, color: "#B9D3CB", display: "block", marginBottom: 4 }}>Quartier</label>
             <input
               value={quartier}
               onChange={e => setQuartier(e.target.value)}
@@ -6641,7 +6668,7 @@ function PageMonCompte({ compte, cardStyle, onMisAJour }) {
             placeholder="Confirme le nouveau mot de passe"
             style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}
           />
-          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#a9d6cf", cursor: "pointer" }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#B9D3CB", cursor: "pointer" }}>
             <input type="checkbox" checked={mdpVisible} onChange={e => setMdpVisible(e.target.checked)} />
             Afficher les mots de passe
           </label>
@@ -6724,19 +6751,19 @@ function PageSuppressions({ compte, cardStyle, onTraite }) {
   return (
     <div>
       <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>Demandes de suppression ({demandes.length})</h2>
-      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>
+      <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 20 }}>
         Chaque suppression de membre doit être validée ici avant d'être effective.
       </p>
       {chargement ? (
         <Chargement />
       ) : demandes.length === 0 ? (
-        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucune demande en attente pour le moment.</p>
+        <p style={{ color: "#B9D3CB", fontSize: 13 }}>Aucune demande en attente pour le moment.</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {demandes.map(d => (
             <div key={d.id} style={cardStyle}>
               <p style={{ fontWeight: 700, marginBottom: 2 }}>{d.membre_nom}</p>
-              <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 6 }}>
+              <p style={{ fontSize: 12, color: "#B9D3CB", marginBottom: 6 }}>
                 Demandé par {comptesParId[d.demande_par]?.nom || "…"} · {formaterDate(d.date_demande)}
               </p>
               <p style={{ fontSize: 13, color: "#e8c25a", marginBottom: 12 }}>Motif : {d.motif}</p>
@@ -6753,7 +6780,7 @@ function PageSuppressions({ compte, cardStyle, onTraite }) {
                   className="btn-app"
                   disabled={enCours === d.id}
                   onClick={() => refuser(d)}
-                  style={{ padding: "10px 18px", borderRadius: 10, backgroundColor: "transparent", color: "#a9d6cf", border: `1px solid ${TEAL_600}`, cursor: "pointer", fontSize: 12 }}
+                  style={{ padding: "10px 18px", borderRadius: 10, backgroundColor: "transparent", color: "#B9D3CB", border: `1px solid ${TEAL_600}`, cursor: "pointer", fontSize: 12 }}
                 >
                   Refuser
                 </button>
@@ -6842,14 +6869,14 @@ function PageMotsDePasse({ cardStyle, onTraite }) {
   return (
     <div>
       <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>Mots de passe oubliés ({demandes.length})</h2>
-      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>
+      <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 20 }}>
         Ces demandes viennent de responsables qui n'arrivent plus à se connecter. Choisis un nouveau mot de passe pour eux et transmets-le leur directement.
       </p>
 
       {chargement ? (
         <Chargement />
       ) : demandes.length === 0 ? (
-        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucune demande en attente pour le moment.</p>
+        <p style={{ color: "#B9D3CB", fontSize: 13 }}>Aucune demande en attente pour le moment.</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {demandes.map(d => {
@@ -6860,8 +6887,8 @@ function PageMotsDePasse({ cardStyle, onTraite }) {
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
                   <div>
                     <p style={{ fontWeight: 700, marginBottom: 2 }}>{compteAssocie?.nom || "Numéro non reconnu"}</p>
-                    <p style={{ fontSize: 12, color: "#a9d6cf" }}>{d.telephone}</p>
-                    <p style={{ fontSize: 11, color: "#a9d6cf", marginTop: 2 }}>{formaterDate(d.date_demande)}</p>
+                    <p style={{ fontSize: 12, color: "#B9D3CB" }}>{d.telephone}</p>
+                    <p style={{ fontSize: 11, color: "#B9D3CB", marginTop: 2 }}>{formaterDate(d.date_demande)}</p>
                     {!compteAssocie && <p style={{ fontSize: 11, color: RED_LIGHT, marginTop: 4 }}>Ce numéro ne correspond à aucun compte existant.</p>}
                   </div>
                   {!ouverte && (
@@ -6880,7 +6907,7 @@ function PageMotsDePasse({ cardStyle, onTraite }) {
 
                 {ouverte && (
                   <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${TEAL_700}` }}>
-                    <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 8 }}>Choisis un nouveau mot de passe pour {compteAssocie?.nom} :</p>
+                    <p style={{ fontSize: 12, color: "#B9D3CB", marginBottom: 8 }}>Choisis un nouveau mot de passe pour {compteAssocie?.nom} :</p>
                     <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
                       <input
                         value={nouveauMdp}
@@ -6889,7 +6916,7 @@ function PageMotsDePasse({ cardStyle, onTraite }) {
                         type={mdpVisible ? "text" : "password"}
                         style={{ flex: 1, minWidth: 200, padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}
                       />
-                      <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#a9d6cf", cursor: "pointer" }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, color: "#B9D3CB", cursor: "pointer" }}>
                         <input type="checkbox" checked={mdpVisible} onChange={e => setMdpVisible(e.target.checked)} />
                         Afficher
                       </label>
@@ -6902,7 +6929,7 @@ function PageMotsDePasse({ cardStyle, onTraite }) {
                       </button>
                       <button
  className="btn-app"
- onClick={() => setDemandeOuverte(null)} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: "transparent", color: "#a9d6cf", border: `1px solid ${TEAL_600}`, cursor: "pointer", fontSize: 12 }}>Annuler</button>
+ onClick={() => setDemandeOuverte(null)} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: "transparent", color: "#B9D3CB", border: `1px solid ${TEAL_600}`, cursor: "pointer", fontSize: 12 }}>Annuler</button>
                     </div>
                   </div>
                 )}
@@ -7045,10 +7072,10 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
       <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
         <button
  className="btn-app"
- onClick={() => setVue("hebdomadaire")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "hebdomadaire" ? GOLD : TEAL_900, color: vue === "hebdomadaire" ? TEAL_950 : "#cdeae4" }}>Hebdomadaire</button>
+ onClick={() => setVue("hebdomadaire")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "hebdomadaire" ? GOLD : TEAL_900, color: vue === "hebdomadaire" ? TEAL_950 : "#D8E8E1" }}>Hebdomadaire</button>
         <button
  className="btn-app"
- onClick={() => setVue("mensuelle")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "mensuelle" ? GOLD : TEAL_900, color: vue === "mensuelle" ? TEAL_950 : "#cdeae4" }}>Mensuelle</button>
+ onClick={() => setVue("mensuelle")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "mensuelle" ? GOLD : TEAL_900, color: vue === "mensuelle" ? TEAL_950 : "#D8E8E1" }}>Mensuelle</button>
       </div>
 
       {dimanches.length === 0 ? (
@@ -7061,7 +7088,7 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
           {chargement ? <Chargement /> : (
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
-                <p style={{ fontSize: 13, color: "#a9d6cf", margin: 0 }}>Rapport du dimanche {dateFormatee}</p>
+                <p style={{ fontSize: 13, color: "#B9D3CB", margin: 0 }}>Rapport du dimanche {dateFormatee}</p>
                 <button
  className="btn-app"
  onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
@@ -7088,12 +7115,12 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
                         <p style={{ fontWeight: 700, margin: 0 }}>{g.nom}</p>
                         <div style={{ textAlign: "right" }}>
                           <p style={{ fontSize: 13, fontWeight: 700, color: GOLD_LIGHT, margin: 0 }}>{presentsGem} / {membresGem.length} présents</p>
-                          <p style={{ fontSize: 12, color: "#a9d6cf", margin: 0 }}>{tauxGem}% de présence</p>
+                          <p style={{ fontSize: 12, color: "#B9D3CB", margin: 0 }}>{tauxGem}% de présence</p>
                         </div>
                       </div>
                       {resp && (
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, paddingTop: 8, borderTop: `1px solid ${TEAL_800}`, flexWrap: "wrap", gap: 6 }}>
-                          <span style={{ fontSize: 12, color: "#a9d6cf" }}><IconePersonne size={12} style={{verticalAlign:"-1px",marginRight:3}} /> {resp.compte.nom} (responsable)</span>
+                          <span style={{ fontSize: 12, color: "#B9D3CB" }}><IconePersonne size={12} style={{verticalAlign:"-1px",marginRight:3}} /> {resp.compte.nom} (responsable)</span>
                           <div style={{ display: "flex", gap: 6 }}>
                             {resp.present !== null && (
                               <span style={{ fontSize: 10, fontWeight: 700, color: resp.present ? TEAL_950 : "#fff", backgroundColor: resp.present ? "#6fcf97" : RED_LIGHT, borderRadius: 999, padding: "3px 8px" }}>
@@ -7119,7 +7146,7 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
 
               <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>📵 Absents ({membres.filter(m => presences[m.id] === false).length})</p>
               {membres.filter(m => presences[m.id] === false).length === 0 ? (
-                <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun absent pointé pour ce dimanche.</p>
+                <p style={{ color: "#B9D3CB", fontSize: 13 }}>Aucun absent pointé pour ce dimanche.</p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {membres.filter(m => presences[m.id] === false).map(m => {
@@ -7131,7 +7158,7 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
                       <div key={m.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
                         <div>
                           <p style={{ fontWeight: 700, marginBottom: 2 }}>{m.nom}</p>
-                          <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomGem(m.gem_id)} · {m.telephone}</p>
+                          <p style={{ fontSize: 12, color: "#B9D3CB" }}>{nomGem(m.gem_id)} · {m.telephone}</p>
                           {motifsParMembre[m.id] && <p style={{ fontSize: 12, color: "#e8c25a", marginTop: 4 }}>Motif : {motifsParMembre[m.id]}</p>}
                         </div>
                         {m.telephone && (
@@ -7158,7 +7185,7 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
           {chargement ? <Chargement /> : (
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
-                <p style={{ fontSize: 13, color: "#a9d6cf", margin: 0, textTransform: "capitalize" }}>Rapport de {libelleMois(moisChoisi)} — {dimanchesDuMois.length} dimanche(s)</p>
+                <p style={{ fontSize: 13, color: "#B9D3CB", margin: 0, textTransform: "capitalize" }}>Rapport de {libelleMois(moisChoisi)} — {dimanchesDuMois.length} dimanche(s)</p>
                 <button
  className="btn-app"
  onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
@@ -7173,9 +7200,9 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
 
               <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>📵 Membres absents tout le mois ({membres.filter(m => dimanchesDuMois.length > 0 && presencesMois.filter(p => p.membre_id === m.id && p.present).length === 0).length})</p>
               {dimanchesDuMois.length === 0 ? (
-                <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun dimanche pointé pour ce mois.</p>
+                <p style={{ color: "#B9D3CB", fontSize: 13 }}>Aucun dimanche pointé pour ce mois.</p>
               ) : membres.filter(m => presencesMois.filter(p => p.membre_id === m.id && p.present).length === 0).length === 0 ? (
-                <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun membre totalement absent ce mois — bon signe !</p>
+                <p style={{ color: "#B9D3CB", fontSize: 13 }}>Aucun membre totalement absent ce mois — bon signe !</p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {membres.filter(m => presencesMois.filter(p => p.membre_id === m.id && p.present).length === 0).map(m => {
@@ -7187,7 +7214,7 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
                       <div key={m.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
                         <div>
                           <p style={{ fontWeight: 700, marginBottom: 2 }}>{m.nom}</p>
-                          <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomGem(m.gem_id)} · {m.telephone}</p>
+                          <p style={{ fontSize: 12, color: "#B9D3CB" }}>{nomGem(m.gem_id)} · {m.telephone}</p>
                         </div>
                         {m.telephone && (
                           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -7288,9 +7315,9 @@ function ActivitesSemainePerimetre({ gems, membres, tribus, departements, cardSt
   return (
     <div>
       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-        <button className="btn-app" onClick={() => setVue("semaine")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "semaine" ? GOLD : TEAL_900, color: vue === "semaine" ? TEAL_950 : "#cdeae4" }}>Par semaine</button>
-        <button className="btn-app" onClick={() => setVue("mois")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "mois" ? GOLD : TEAL_900, color: vue === "mois" ? TEAL_950 : "#cdeae4" }}>Par mois</button>
-        <button className="btn-app" onClick={() => setVue("annee")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "annee" ? GOLD : TEAL_900, color: vue === "annee" ? TEAL_950 : "#cdeae4" }}>Par année</button>
+        <button className="btn-app" onClick={() => setVue("semaine")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "semaine" ? GOLD : TEAL_900, color: vue === "semaine" ? TEAL_950 : "#D8E8E1" }}>Par semaine</button>
+        <button className="btn-app" onClick={() => setVue("mois")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "mois" ? GOLD : TEAL_900, color: vue === "mois" ? TEAL_950 : "#D8E8E1" }}>Par mois</button>
+        <button className="btn-app" onClick={() => setVue("annee")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "annee" ? GOLD : TEAL_900, color: vue === "annee" ? TEAL_950 : "#D8E8E1" }}>Par année</button>
       </div>
 
       {dimanches.length === 0 ? (
@@ -7315,7 +7342,7 @@ function ActivitesSemainePerimetre({ gems, membres, tribus, departements, cardSt
             <Chargement />
           ) : (
             <>
-              {vue === "semaine" && <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>Semaine du {dateFormatee}</p>}
+              {vue === "semaine" && <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 16 }}>Semaine du {dateFormatee}</p>}
 
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
                 <div style={cardStyle}><p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>{vue === "semaine" ? "Rapports validés" : "GEM ayant rapporté"}</p><p style={{ fontSize: 24, fontWeight: 700, color: GOLD_LIGHT }}>{nbValides} / {gems.length}</p></div>
@@ -7338,27 +7365,27 @@ function ActivitesSemainePerimetre({ gems, membres, tribus, departements, cardSt
                       >
                         <span>
                           <span style={{ fontWeight: 700, display: "block" }}>{g.nom}</span>
-                          {rattachement(g) && <span style={{ fontSize: 11, color: "#a9d6cf" }}>{rattachement(g)}</span>}
+                          {rattachement(g) && <span style={{ fontSize: 11, color: "#B9D3CB" }}>{rattachement(g)}</span>}
                         </span>
                         <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
                           {vue === "semaine" ? (
                             act?.valide ? (
                               <span style={{ fontSize: 11, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD, borderRadius: 999, padding: "4px 10px" }}><IconeValide size={11} style={{verticalAlign:"-1px",marginRight:3}} /> Validé</span>
                             ) : (
-                              <span style={{ fontSize: 11, fontWeight: 700, color: "#a9d6cf", backgroundColor: TEAL_900, borderRadius: 999, padding: "4px 10px" }}>Non rempli</span>
+                              <span style={{ fontSize: 11, fontWeight: 700, color: "#B9D3CB", backgroundColor: TEAL_900, borderRadius: 999, padding: "4px 10px" }}>Non rempli</span>
                             )
                           ) : (
-                            <span style={{ fontSize: 11, fontWeight: 700, color: activitesGem.length > 0 ? TEAL_950 : "#a9d6cf", backgroundColor: activitesGem.length > 0 ? GOLD : TEAL_900, borderRadius: 999, padding: "4px 10px" }}>
+                            <span style={{ fontSize: 11, fontWeight: 700, color: activitesGem.length > 0 ? TEAL_950 : "#B9D3CB", backgroundColor: activitesGem.length > 0 ? GOLD : TEAL_900, borderRadius: 999, padding: "4px 10px" }}>
                               {activitesGem.length} rapport{activitesGem.length > 1 ? "s" : ""}
                             </span>
                           )}
-                          <span style={{ color: "#a9d6cf" }}>{deplie ? "▲" : "▼"}</span>
+                          <span style={{ color: "#B9D3CB" }}>{deplie ? "▲" : "▼"}</span>
                         </span>
                       </button>
                       {deplie && (
-                        <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${TEAL_700}`, fontSize: 12, color: "#cdeae4", display: "flex", flexDirection: "column", gap: 12 }}>
+                        <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${TEAL_700}`, fontSize: 12, color: "#D8E8E1", display: "flex", flexDirection: "column", gap: 12 }}>
                           {activitesGem.length === 0 ? (
-                            <p style={{ color: "#a9d6cf" }}>Aucune activité renseignée pour cette période.</p>
+                            <p style={{ color: "#B9D3CB" }}>Aucune activité renseignée pour cette période.</p>
                           ) : (
                             activitesGem.map(a => {
                               const dim = dimanches.find(d => d.id === a.dimanche_id);
@@ -7453,7 +7480,7 @@ function EvolutionPerimetre({ membres, cardStyle }) {
               <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 34 }}>
                 <span style={{ fontSize: 10, color: GOLD_LIGHT, fontWeight: 700, marginBottom: 3 }}>{p.presents}</span>
                 <div style={{ width: 20, height: Math.max(4, (p.presents / maxPresents) * 90), backgroundColor: GOLD, borderRadius: 4 }} />
-                <span style={{ fontSize: 9, color: "#a9d6cf", marginTop: 4, whiteSpace: "nowrap" }}>
+                <span style={{ fontSize: 9, color: "#B9D3CB", marginTop: 4, whiteSpace: "nowrap" }}>
                   {new Date(p.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" })}
                 </span>
               </div>
@@ -7472,7 +7499,7 @@ function EvolutionPerimetre({ membres, cardStyle }) {
               <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 34 }}>
                 <span style={{ fontSize: 10, color: couleurScore(s.moyenne), fontWeight: 700, marginBottom: 3 }}>{s.moyenne}</span>
                 <div style={{ width: 20, height: Math.max(4, (s.moyenne / 10) * 90), backgroundColor: couleurScore(s.moyenne), borderRadius: 4 }} />
-                <span style={{ fontSize: 9, color: "#a9d6cf", marginTop: 4, whiteSpace: "nowrap" }}>{libelleMois(s.mois)}</span>
+                <span style={{ fontSize: 9, color: "#B9D3CB", marginTop: 4, whiteSpace: "nowrap" }}>{libelleMois(s.mois)}</span>
               </div>
             ))}
           </div>
@@ -7554,7 +7581,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
           key={a.id}
           className="btn-app"
           onClick={() => setIndexRoleSelectionne(i)}
-          style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: i === indexRoleSelectionne ? GOLD : TEAL_900, color: i === indexRoleSelectionne ? TEAL_950 : "#cdeae4" }}
+          style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: i === indexRoleSelectionne ? GOLD : TEAL_900, color: i === indexRoleSelectionne ? TEAL_950 : "#D8E8E1" }}
         >
           {libelleRole(a)}
         </button>
@@ -7565,7 +7592,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
   // Un responsable GEM gère directement et uniquement son propre GEM
   if (assignation.role_demande === "gem") {
     const monGem = gems.find(g => g.id === assignation.gem_id);
-    if (!monGem) return <p style={{ color: "#a9d6cf" }}>Ton GEM est en cours de préparation...</p>;
+    if (!monGem) return <p style={{ color: "#B9D3CB" }}>Ton GEM est en cours de préparation...</p>;
     const membresGem = membres.filter(m => m.gem_id === monGem.id);
     return (
       <div>
@@ -7613,7 +7640,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
       <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>
         {estDept ? "Mon département" : "Ma tribu"} — {parent?.nom || "…"}
       </h2>
-      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>{gemsDuPerimetre.length} GEM sous ta responsabilité</p>
+      <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 16 }}>{gemsDuPerimetre.length} GEM sous ta responsabilité</p>
 
       <ClassementsDuMois gemDuMois={gemDuMois} tribuDeptDuMois={tribuDeptDuMois} />
       <ResumePerimetre gems={gemsDuPerimetre} membres={membresDuPerimetre} onVoirAbsences={() => setSousOnglet("absences")} cardStyle={cardStyle} />
@@ -7621,28 +7648,28 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
         <button
  className="btn-app"
- onClick={() => setSousOnglet("gems")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "gems" ? GOLD : TEAL_900, color: sousOnglet === "gems" ? TEAL_950 : "#cdeae4" }}>Mes GEM</button>
+ onClick={() => setSousOnglet("gems")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "gems" ? GOLD : TEAL_900, color: sousOnglet === "gems" ? TEAL_950 : "#D8E8E1" }}>Mes GEM</button>
         <button
  className="btn-app"
- onClick={() => setSousOnglet("rapports")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "rapports" ? GOLD : TEAL_900, color: sousOnglet === "rapports" ? TEAL_950 : "#cdeae4" }}>Rapports</button>
+ onClick={() => setSousOnglet("rapports")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "rapports" ? GOLD : TEAL_900, color: sousOnglet === "rapports" ? TEAL_950 : "#D8E8E1" }}>Rapports</button>
         <button
  className="btn-app"
- onClick={() => setSousOnglet("evolution")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "evolution" ? GOLD : TEAL_900, color: sousOnglet === "evolution" ? TEAL_950 : "#cdeae4" }}>Évolution</button>
+ onClick={() => setSousOnglet("evolution")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "evolution" ? GOLD : TEAL_900, color: sousOnglet === "evolution" ? TEAL_950 : "#D8E8E1" }}>Évolution</button>
         <button
  className="btn-app"
- onClick={() => setSousOnglet("activites")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "activites" ? GOLD : TEAL_900, color: sousOnglet === "activites" ? TEAL_950 : "#cdeae4" }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeClipboard size={14}/> Activités de la semaine</span></button>
+ onClick={() => setSousOnglet("activites")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "activites" ? GOLD : TEAL_900, color: sousOnglet === "activites" ? TEAL_950 : "#D8E8E1" }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeClipboard size={14}/> Activités de la semaine</span></button>
         <button
  className="btn-app"
- onClick={() => setSousOnglet("nouveaux")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "nouveaux" ? GOLD : TEAL_900, color: sousOnglet === "nouveaux" ? TEAL_950 : "#cdeae4" }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconePousse size={14}/> Nouveaux</span></button>
+ onClick={() => setSousOnglet("nouveaux")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "nouveaux" ? GOLD : TEAL_900, color: sousOnglet === "nouveaux" ? TEAL_950 : "#D8E8E1" }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconePousse size={14}/> Nouveaux</span></button>
         <button
  className="btn-app"
- onClick={() => setSousOnglet("membres")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "membres" ? GOLD : TEAL_900, color: sousOnglet === "membres" ? TEAL_950 : "#cdeae4" }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeGroupe size={14}/> Membres</span></button>
+ onClick={() => setSousOnglet("membres")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "membres" ? GOLD : TEAL_900, color: sousOnglet === "membres" ? TEAL_950 : "#D8E8E1" }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeGroupe size={14}/> Membres</span></button>
         <button
  className="btn-app"
- onClick={() => setSousOnglet("absences")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "absences" ? GOLD : TEAL_900, color: sousOnglet === "absences" ? TEAL_950 : "#cdeae4" }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeInterdit size={14}/> Absences</span></button>
+ onClick={() => setSousOnglet("absences")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "absences" ? GOLD : TEAL_900, color: sousOnglet === "absences" ? TEAL_950 : "#D8E8E1" }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeInterdit size={14}/> Absences</span></button>
         <button
  className="btn-app"
- onClick={() => setSousOnglet("historique")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "historique" ? GOLD : TEAL_900, color: sousOnglet === "historique" ? TEAL_950 : "#cdeae4" }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeCroissance size={14}/> Historique</span></button>
+ onClick={() => setSousOnglet("historique")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "historique" ? GOLD : TEAL_900, color: sousOnglet === "historique" ? TEAL_950 : "#D8E8E1" }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeCroissance size={14}/> Historique</span></button>
       </div>
 
       {sousOnglet === "rapports" ? (
@@ -7685,11 +7712,11 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
                 <button key={g.id} onClick={() => setGemOuvert(g)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
                   <div>
                     <p style={{ fontWeight: 700, margin: 0 }}>{g.nom}</p>
-                    <p style={{ fontSize: 12, color: "#a9d6cf", margin: 0 }}>
+                    <p style={{ fontSize: 12, color: "#B9D3CB", margin: 0 }}>
                       {responsablesGemPerimetre[g.id] ? `👤 ${responsablesGemPerimetre[g.id]}` : "Aucun responsable désigné"}
                     </p>
                   </div>
-                  <span style={{ fontSize: 12, color: "#a9d6cf" }}>{membres.filter(m => m.gem_id === g.id).length} membre(s)</span>
+                  <span style={{ fontSize: 12, color: "#B9D3CB" }}>{membres.filter(m => m.gem_id === g.id).length} membre(s)</span>
                 </button>
               ))}
             </div>
@@ -7712,7 +7739,7 @@ function PageAssistants({ compte, tribus, departements, gems, onChange, cardStyl
       onClick={() => setSousOnglet(val)}
       style={{
         padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer",
-        backgroundColor: sousOnglet === val ? GOLD : TEAL_900, color: sousOnglet === val ? TEAL_950 : "#cdeae4",
+        backgroundColor: sousOnglet === val ? GOLD : TEAL_900, color: sousOnglet === val ? TEAL_950 : "#D8E8E1",
       }}
     >
       {label}
@@ -7759,21 +7786,21 @@ function SousPageAssistantsDesignes({ compte, cardStyle }) {
 
   return (
     <div>
-      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>
+      <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 20 }}>
         Un assistant a les mêmes droits que toi (voir toutes les données, valider les demandes) — utile pour te seconder.
       </p>
 
       {chargement ? (
         <Chargement />
       ) : comptes.length === 0 ? (
-        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun autre compte pour le moment.</p>
+        <p style={{ color: "#B9D3CB", fontSize: 13 }}>Aucun autre compte pour le moment.</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {comptes.map(c => (
             <div key={c.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
               <div>
                 <p style={{ fontWeight: 700, marginBottom: 2 }}>{c.nom}</p>
-                <p style={{ fontSize: 12, color: "#a9d6cf" }}>{c.telephone}</p>
+                <p style={{ fontSize: 12, color: "#B9D3CB" }}>{c.telephone}</p>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 {c.assistant && (
@@ -7883,9 +7910,9 @@ function SousPageAttribuerRole({ compte, tribus, departements, onChange, cardSty
       <div style={{ maxWidth: 480 }}>
         <button
  className="btn-app"
- onClick={() => setCompteChoisi(null)} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 12, fontSize: 13 }}>← Choisir un autre compte</button>
-        <p style={{ fontSize: 14, color: "#a9d6cf", marginBottom: 4 }}>Attribuer un rôle à :</p>
-        <p style={{ fontWeight: 700, fontSize: 18, marginBottom: 16 }}>{compteChoisi.nom} <span style={{ fontWeight: 400, fontSize: 13, color: "#a9d6cf" }}>({compteChoisi.telephone})</span></p>
+ onClick={() => setCompteChoisi(null)} style={{ background: "none", border: "none", color: "#B9D3CB", cursor: "pointer", marginBottom: 12, fontSize: 13 }}>← Choisir un autre compte</button>
+        <p style={{ fontSize: 14, color: "#B9D3CB", marginBottom: 4 }}>Attribuer un rôle à :</p>
+        <p style={{ fontWeight: 700, fontSize: 18, marginBottom: 16 }}>{compteChoisi.nom} <span style={{ fontWeight: 400, fontSize: 13, color: "#B9D3CB" }}>({compteChoisi.telephone})</span></p>
 
         <div style={{ ...cardStyle, display: "flex", flexDirection: "column", gap: 12 }}>
           <SelecteurRole
@@ -7908,7 +7935,7 @@ function SousPageAttribuerRole({ compte, tribus, departements, onChange, cardSty
 
   return (
     <div>
-      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>
+      <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 16 }}>
         Choisis un compte déjà inscrit (sans rôle actif) pour lui attribuer directement une responsabilité, sans attendre qu'il en fasse la demande.
       </p>
       <input
@@ -7920,13 +7947,13 @@ function SousPageAttribuerRole({ compte, tribus, departements, onChange, cardSty
       {chargement ? (
         <Chargement />
       ) : comptesFiltres.length === 0 ? (
-        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun compte disponible (tous les comptes inscrits ont déjà un rôle actif).</p>
+        <p style={{ color: "#B9D3CB", fontSize: 13 }}>Aucun compte disponible (tous les comptes inscrits ont déjà un rôle actif).</p>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {comptesFiltres.map(c => (
             <button key={c.id} onClick={() => choisir(c)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <span style={{ fontWeight: 700 }}>{c.nom}</span>
-              <span style={{ fontSize: 12, color: "#a9d6cf" }}>{c.telephone}</span>
+              <span style={{ fontSize: 12, color: "#B9D3CB" }}>{c.telephone}</span>
             </button>
           ))}
         </div>
@@ -7988,7 +8015,7 @@ function SousPageCreerCompte({ compte, tribus, departements, onChange, cardStyle
 
   return (
     <div style={{ maxWidth: 480 }}>
-      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>
+      <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 16 }}>
         Pour quelqu'un qui n'est pas encore inscrit : crée directement son compte et attribue-lui un rôle, en une seule fois.
       </p>
 
@@ -8004,7 +8031,7 @@ function SousPageCreerCompte({ compte, tribus, departements, onChange, cardStyle
             style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}
           />
         </div>
-        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#a9d6cf", cursor: "pointer", marginTop: -6 }}>
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#B9D3CB", cursor: "pointer", marginTop: -6 }}>
           <input type="checkbox" checked={mdpVisible} onChange={e => setMdpVisible(e.target.checked)} />
           Afficher le mot de passe
         </label>
@@ -8107,9 +8134,9 @@ function DetailTribuDeptClassement({ type, item, gems, membres, onBack, cardStyl
 
   return (
     <div>
-      <button className="btn-app" onClick={onBack} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 16, fontSize: 13 }}>← Retour au classement</button>
+      <button className="btn-app" onClick={onBack} style={{ background: "none", border: "none", color: "#B9D3CB", cursor: "pointer", marginBottom: 16, fontSize: 13 }}>← Retour au classement</button>
       <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>{type === "tribu" ? "🏛️" : "🏢"} {item.nom}</h2>
-      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>{gemsDuPerimetre.length} GEM · {membresDuPerimetre.length} membre(s)</p>
+      <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 20 }}>{gemsDuPerimetre.length} GEM · {membresDuPerimetre.length} membre(s)</p>
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 12, marginBottom: 20 }}>
         <div className="card-app" style={cardStyle}>
@@ -8118,7 +8145,7 @@ function DetailTribuDeptClassement({ type, item, gems, membres, onBack, cardStyl
         </div>
         <div className="card-app" style={cardStyle}>
           <p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>📊 Régularité moy.</p>
-          <p style={{ fontSize: 22, fontWeight: 700, color: tauxRegulariteMoyen !== null ? (tauxRegulariteMoyen >= 70 ? "#6fcf97" : tauxRegulariteMoyen >= 40 ? GOLD_LIGHT : RED_LIGHT) : "#a9d6cf" }}>
+          <p style={{ fontSize: 22, fontWeight: 700, color: tauxRegulariteMoyen !== null ? (tauxRegulariteMoyen >= 70 ? "#6fcf97" : tauxRegulariteMoyen >= 40 ? GOLD_LIGHT : RED_LIGHT) : "#B9D3CB" }}>
             {tauxRegulariteMoyen !== null ? `${tauxRegulariteMoyen}%` : "—"}
           </p>
         </div>
@@ -8162,7 +8189,7 @@ function DetailTribuDeptClassement({ type, item, gems, membres, onBack, cardStyl
           {gemsDuPerimetre.map(g => (
             <div key={g.id} style={{ display: "flex", justifyContent: "space-between", fontSize: 13, padding: "4px 0" }}>
               <span>{g.nom}</span>
-              <span style={{ color: "#a9d6cf" }}>{membres.filter(m => m.gem_id === g.id).length} membre(s)</span>
+              <span style={{ color: "#B9D3CB" }}>{membres.filter(m => m.gem_id === g.id).length} membre(s)</span>
             </div>
           ))}
         </div>
@@ -8633,7 +8660,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
     if (precedent === null || precedent === undefined) return null;
     const difference = actuel - precedent;
     if (difference === 0) {
-      return <span style={{ fontSize: 11, color: "#a9d6cf", marginLeft: 6 }}>= vs {libellePeriode}</span>;
+      return <span style={{ fontSize: 11, color: "#B9D3CB", marginLeft: 6 }}>= vs {libellePeriode}</span>;
     }
     const positif = difference > 0;
     return (
@@ -8655,7 +8682,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
       <div style={{ marginBottom: 20 }}>
         <p style={{ fontWeight: 600, fontSize: 13, marginBottom: 10 }}>{titre}</p>
         {liste.length === 0 ? (
-          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Pas assez de données pour établir un classement.</p>
+          <p style={{ color: "#B9D3CB", fontSize: 13 }}>Pas assez de données pour établir un classement.</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {liste.map((item, i) => (
@@ -8664,7 +8691,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                   <span style={{ fontWeight: 700, fontSize: 13 }}>
                     <span style={{ marginRight: 8 }}>{medaille(i)}</span>
                     {item.nom}
-                    {item.rattachement && <span style={{ fontWeight: 400, fontSize: 11, color: "#a9d6cf", marginLeft: 6 }}>({item.rattachement})</span>}
+                    {item.rattachement && <span style={{ fontWeight: 400, fontSize: 11, color: "#B9D3CB", marginLeft: 6 }}>({item.rattachement})</span>}
                   </span>
                   <span style={{ fontWeight: 700, fontSize: 13, color: GOLD_LIGHT }}>{item.valeur}{suffixe}</span>
                 </div>
@@ -8684,14 +8711,14 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
       <div style={{ marginBottom: 20 }}>
         <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>🏅 Top 10 des membres les plus réguliers</p>
         {liste.length === 0 ? (
-          <p style={{ color: "#a9d6cf", fontSize: 13 }}>Pas assez de pointages pour établir ce classement.</p>
+          <p style={{ color: "#B9D3CB", fontSize: 13 }}>Pas assez de pointages pour établir ce classement.</p>
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
             {liste.map((item, i) => (
               <div key={item.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
                   <span style={{ fontWeight: 700, fontSize: 13 }}>{medaille(i)} {item.nom}</span>
-                  <p style={{ fontSize: 11, color: "#a9d6cf", margin: 0 }}>{item.gemNom}</p>
+                  <p style={{ fontSize: 11, color: "#B9D3CB", margin: 0 }}>{item.gemNom}</p>
                 </div>
                 <span style={{ fontWeight: 700, fontSize: 13, color: GOLD_LIGHT }}>{item.valeur}%</span>
               </div>
@@ -8709,27 +8736,27 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
         <button
  className="btn-app"
- onClick={() => setVue("hebdomadaire")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "hebdomadaire" ? GOLD : TEAL_900, color: vue === "hebdomadaire" ? TEAL_950 : "#cdeae4" }}>
+ onClick={() => setVue("hebdomadaire")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "hebdomadaire" ? GOLD : TEAL_900, color: vue === "hebdomadaire" ? TEAL_950 : "#D8E8E1" }}>
           Vue hebdomadaire
         </button>
         <button
  className="btn-app"
- onClick={() => setVue("mensuelle")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "mensuelle" ? GOLD : TEAL_900, color: vue === "mensuelle" ? TEAL_950 : "#cdeae4" }}>
+ onClick={() => setVue("mensuelle")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "mensuelle" ? GOLD : TEAL_900, color: vue === "mensuelle" ? TEAL_950 : "#D8E8E1" }}>
           Vue mensuelle
         </button>
         <button
  className="btn-app"
- onClick={() => setVue("annuelle")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "annuelle" ? GOLD : TEAL_900, color: vue === "annuelle" ? TEAL_950 : "#cdeae4" }}>
+ onClick={() => setVue("annuelle")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "annuelle" ? GOLD : TEAL_900, color: vue === "annuelle" ? TEAL_950 : "#D8E8E1" }}>
           Vue annuelle
         </button>
         <button
  className="btn-app"
- onClick={() => setVue("activites")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "activites" ? GOLD : TEAL_900, color: vue === "activites" ? TEAL_950 : "#cdeae4", display: "inline-flex", alignItems: "center", gap: 6 }}>
+ onClick={() => setVue("activites")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "activites" ? GOLD : TEAL_900, color: vue === "activites" ? TEAL_950 : "#D8E8E1", display: "inline-flex", alignItems: "center", gap: 6 }}>
           <IconeClipboard size={14} /> Activités
         </button>
         <button
  className="btn-app"
- onClick={() => setVue("classement")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "classement" ? GOLD : TEAL_900, color: vue === "classement" ? TEAL_950 : "#cdeae4", display: "inline-flex", alignItems: "center", gap: 6 }}>
+ onClick={() => setVue("classement")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "classement" ? GOLD : TEAL_900, color: vue === "classement" ? TEAL_950 : "#D8E8E1", display: "inline-flex", alignItems: "center", gap: 6 }}>
           <IconeTrophee size={14} /> Classement
         </button>
       </div>
@@ -8744,7 +8771,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                 ["hebdomadaire", "Hebdomadaire"], ["mensuelle", "Mensuelle"], ["annuelle", "Annuelle"],
                 ["top3gem", "🥇 Top 3 GEM"], ["top3tribu", "🥇 Top 3 Tribus"], ["top3departement", "🥇 Top 3 Départements"],
               ].map(([cle, label]) => (
-                <button key={cle} className="btn-app" onClick={() => setSousClassement(cle)} style={{ padding: "8px 14px", borderRadius: 8, fontWeight: 600, fontSize: 12, border: "none", cursor: "pointer", backgroundColor: sousClassement === cle ? GOLD : TEAL_900, color: sousClassement === cle ? TEAL_950 : "#cdeae4" }}>
+                <button key={cle} className="btn-app" onClick={() => setSousClassement(cle)} style={{ padding: "8px 14px", borderRadius: 8, fontWeight: 600, fontSize: 12, border: "none", cursor: "pointer", backgroundColor: sousClassement === cle ? GOLD : TEAL_900, color: sousClassement === cle ? TEAL_950 : "#D8E8E1" }}>
                   {label}
                 </button>
               ))}
@@ -8820,11 +8847,11 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
       ) : vue === "activites" ? (
         <ActivitesSemainePerimetre gems={gems} membres={membres} tribus={tribus} departements={departements} cardStyle={cardStyle} />
       ) : dimanches.length === 0 ? (
-        <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun dimanche enregistré pour l'instant — le pointage de présence en créera automatiquement.</p>
+        <p style={{ color: "#B9D3CB", fontSize: 13 }}>Aucun dimanche enregistré pour l'instant — le pointage de présence en créera automatiquement.</p>
       ) : vue === "hebdomadaire" ? (
         <>
           <div style={{ marginBottom: 20 }}>
-            <label style={{ fontSize: 12, color: "#a9d6cf", display: "block", marginBottom: 6 }}>Dimanche</label>
+            <label style={{ fontSize: 12, color: "#B9D3CB", display: "block", marginBottom: 6 }}>Dimanche</label>
             <select
               value={dimancheChoisi || ""}
               onChange={e => setDimancheChoisi(e.target.value)}
@@ -8843,7 +8870,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
           ) : (
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
-                <p style={{ fontSize: 13, color: "#a9d6cf", margin: 0 }}>Rapport du dimanche {dateFormatee}</p>
+                <p style={{ fontSize: 13, color: "#B9D3CB", margin: 0 }}>Rapport du dimanche {dateFormatee}</p>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <button
  className="btn-app"
@@ -8886,14 +8913,14 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                       <div key={g.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
                         <div>
                           <p style={{ fontWeight: 700 }}>{g.nom}</p>
-                          <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomParent(g)}</p>
+                          <p style={{ fontSize: 12, color: "#B9D3CB" }}>{nomParent(g)}</p>
                           {responsablesParGem?.[g.id] && (
                             <p style={{ fontSize: 11, color: GOLD_LIGHT, marginTop: 2 }}><IconePersonne size={11} style={{verticalAlign:"-1px",marginRight:3}} /> {responsablesParGem[g.id]}</p>
                           )}
                         </div>
                         <div style={{ textAlign: "right" }}>
                           <p style={{ fontSize: 13, fontWeight: 700, color: GOLD_LIGHT }}>{presentsGem} / {membresGem.length} présents</p>
-                          <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 6 }}>{tauxGem}% de présence</p>
+                          <p style={{ fontSize: 12, color: "#B9D3CB", marginBottom: 6 }}>{tauxGem}% de présence</p>
                           {aUneDonneeDePresence ? (
                             <button
                               className="btn-app"
@@ -8903,7 +8930,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                               🗑️ Supprimer ce rapport
                             </button>
                           ) : (
-                            <span style={{ fontSize: 11, color: "#a9d6cf", fontStyle: "italic" }}>Aucun pointage pour cette semaine</span>
+                            <span style={{ fontSize: 11, color: "#B9D3CB", fontStyle: "italic" }}>Aucun pointage pour cette semaine</span>
                           )}
                         </div>
                       </div>
@@ -8925,7 +8952,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
 
               <p style={{ fontWeight: 600, fontSize: 14, marginTop: 28, marginBottom: 10 }}>📵 Absents ce dimanche ({membres.filter(m => presences[m.id] === false).length})</p>
               {membres.filter(m => presences[m.id] === false).length === 0 ? (
-                <p style={{ color: "#a9d6cf", fontSize: 13 }}>Aucun absent pointé pour ce dimanche.</p>
+                <p style={{ color: "#B9D3CB", fontSize: 13 }}>Aucun absent pointé pour ce dimanche.</p>
               ) : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {membres.filter(m => presences[m.id] === false).map(m => {
@@ -8938,7 +8965,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                       <div key={m.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
                         <div>
                           <p style={{ fontWeight: 700, marginBottom: 2 }}>{m.nom}</p>
-                          <p style={{ fontSize: 12, color: "#a9d6cf" }}>{gemMembre?.nom || "GEM inconnu"} · {m.telephone}</p>
+                          <p style={{ fontSize: 12, color: "#B9D3CB" }}>{gemMembre?.nom || "GEM inconnu"} · {m.telephone}</p>
                           {motifsParMembre[m.id] && <p style={{ fontSize: 12, color: "#e8c25a", marginTop: 4 }}>Motif : {motifsParMembre[m.id]}</p>}
                         </div>
                         {m.telephone && (
@@ -8960,7 +8987,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
       ) : vue === "mensuelle" ? (
         <>
           <div style={{ marginBottom: 20 }}>
-            <label style={{ fontSize: 12, color: "#a9d6cf", display: "block", marginBottom: 6 }}>Mois</label>
+            <label style={{ fontSize: 12, color: "#B9D3CB", display: "block", marginBottom: 6 }}>Mois</label>
             <select
               value={moisChoisi || ""}
               onChange={e => setMoisChoisi(e.target.value)}
@@ -8977,7 +9004,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
           ) : (
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
-                <p style={{ fontSize: 13, color: "#a9d6cf", margin: 0, textTransform: "capitalize" }}>Rapport de {libelleMois(moisChoisi)} — {dimanchesDuMois.length} dimanche(s) enregistré(s)</p>
+                <p style={{ fontSize: 13, color: "#B9D3CB", margin: 0, textTransform: "capitalize" }}>Rapport de {libelleMois(moisChoisi)} — {dimanchesDuMois.length} dimanche(s) enregistré(s)</p>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
  className="btn-app"
@@ -9001,7 +9028,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
 
               <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>📈 Évolution du taux de présence — dimanche par dimanche</p>
               {evolutionHebdoDuMois.length === 0 ? (
-                <p style={{ color: "#a9d6cf", fontSize: 13, marginBottom: 24 }}>Aucun dimanche pointé pour ce mois.</p>
+                <p style={{ color: "#B9D3CB", fontSize: 13, marginBottom: 24 }}>Aucun dimanche pointé pour ce mois.</p>
               ) : (
                 <div style={{ ...cardStyle, marginBottom: 28 }}>
                   <GraphiqueBarres
@@ -9017,7 +9044,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
               )}
 
               <div style={{ ...cardStyle, textAlign: "center", padding: 16 }}>
-                <p style={{ fontSize: 13, color: "#a9d6cf", margin: 0 }}>🏆 Tous les classements (GEM, tribus, départements, membres) se trouvent maintenant dans l'onglet <b style={{ color: GOLD_LIGHT }}>"Classement"</b> ci-dessus.</p>
+                <p style={{ fontSize: 13, color: "#B9D3CB", margin: 0 }}>🏆 Tous les classements (GEM, tribus, départements, membres) se trouvent maintenant dans l'onglet <b style={{ color: GOLD_LIGHT }}>"Classement"</b> ci-dessus.</p>
               </div>
             </>
           )}
@@ -9025,7 +9052,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
       ) : (
         <>
           <div style={{ marginBottom: 20 }}>
-            <label style={{ fontSize: 12, color: "#a9d6cf", display: "block", marginBottom: 6 }}>Année</label>
+            <label style={{ fontSize: 12, color: "#B9D3CB", display: "block", marginBottom: 6 }}>Année</label>
             <select
               value={anneeChoisie || ""}
               onChange={e => setAnneeChoisie(e.target.value)}
@@ -9040,7 +9067,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
           ) : (
             <>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10, marginBottom: 16 }}>
-                <p style={{ fontSize: 13, color: "#a9d6cf", margin: 0 }}>Rapport annuel {anneeChoisie} — {dimanchesAnnee.length} dimanche(s) enregistré(s)</p>
+                <p style={{ fontSize: 13, color: "#B9D3CB", margin: 0 }}>Rapport annuel {anneeChoisie} — {dimanchesAnnee.length} dimanche(s) enregistré(s)</p>
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
  className="btn-app"
@@ -9064,7 +9091,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
 
               <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>📈 Évolution mensuelle du taux de présence — {anneeChoisie}</p>
               {evolutionMensuelleAnnee.length === 0 ? (
-                <p style={{ color: "#a9d6cf", fontSize: 13, marginBottom: 24 }}>Pas encore de données pour cette année.</p>
+                <p style={{ color: "#B9D3CB", fontSize: 13, marginBottom: 24 }}>Pas encore de données pour cette année.</p>
               ) : (
                 <div style={{ ...cardStyle, marginBottom: 28 }}>
                   <GraphiqueBarres
@@ -9080,7 +9107,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
               )}
 
               <div style={{ ...cardStyle, textAlign: "center", padding: 16 }}>
-                <p style={{ fontSize: 13, color: "#a9d6cf", margin: 0 }}>🏆 Tous les classements (GEM, tribus, départements, membres) se trouvent maintenant dans l'onglet <b style={{ color: GOLD_LIGHT }}>"Classement"</b> ci-dessus.</p>
+                <p style={{ fontSize: 13, color: "#B9D3CB", margin: 0 }}>🏆 Tous les classements (GEM, tribus, départements, membres) se trouvent maintenant dans l'onglet <b style={{ color: GOLD_LIGHT }}>"Classement"</b> ci-dessus.</p>
               </div>
             </>
           )}
@@ -9205,22 +9232,22 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
       <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
         <button
  className="btn-app"
- onClick={() => setOnglet("diffusion")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "diffusion" ? GOLD : TEAL_900, color: onglet === "diffusion" ? TEAL_950 : "#cdeae4" }}>
+ onClick={() => setOnglet("diffusion")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "diffusion" ? GOLD : TEAL_900, color: onglet === "diffusion" ? TEAL_950 : "#D8E8E1" }}>
           Messages du pasteur
         </button>
         <button
  className="btn-app"
- onClick={() => setOnglet("direct")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "direct" ? GOLD : TEAL_900, color: onglet === "direct" ? TEAL_950 : "#cdeae4" }}>
+ onClick={() => setOnglet("direct")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "direct" ? GOLD : TEAL_900, color: onglet === "direct" ? TEAL_950 : "#D8E8E1" }}>
           {estPasteur ? "Boîte de réception" : "Écrire au pasteur"}{estPasteur && nonLus > 0 ? ` (${nonLus})` : ""}
         </button>
         <button
  className="btn-app"
- onClick={() => setOnglet("prive")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "prive" ? GOLD : TEAL_900, color: onglet === "prive" ? TEAL_950 : "#cdeae4" }}>
+ onClick={() => setOnglet("prive")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "prive" ? GOLD : TEAL_900, color: onglet === "prive" ? TEAL_950 : "#D8E8E1" }}>
           <span style={{display:"inline-flex",alignItems:"center",gap:6}}>🔒 Message privé</span>
         </button>
         <button
  className="btn-app"
- onClick={() => setOnglet("rappels")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "rappels" ? GOLD : TEAL_900, color: onglet === "rappels" ? TEAL_950 : "#cdeae4" }}>
+ onClick={() => setOnglet("rappels")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "rappels" ? GOLD : TEAL_900, color: onglet === "rappels" ? TEAL_950 : "#D8E8E1" }}>
           <span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeCloche size={14}/> Mes rappels{notificationsPerso.filter(n => !n.lu).length > 0 ? ` (${notificationsPerso.filter(n => !n.lu).length})` : ""}</span>
         </button>
       </div>
@@ -9245,7 +9272,7 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
                     <input type="file" accept="image/*" onChange={e => gererSelectionImageMessage(e.target.files[0])} disabled={imageEnCours} style={{ display: "none" }} />
                   </label>
                 )}
-                {imageEnCours && <p style={{ fontSize: 11, color: "#a9d6cf", marginTop: 4 }}>Chargement de l'image…</p>}
+                {imageEnCours && <p style={{ fontSize: 11, color: "#B9D3CB", marginTop: 4 }}>Chargement de l'image…</p>}
               </div>
               <button
  className="btn-app"
@@ -9263,7 +9290,7 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
                     <img src={m.image} alt="Pièce jointe" style={{ maxWidth: "100%", maxHeight: 260, borderRadius: 8, marginTop: 8, border: `1px solid ${TEAL_700}` }} />
                   )}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, flexWrap: "wrap", gap: 8 }}>
-                    <p style={{ fontSize: 11, color: "#a9d6cf", margin: 0 }}>{formaterDate(m.date)}</p>
+                    <p style={{ fontSize: 11, color: "#B9D3CB", margin: 0 }}>{formaterDate(m.date)}</p>
                     <button
                       className="btn-app"
                       onClick={() => genererAfficheImage({
@@ -9303,7 +9330,7 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
                   {estPasteur && <p style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, marginBottom: 4 }}>{comptesParId[m.de_compte_id]?.nom || "…"}</p>}
                   <p style={{ whiteSpace: "pre-wrap" }}>{m.texte}</p>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
-                    <p style={{ fontSize: 11, color: "#a9d6cf" }}>{formaterDate(m.date)}</p>
+                    <p style={{ fontSize: 11, color: "#B9D3CB" }}>{formaterDate(m.date)}</p>
                     {estPasteur && !m.lu && (
                       <button
  className="btn-app"
@@ -9319,7 +9346,7 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
         <div>
           {!destinataireChoisi ? (
             <>
-              <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 12 }}>Choisis la personne à qui écrire — elle seule verra ce message, personne d'autre.</p>
+              <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 12 }}>Choisis la personne à qui écrire — elle seule verra ce message, personne d'autre.</p>
               <input
                 value={rechercheDestinataire}
                 onChange={e => setRechercheDestinataire(e.target.value)}
@@ -9333,7 +9360,7 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
                   {tousLesComptes.filter(c => c.nom.toLowerCase().includes(rechercheDestinataire.toLowerCase())).slice(0, 30).map(c => (
                     <button key={c.id} className="btn-app card-app" onClick={() => setDestinataireChoisi(c)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                       <span style={{ fontWeight: 700, fontSize: 14 }}>{c.nom}</span>
-                      <span style={{ fontSize: 11, color: "#a9d6cf" }}>{c.role === "pasteur" ? "Pasteur" : c.assistant ? "Assistant" : "Responsable"}</span>
+                      <span style={{ fontSize: 11, color: "#B9D3CB" }}>{c.role === "pasteur" ? "Pasteur" : c.assistant ? "Assistant" : "Responsable"}</span>
                     </button>
                   ))}
                 </div>
@@ -9341,7 +9368,7 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
             </>
           ) : (
             <>
-              <button className="btn-app" onClick={() => setDestinataireChoisi(null)} style={{ background: "none", border: "none", color: "#a9d6cf", cursor: "pointer", marginBottom: 14, fontSize: 13 }}>← Choisir une autre personne</button>
+              <button className="btn-app" onClick={() => setDestinataireChoisi(null)} style={{ background: "none", border: "none", color: "#B9D3CB", cursor: "pointer", marginBottom: 14, fontSize: 13 }}>← Choisir une autre personne</button>
               <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>🔒 Conversation avec {destinataireChoisi.nom}</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16, maxHeight: 420, overflowY: "auto" }}>
                 {messagesPrives.filter(m => (m.de_compte_id === compte.id && m.destinataire_id === destinataireChoisi.id) || (m.de_compte_id === destinataireChoisi.id && m.destinataire_id === compte.id)).length === 0 ? (
@@ -9352,7 +9379,7 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
                     .map(m => (
                       <div key={m.id} style={{ alignSelf: m.de_compte_id === compte.id ? "flex-end" : "flex-start", maxWidth: "80%", backgroundColor: m.de_compte_id === compte.id ? "rgba(214,165,76,0.15)" : TEAL_900, border: `1px solid ${m.de_compte_id === compte.id ? "rgba(214,165,76,0.4)" : TEAL_700}`, borderRadius: 12, padding: "10px 14px" }}>
                         <p style={{ whiteSpace: "pre-wrap", fontSize: 13, margin: 0 }}>{m.texte}</p>
-                        <p style={{ fontSize: 10, color: "#a9d6cf", marginTop: 4, marginBottom: 0 }}>{formaterDate(m.date)}</p>
+                        <p style={{ fontSize: 10, color: "#B9D3CB", marginTop: 4, marginBottom: 0 }}>{formaterDate(m.date)}</p>
                       </div>
                     ))
                 )}
@@ -9378,7 +9405,7 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
         </div>
       ) : (
         <div>
-          <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 16 }}>Rappels automatiques générés par l'application (ex : rapport hebdomadaire non validé).</p>
+          <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 16 }}>Rappels automatiques générés par l'application (ex : rapport hebdomadaire non validé).</p>
           {notificationsPerso.length === 0 ? (
             <EtatVide icone={IconeCloche} titre="Aucun rappel pour l'instant" />
           ) : (
@@ -9387,7 +9414,7 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
                 <div key={n.id} style={{ ...cardStyle, borderColor: !n.lu ? GOLD : TEAL_700 }}>
                   <p style={{ whiteSpace: "pre-wrap" }}>{n.texte}</p>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8 }}>
-                    <p style={{ fontSize: 11, color: "#a9d6cf" }}>{formaterDate(n.date_creation)}</p>
+                    <p style={{ fontSize: 11, color: "#B9D3CB" }}>{formaterDate(n.date_creation)}</p>
                     {!n.lu && (
                       <button
  className="btn-app"
@@ -9499,7 +9526,7 @@ function PageCalendrier({ estPasteur, compte, onOuverture, cardStyle }) {
             <p style={{ fontSize: 12, color: GOLD_LIGHT, marginTop: 2 }}>
               {date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })} à {date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
             </p>
-            {e.lieu && <p style={{ fontSize: 12, color: "#a9d6cf", marginTop: 2 }}>📍 {e.lieu}</p>}
+            {e.lieu && <p style={{ fontSize: 12, color: "#B9D3CB", marginTop: 2 }}>📍 {e.lieu}</p>}
             {e.description && <p style={{ fontSize: 13, marginTop: 6 }}>{e.description}</p>}
             {e.image && (
               <img src={e.image} alt={e.titre} style={{ maxWidth: "100%", maxHeight: 260, borderRadius: 8, marginTop: 8, border: `1px solid ${TEAL_700}` }} />
@@ -9538,16 +9565,16 @@ function PageCalendrier({ estPasteur, compte, onOuverture, cardStyle }) {
                 <input value={lieu} onChange={e => setLieu(e.target.value)} placeholder="Lieu (optionnel)" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
                 <textarea value={description} onChange={e => setDescription(e.target.value)} rows={2} placeholder="Description (optionnelle)" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, resize: "vertical" }} />
                 <div>
-                  <label style={{ fontSize: 12, color: "#a9d6cf", display: "block", marginBottom: 6 }}>📎 Image / affiche jointe (optionnelle)</label>
+                  <label style={{ fontSize: 12, color: "#B9D3CB", display: "block", marginBottom: 6 }}>📎 Image / affiche jointe (optionnelle)</label>
                   {image ? (
                     <div style={{ position: "relative", display: "inline-block" }}>
                       <img src={image} alt="Aperçu" style={{ maxWidth: "100%", maxHeight: 180, borderRadius: 8, border: `1px solid ${TEAL_600}` }} />
                       <button className="btn-app" onClick={() => setImage(null)} style={{ position: "absolute", top: 6, right: 6, width: 26, height: 26, borderRadius: 999, backgroundColor: RED_LIGHT, color: "#fff", border: "none", fontWeight: 700, cursor: "pointer" }}>✕</button>
                     </div>
                   ) : (
-                    <input type="file" accept="image/*" onChange={e => gererSelectionImage(e.target.files[0])} disabled={imageEnCours} style={{ fontSize: 12, color: "#cdeae4" }} />
+                    <input type="file" accept="image/*" onChange={e => gererSelectionImage(e.target.files[0])} disabled={imageEnCours} style={{ fontSize: 12, color: "#D8E8E1" }} />
                   )}
-                  {imageEnCours && <p style={{ fontSize: 11, color: "#a9d6cf", marginTop: 4 }}>Chargement de l'image…</p>}
+                  {imageEnCours && <p style={{ fontSize: 11, color: "#B9D3CB", marginTop: 4 }}>Chargement de l'image…</p>}
                 </div>
                 {erreur && <p style={{ color: RED_LIGHT, fontSize: 12 }}>{erreur}</p>}
                 <div style={{ display: "flex", gap: 8 }}>
@@ -9556,7 +9583,7 @@ function PageCalendrier({ estPasteur, compte, onOuverture, cardStyle }) {
  onClick={creerEvenement} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, #EFCB77, #D6A54C)", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer" }}>Créer</button>
                   <button
  className="btn-app"
- onClick={() => setFormOuvert(false)} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: "transparent", color: "#a9d6cf", border: `1px solid ${TEAL_600}`, cursor: "pointer" }}>Annuler</button>
+ onClick={() => setFormOuvert(false)} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: "transparent", color: "#B9D3CB", border: `1px solid ${TEAL_600}`, cursor: "pointer" }}>Annuler</button>
                 </div>
               </div>
             </div>
@@ -9583,7 +9610,7 @@ function PageCalendrier({ estPasteur, compte, onOuverture, cardStyle }) {
 
           {passes.length > 0 && (
             <>
-              <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10, color: "#a9d6cf" }}>Passés</p>
+              <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10, color: "#B9D3CB" }}>Passés</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 10, opacity: 0.6 }}>
                 {passes.map(e => <CarteEvenement key={e.id} e={e} />)}
               </div>
@@ -9629,7 +9656,7 @@ function GraphiqueCroissance({ donnees, hauteur = 160 }) {
                   </div>
                 )}
               </div>
-              <span style={{ fontSize: 9, color: "#a9d6cf", marginTop: 6, whiteSpace: "nowrap" }}>{d.libelle}</span>
+              <span style={{ fontSize: 9, color: "#B9D3CB", marginTop: 6, whiteSpace: "nowrap" }}>{d.libelle}</span>
             </div>
           );
         })}
@@ -9678,7 +9705,7 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
             key={o.cle}
             className="btn-app"
             onClick={() => setOngletActif(o.cle)}
-            style={{ flex: 1, padding: "6px 8px", borderRadius: 8, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: actif.cle === o.cle ? GOLD : TEAL_850, color: actif.cle === o.cle ? TEAL_950 : "#cdeae4" }}
+            style={{ flex: 1, padding: "6px 8px", borderRadius: 8, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: actif.cle === o.cle ? GOLD : TEAL_850, color: actif.cle === o.cle ? TEAL_950 : "#D8E8E1" }}
           >
             {o.label}
           </button>
@@ -9696,7 +9723,7 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
               </div>
             </div>
             {actif.cle === "gem" && (item.nomResponsable || item.rattachement) && (
-              <p style={{ fontSize: 10, color: "#a9d6cf", margin: "2px 0 0 18px" }}>
+              <p style={{ fontSize: 10, color: "#B9D3CB", margin: "2px 0 0 18px" }}>
                 {item.nomResponsable ? `👤 ${item.nomResponsable}` : "Aucun responsable"}{item.rattachement ? ` — ${item.rattachement}` : ""}
               </p>
             )}
@@ -9705,7 +9732,7 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
       </div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10, paddingTop: 8, borderTop: `1px solid ${TEAL_800}` }}>
         {iconesUtilisees.map(icone => (
-          <span key={icone} style={{ fontSize: 10, color: "#a9d6cf" }}>{icone} {LEGENDES[icone]}</span>
+          <span key={icone} style={{ fontSize: 10, color: "#B9D3CB" }}>{icone} {LEGENDES[icone]}</span>
         ))}
       </div>
     </div>
@@ -9721,17 +9748,25 @@ function GraphiqueBarres({ donnees, hauteur = 140 }) {
     <div style={{ position: "relative" }}>
       <div style={{ position: "absolute", left: 0, right: 0, top: 0, height: hauteur, display: "flex", flexDirection: "column-reverse", justifyContent: "space-between", pointerEvents: "none" }}>
         {lignesGrille.map((l, i) => (
-          <div key={i} style={{ borderTop: "1px dashed rgba(255,255,255,0.18)", width: "100%" }} />
+          <div key={i} style={{ borderTop: "1px solid rgba(239,203,119,0.1)", width: "100%" }} />
         ))}
       </div>
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: hauteur, overflowX: "auto", paddingBottom: 4, position: "relative" }}>
-        {donnees.map((d, i) => (
-          <div key={i} title={d.infoBulle || `${d.libelle} : ${d.texteAffiche}`} className="barre-graphique" style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 34, cursor: "default" }}>
-            <span style={{ fontSize: 10, color: d.couleur || GOLD_LIGHT, fontWeight: 700, marginBottom: 3 }}>{d.texteAffiche}</span>
-            <div style={{ width: 20, height: Math.max(4, (d.valeur / max) * (hauteur - 50)), backgroundColor: d.couleur || GOLD, borderRadius: 4, transition: "height 0.4s ease" }} />
-            <span style={{ fontSize: 9, color: "#a9d6cf", marginTop: 4, whiteSpace: "nowrap" }}>{d.libelle}</span>
-          </div>
-        ))}
+      <div style={{ display: "flex", alignItems: "flex-end", gap: 12, height: hauteur, overflowX: "auto", paddingBottom: 4, position: "relative" }}>
+        {donnees.map((d, i) => {
+          const couleurBarre = d.couleur || "#D6A54C";
+          return (
+            <div key={i} title={d.infoBulle || `${d.libelle} : ${d.texteAffiche}`} className="barre-graphique" style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 30, cursor: "default" }}>
+              <span style={{ fontSize: 10.5, color: couleurBarre, fontWeight: 700, marginBottom: 4 }}>{d.texteAffiche}</span>
+              <div style={{
+                width: 22, height: Math.max(5, (d.valeur / max) * (hauteur - 50)),
+                background: `linear-gradient(180deg, ${couleurBarre}, ${couleurBarre}cc)`,
+                borderRadius: "7px 7px 3px 3px", transition: "height 0.5s cubic-bezier(0.22,1,0.36,1)",
+                boxShadow: `0 3px 10px ${couleurBarre}40`,
+              }} />
+              <span style={{ fontSize: 9.5, color: "#B9D3CB", marginTop: 5, whiteSpace: "nowrap" }}>{d.libelle}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -9841,7 +9876,7 @@ function PageHistorique({ cardStyle }) {
   return (
     <div>
       <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>Historique</h2>
-      <p style={{ fontSize: 13, color: "#a9d6cf", marginBottom: 20 }}>Évolution de l'assemblée dans le temps — {totalMembres} membres suivis au total.</p>
+      <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 20 }}>Évolution de l'assemblée dans le temps — {totalMembres} membres suivis au total.</p>
 
       {chargement ? (
         <Chargement />
@@ -9849,9 +9884,9 @@ function PageHistorique({ cardStyle }) {
         <>
           <div style={{ ...cardStyle, marginBottom: 24 }}>
             <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 4 }}>📈 Croissance numérique de l'église — {totalMembres} membres actuellement</p>
-            <p style={{ fontSize: 11, color: "#a9d6cf", marginBottom: 16 }}>Nouveaux membres (vert) contre départs approuvés (rouge), mois par mois. Solde net affiché sur chaque barre.</p>
+            <p style={{ fontSize: 11, color: "#B9D3CB", marginBottom: 16 }}>Nouveaux membres (vert) contre départs approuvés (rouge), mois par mois. Solde net affiché sur chaque barre.</p>
             {croissanceParMois.length === 0 ? (
-              <p style={{ color: "#a9d6cf", fontSize: 13 }}>Pas encore assez de données pour tracer cette courbe — elle se remplira au fil des ajouts de membres.</p>
+              <p style={{ color: "#B9D3CB", fontSize: 13 }}>Pas encore assez de données pour tracer cette courbe — elle se remplira au fil des ajouts de membres.</p>
             ) : (
               <GraphiqueCroissance
                 donnees={croissanceParMois.map(c => ({
