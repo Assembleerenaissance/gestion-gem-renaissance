@@ -784,6 +784,7 @@ function EcranConnexion() {
   const [tribuId, setTribuId] = useState("");
   const [departementId, setDepartementId] = useState("");
   const [nomGem, setNomGem] = useState("");
+  const [gemIdChoisi, setGemIdChoisi] = useState("");
 
   useEffect(() => {
     supabase.from("tribus").select("*").order("nom").then(({ data }) => {
@@ -810,7 +811,7 @@ function EcranConnexion() {
   async function sInscrire() {
     setErreur(""); setChargement(true);
     if (motDePasse.length < 8) { setErreur("Le mot de passe doit contenir au moins 8 caractères."); setChargement(false); return; }
-    if (roleDemande === "gem" && !nomGem.trim()) { setErreur("Merci de donner un nom au GEM souhaité."); setChargement(false); return; }
+    if (roleDemande === "gem" && !nomGem.trim() && !gemIdChoisi) { setErreur("Merci de choisir ou nommer un GEM."); setChargement(false); return; }
 
     // Empêche la création d'un compte en double si ce numéro est déjà inscrit.
     // Vérification faite via une fonction sécurisée (la personne n'est pas encore
@@ -836,7 +837,8 @@ function EcranConnexion() {
       statut: "attente",
       tribu_id: roleDemande === "tribu_resp" ? tribuId : (roleDemande === "gem" && parentType === "tribu" ? tribuId : null),
       departement_id: roleDemande === "departement_resp" ? departementId : (roleDemande === "gem" && parentType === "departement" ? departementId : null),
-      gem_nom_demande: roleDemande === "gem" ? nomGem.trim() : null,
+      gem_nom_demande: roleDemande === "gem" && !gemIdChoisi ? nomGem.trim() : null,
+      gem_id_demande: roleDemande === "gem" ? (gemIdChoisi || null) : null,
     };
     await supabase.from("assignations").insert(payload);
     setChargement(false);
@@ -953,6 +955,7 @@ function EcranConnexion() {
                   tribuId={tribuId} setTribuId={setTribuId}
                   departementId={departementId} setDepartementId={setDepartementId}
                   nomGem={nomGem} setNomGem={setNomGem}
+                  gemIdChoisi={gemIdChoisi} setGemIdChoisi={setGemIdChoisi}
                   tribus={tribus} departements={departements}
                 />
               </>
@@ -4776,6 +4779,7 @@ function DemanderResponsabilite({ compte, tribus, departements, mesAssignations,
   const [tribuId, setTribuId] = useState(tribus[0]?.id || "");
   const [departementId, setDepartementId] = useState(departements[0]?.id || "");
   const [nomGem, setNomGem] = useState("");
+  const [gemIdChoisi, setGemIdChoisi] = useState("");
   const [erreur, setErreur] = useState("");
   const [envoye, setEnvoye] = useState(false);
 
@@ -4785,14 +4789,15 @@ function DemanderResponsabilite({ compte, tribus, departements, mesAssignations,
 
   async function envoyer() {
     setErreur("");
-    if (roleDemande === "gem" && !nomGem.trim()) { setErreur("Merci de donner un nom au GEM souhaité."); return; }
+    if (roleDemande === "gem" && !nomGem.trim() && !gemIdChoisi) { setErreur("Merci de choisir ou nommer un GEM."); return; }
     const payload = {
       compte_id: compte.id,
       role_demande: roleDemande,
       statut: "attente",
       tribu_id: roleDemande === "tribu_resp" ? tribuId : (roleDemande === "gem" && parentType === "tribu" ? tribuId : null),
       departement_id: roleDemande === "departement_resp" ? departementId : (roleDemande === "gem" && parentType === "departement" ? departementId : null),
-      gem_nom_demande: roleDemande === "gem" ? nomGem.trim() : null,
+      gem_nom_demande: roleDemande === "gem" && !gemIdChoisi ? nomGem.trim() : null,
+      gem_id_demande: roleDemande === "gem" ? (gemIdChoisi || null) : null,
     };
     const { error } = await supabase.from("assignations").insert(payload);
     if (error) { setErreur(error.message); return; }
@@ -4831,6 +4836,7 @@ function DemanderResponsabilite({ compte, tribus, departements, mesAssignations,
           tribuId={tribuId} setTribuId={setTribuId}
           departementId={departementId} setDepartementId={setDepartementId}
           nomGem={nomGem} setNomGem={setNomGem}
+          gemIdChoisi={gemIdChoisi} setGemIdChoisi={setGemIdChoisi}
           tribus={tribus} departements={departements}
         />
 
@@ -4846,7 +4852,31 @@ function DemanderResponsabilite({ compte, tribus, departements, mesAssignations,
   );
 }
 
-function SelecteurRole({ roleDemande, setRoleDemande, parentType, setParentType, tribuId, setTribuId, departementId, setDepartementId, nomGem, setNomGem, tribus, departements }) {
+function SelecteurRole({ roleDemande, setRoleDemande, parentType, setParentType, tribuId, setTribuId, departementId, setDepartementId, nomGem, setNomGem, gemIdChoisi, setGemIdChoisi, tribus, departements }) {
+  const [gemsDisponibles, setGemsDisponibles] = useState([]);
+  const [chargementGems, setChargementGems] = useState(false);
+  const [creerNouveauGem, setCreerNouveauGem] = useState(false);
+
+  useEffect(() => {
+    if (roleDemande !== "gem") return;
+    const parentId = parentType === "tribu" ? tribuId : departementId;
+    if (!parentId) { setGemsDisponibles([]); return; }
+    setChargementGems(true);
+    setGemIdChoisi(""); setCreerNouveauGem(false); setNomGem("");
+    (async () => {
+      const colonne = parentType === "tribu" ? "tribu_id" : "departement_id";
+      const [{ data: gemsDuParent }, { data: assignationsGem }] = await Promise.all([
+        supabase.from("gems").select("*").eq(colonne, parentId),
+        supabase.from("assignations").select("gem_id").eq("role_demande", "gem").in("statut", ["actif", "attente"]),
+      ]);
+      const idsDejaPris = new Set((assignationsGem || []).map(a => a.gem_id));
+      const disponibles = (gemsDuParent || []).filter(g => !idsDejaPris.has(g.id));
+      setGemsDisponibles(disponibles);
+      if (disponibles.length === 0) setCreerNouveauGem(true);
+      setChargementGems(false);
+    })();
+  }, [roleDemande, parentType, tribuId, departementId]);
+
   return (
     <>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -4889,7 +4919,29 @@ function SelecteurRole({ roleDemande, setRoleDemande, parentType, setParentType,
               {departements.map(d => <option key={d.id} value={d.id}>Département {d.nom}</option>)}
             </select>
           )}
-          <input value={nomGem} onChange={e => setNomGem(e.target.value)} placeholder="Nom du GEM" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+
+          {chargementGems ? (
+            <Chargement texte="Recherche des GEM disponibles…" />
+          ) : creerNouveauGem ? (
+            <>
+              {gemsDisponibles.length === 0 && (
+                <p style={{ fontSize: 12, color: "#B9D3CB" }}>Aucun GEM disponible ici pour l'instant — tu peux en créer un nouveau.</p>
+              )}
+              <input value={nomGem} onChange={e => setNomGem(e.target.value)} placeholder="Nom du nouveau GEM" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+              {gemsDisponibles.length > 0 && (
+                <button type="button" onClick={() => { setCreerNouveauGem(false); setNomGem(""); }} style={{ background: "none", border: "none", color: GOLD_LIGHT, fontSize: 12, cursor: "pointer", textAlign: "left", padding: 0 }}>← Choisir un GEM déjà existant à la place</button>
+              )}
+            </>
+          ) : (
+            <>
+              <p style={{ fontSize: 12, color: "#B9D3CB", marginBottom: -4 }}>Choisis le GEM que tu diriges déjà (s'il a été importé) :</p>
+              <select value={gemIdChoisi} onChange={e => setGemIdChoisi(e.target.value)} style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}>
+                <option value="">— Sélectionner mon GEM —</option>
+                {gemsDisponibles.map(g => <option key={g.id} value={g.id}>{g.nom}</option>)}
+              </select>
+              <button type="button" onClick={() => { setCreerNouveauGem(true); setGemIdChoisi(""); }} style={{ background: "none", border: "none", color: GOLD_LIGHT, fontSize: 12, cursor: "pointer", textAlign: "left", padding: 0 }}>Mon GEM n'est pas dans la liste — en créer un nouveau</button>
+            </>
+          )}
         </>
       )}
 
@@ -4913,6 +4965,7 @@ function SelecteurRole({ roleDemande, setRoleDemande, parentType, setParentType,
 function PageDemandes({ tribus, departements, compte, onTraite, cardStyle }) {
   const [demandes, setDemandes] = useState([]);
   const [comptesParId, setComptesParId] = useState({});
+  const [gemsParId, setGemsParId] = useState({});
   const [chargement, setChargement] = useState(true);
 
   useEffect(() => { chargerDemandes(); }, []);
@@ -4926,23 +4979,32 @@ function PageDemandes({ tribus, departements, compte, onTraite, cardStyle }) {
       const { data: c } = await supabase.from("comptes").select("*").in("id", idsComptes);
       (c || []).forEach(compte => { map[compte.id] = compte; });
     }
+    const idsGems = [...new Set((d || []).map(x => x.gem_id_demande).filter(Boolean))];
+    let mapGems = {};
+    if (idsGems.length > 0) {
+      const { data: g } = await supabase.from("gems").select("*").in("id", idsGems);
+      (g || []).forEach(gg => { mapGems[gg.id] = gg; });
+    }
     setDemandes(d || []);
     setComptesParId(map);
+    setGemsParId(mapGems);
     setChargement(false);
   }
 
   function libelleDemande(d) {
     if (d.role_demande === "gem") {
       const parent = d.tribu_id ? tribus.find(t => t.id === d.tribu_id)?.nom : departements.find(dep => dep.id === d.departement_id)?.nom;
-      return `Responsable GEM "${d.gem_nom_demande}" — ${parent || ""}`;
+      const nomGemAffiche = d.gem_id_demande ? (gemsParId[d.gem_id_demande]?.nom || "…") : d.gem_nom_demande;
+      const suffixe = d.gem_id_demande ? " (GEM déjà existant)" : " (nouveau GEM)";
+      return `Responsable GEM "${nomGemAffiche}"${suffixe} — ${parent || ""}`;
     }
     if (d.role_demande === "departement_resp") return `Responsable de département — ${departements.find(dep => dep.id === d.departement_id)?.nom || ""}`;
     return `Patriarche/Matriarche — Tribu de ${tribus.find(t => t.id === d.tribu_id)?.nom || ""}`;
   }
 
   async function valider(d) {
-    let gemId = null;
-    if (d.role_demande === "gem") {
+    let gemId = d.gem_id_demande || null;
+    if (d.role_demande === "gem" && !gemId) {
       const { data: nouveauGem, error } = await supabase.from("gems").insert({
         nom: d.gem_nom_demande,
         type: d.tribu_id ? "tribu" : "departement",
@@ -8028,6 +8090,7 @@ function SousPageAttribuerRole({ compte, tribus, departements, onChange, cardSty
   const [tribuId, setTribuId] = useState(tribus[0]?.id || "");
   const [departementId, setDepartementId] = useState(departements[0]?.id || "");
   const [nomGem, setNomGem] = useState("");
+  const [gemIdChoisi, setGemIdChoisi] = useState("");
   const [erreur, setErreur] = useState("");
   const [enCours, setEnCours] = useState(false);
   const [succes, setSucces] = useState("");
@@ -8052,7 +8115,7 @@ function SousPageAttribuerRole({ compte, tribus, departements, onChange, cardSty
 
   async function attribuer() {
     setErreur(""); setSucces("");
-    if (roleDemande === "gem" && !nomGem.trim()) { setErreur("Merci de donner un nom au GEM."); return; }
+    if (roleDemande === "gem" && !nomGem.trim() && !gemIdChoisi) { setErreur("Merci de choisir ou nommer un GEM."); return; }
     setEnCours(true);
 
     let gemId = null;
@@ -8074,7 +8137,8 @@ function SousPageAttribuerRole({ compte, tribus, departements, onChange, cardSty
       gem_id: gemId,
       tribu_id: roleDemande === "tribu_resp" ? tribuId : (roleDemande === "gem" && parentType === "tribu" ? tribuId : null),
       departement_id: roleDemande === "departement_resp" ? departementId : (roleDemande === "gem" && parentType === "departement" ? departementId : null),
-      gem_nom_demande: roleDemande === "gem" ? nomGem.trim() : null,
+      gem_nom_demande: roleDemande === "gem" && !gemIdChoisi ? nomGem.trim() : null,
+      gem_id_demande: roleDemande === "gem" ? (gemIdChoisi || null) : null,
       valide_par: compte.id,
     };
     const { error: err2 } = await supabase.from("assignations").insert(payload);
@@ -8105,6 +8169,7 @@ function SousPageAttribuerRole({ compte, tribus, departements, onChange, cardSty
             tribuId={tribuId} setTribuId={setTribuId}
             departementId={departementId} setDepartementId={setDepartementId}
             nomGem={nomGem} setNomGem={setNomGem}
+            gemIdChoisi={gemIdChoisi} setGemIdChoisi={setGemIdChoisi}
             tribus={tribus} departements={departements}
           />
           {erreur && <p style={{ color: RED_LIGHT, fontSize: 12 }}>{erreur}</p>}
@@ -8159,6 +8224,7 @@ function SousPageCreerCompte({ compte, tribus, departements, onChange, cardStyle
   const [tribuId, setTribuId] = useState(tribus[0]?.id || "");
   const [departementId, setDepartementId] = useState(departements[0]?.id || "");
   const [nomGem, setNomGem] = useState("");
+  const [gemIdChoisi, setGemIdChoisi] = useState("");
 
   const [erreur, setErreur] = useState("");
   const [succes, setSucces] = useState("");
@@ -8168,7 +8234,7 @@ function SousPageCreerCompte({ compte, tribus, departements, onChange, cardStyle
     setErreur(""); setSucces("");
     if (!nom.trim() || !telephone.trim()) { setErreur("Nom et téléphone requis."); return; }
     if (motDePasse.length < 8) { setErreur("Le mot de passe doit contenir au moins 8 caractères."); return; }
-    if (roleDemande === "gem" && !nomGem.trim()) { setErreur("Merci de donner un nom au GEM."); return; }
+    if (roleDemande === "gem" && !nomGem.trim() && !gemIdChoisi) { setErreur("Merci de choisir ou nommer un GEM."); return; }
 
     setEnCours(true);
     const { data: session } = await supabase.auth.getSession();
@@ -8180,7 +8246,8 @@ function SousPageCreerCompte({ compte, tribus, departements, onChange, cardStyle
         role_demande: roleDemande,
         tribu_id: roleDemande === "tribu_resp" ? tribuId : (roleDemande === "gem" && parentType === "tribu" ? tribuId : null),
         departement_id: roleDemande === "departement_resp" ? departementId : (roleDemande === "gem" && parentType === "departement" ? departementId : null),
-        nom_gem: roleDemande === "gem" ? nomGem.trim() : null,
+        nom_gem: roleDemande === "gem" && !gemIdChoisi ? nomGem.trim() : null,
+        gem_id: roleDemande === "gem" ? (gemIdChoisi || null) : null,
       },
       headers: { Authorization: `Bearer ${session?.session?.access_token}` },
     });
@@ -8227,6 +8294,7 @@ function SousPageCreerCompte({ compte, tribus, departements, onChange, cardStyle
           tribuId={tribuId} setTribuId={setTribuId}
           departementId={departementId} setDepartementId={setDepartementId}
           nomGem={nomGem} setNomGem={setNomGem}
+          gemIdChoisi={gemIdChoisi} setGemIdChoisi={setGemIdChoisi}
           tribus={tribus} departements={departements}
         />
 
