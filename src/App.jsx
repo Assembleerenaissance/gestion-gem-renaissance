@@ -4566,12 +4566,29 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
     .map(m => ({ membre: m, absencesConsecutives: regulariteParMembre[m.id]?.absencesConsecutives || 0, motif: motifsParMembre[m.id] || "" }))
     .sort((a, b) => b.absencesConsecutives - a.absencesConsecutives);
 
-  // --- GEM / tribu / département avec le plus grand taux d'absence (semaine en cours) ---
-  function pireEntite(cle) {
+  // --- GEM / département / tribu avec le plus grand taux d'absence (semaine en cours) ---
+  function pireGemCalc() {
     const groupes = {};
     membresDuPerimetre.forEach(m => {
-      const id = cle === "gem" ? m.gem_id : null;
-      const nomEntite = cle === "gem" ? nomGem(m.gem_id) : nomTribuOuDept(m.gem_id);
+      const nomEntite = nomGem(m.gem_id);
+      if (!nomEntite || nomEntite === "GEM inconnu") return;
+      if (!groupes[nomEntite]) groupes[nomEntite] = { total: 0, absents: 0, gemId: m.gem_id };
+      groupes[nomEntite].total++;
+      if (!presentsIds.has(m.id)) groupes[nomEntite].absents++;
+    });
+    const liste = Object.entries(groupes)
+      .map(([nom, v]) => ({ nom, taux: v.total > 0 ? Math.round((v.absents / v.total) * 100) : 0, total: v.total, gemId: v.gemId }))
+      .filter(x => x.total >= 1)
+      .sort((a, b) => b.taux - a.taux);
+    return liste[0] || null;
+  }
+
+  function pireParType(type) {
+    const groupes = {};
+    membresDuPerimetre.forEach(m => {
+      const g = gems.find(gg => gg.id === m.gem_id);
+      if (!g || g.type !== type) return;
+      const nomEntite = type === "tribu" ? tribus?.find(t => t.id === g.tribu_id)?.nom : departements?.find(d => d.id === g.departement_id)?.nom;
       if (!nomEntite) return;
       if (!groupes[nomEntite]) groupes[nomEntite] = { total: 0, absents: 0 };
       groupes[nomEntite].total++;
@@ -4583,8 +4600,10 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
       .sort((a, b) => b.taux - a.taux);
     return liste[0] || null;
   }
-  const pireGem = pireEntite("gem");
-  const pireProvenance = pireEntite("provenance");
+
+  const pireGem = pireGemCalc();
+  const pireDepartement = pireParType("departement");
+  const pireTribu = pireParType("tribu");
 
   if (chargement) return <Chargement />;
 
@@ -4606,20 +4625,28 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
             {dimancheRecent ? `Dimanche ${new Date(dimancheRecent.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}` : "Aucun dimanche enregistré"} — {absents.length} absent(s) sur {membresDuPerimetre.length}
           </p>
 
-          {(pireGem || pireProvenance) && (
+          {(pireGem || pireDepartement || pireTribu) && (
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12, marginBottom: 20 }}>
               {pireGem && pireGem.taux > 0 && (
                 <div style={{ ...cardStyle, borderColor: RED_LIGHT }}>
                   <p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>GEM le plus touché</p>
                   <p style={{ fontSize: 16, fontWeight: 700 }}>{pireGem.nom}</p>
+                  <p style={{ fontSize: 12, color: "#a9d6cf", marginBottom: 4 }}>{provenance(pireGem.gemId)}</p>
                   <p style={{ fontSize: 20, fontWeight: 700, color: RED_LIGHT }}>{pireGem.taux}% d'absence</p>
                 </div>
               )}
-              {pireProvenance && pireProvenance.taux > 0 && (
+              {pireDepartement && pireDepartement.taux > 0 && (
                 <div style={{ ...cardStyle, borderColor: RED_LIGHT }}>
-                  <p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>Tribu/Département le plus touché</p>
-                  <p style={{ fontSize: 16, fontWeight: 700 }}>{pireProvenance.nom}</p>
-                  <p style={{ fontSize: 20, fontWeight: 700, color: RED_LIGHT }}>{pireProvenance.taux}% d'absence</p>
+                  <p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>Département le plus touché</p>
+                  <p style={{ fontSize: 16, fontWeight: 700 }}>{pireDepartement.nom}</p>
+                  <p style={{ fontSize: 20, fontWeight: 700, color: RED_LIGHT }}>{pireDepartement.taux}% d'absence</p>
+                </div>
+              )}
+              {pireTribu && pireTribu.taux > 0 && (
+                <div style={{ ...cardStyle, borderColor: RED_LIGHT }}>
+                  <p style={{ fontSize: 11, color: "#FFFFFF", textTransform: "uppercase" }}>Tribu la plus touchée</p>
+                  <p style={{ fontSize: 16, fontWeight: 700 }}>{pireTribu.nom}</p>
+                  <p style={{ fontSize: 20, fontWeight: 700, color: RED_LIGHT }}>{pireTribu.taux}% d'absence</p>
                 </div>
               )}
             </div>
