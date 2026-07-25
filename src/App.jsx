@@ -1440,7 +1440,7 @@ function TableauDeBord({ compte }) {
                 <p style={{ fontSize: 11, color: "#a9d6cf" }}>Clique pour voir le détail</p>
               </button>
               {(() => {
-                const listeBossDashboard = calculerListeBoss(membres, gems, tribus, departements, regulariteParMembre);
+                const listeBossDashboard = calculerListeBoss(membres, gems, tribus, departements, regulariteParMembre, [], tousLesComptes);
                 const bossIrreguliersDashboard = listeBossDashboard.filter(b => b.absencesConsecutives >= 2);
                 return (
                   <button className="btn-app card-app" onClick={() => { setPage("membres"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...cardStyle, cursor: "pointer", textAlign: "left", borderColor: bossIrreguliersDashboard.length > 0 ? RED_LIGHT : GOLD }}>
@@ -3255,7 +3255,7 @@ function moyenneSante(s) {
 // personne inscrite dans au moins un GEM de type "département". Regroupe une
 // même personne à travers plusieurs départements (par numéro de téléphone),
 // en ne lui attribuant qu'une seule tribu (celle de son GEM de type "tribu").
-function calculerListeBoss(membres, gems, tribus, departements, regulariteParMembre) {
+function calculerListeBoss(membres, gems, tribus, departements, regulariteParMembre, assignationsActives, tousLesComptes) {
   function chiffresNumero(tel) { return (tel || "").replace(/[^\d]/g, "").slice(-8); }
 
   const groupesTelephone = {};
@@ -3265,10 +3265,27 @@ function calculerListeBoss(membres, gems, tribus, departements, regulariteParMem
     groupesTelephone[cle].push(m);
   });
 
-  return Object.entries(groupesTelephone)
+  // Responsables de département (rôle "departement_resp") — servent aussi
+  // l'église au niveau département, même sans être eux-mêmes suivis comme
+  // membre dans un GEM. On les fusionne par numéro s'ils y sont déjà, sinon
+  // on crée une entrée BOSS dédiée pour eux.
+  const responsablesDept = (assignationsActives || [])
+    .filter(a => a.role_demande === "departement_resp")
+    .map(a => {
+      const c = (tousLesComptes || []).find(cc => cc.id === a.compte_id);
+      if (!c) return null;
+      const nomDept = departements.find(d => d.id === a.departement_id)?.nom || "Département inconnu";
+      return { compte: c, nomDept };
+    })
+    .filter(Boolean);
+
+  const idsGemsUtilises = new Set();
+
+  const resultats = Object.entries(groupesTelephone)
     .map(([cle, fiches]) => {
       const fichesDept = fiches.filter(m => gems.find(g => g.id === m.gem_id)?.type === "departement");
-      if (fichesDept.length === 0) return null;
+      const respDeptCorrespondant = responsablesDept.find(r => chiffresNumero(r.compte.telephone) === cle);
+      if (fichesDept.length === 0 && !respDeptCorrespondant) return null;
 
       const ficheTribu = fiches.find(m => gems.find(g => g.id === m.gem_id)?.type === "tribu");
       const nomTribu = ficheTribu ? tribus.find(t => t.id === gems.find(g => g.id === ficheTribu.gem_id)?.tribu_id)?.nom : null;
@@ -3280,21 +3297,26 @@ function calculerListeBoss(membres, gems, tribus, departements, regulariteParMem
         const nomDept = departements.find(d => d.id === g?.departement_id)?.nom || "Département inconnu";
         if (!nomsDejaVus.has(nomDept)) { nomsDejaVus.add(nomDept); servicesUniques.push({ nom: nomDept, gemNom: g?.nom || "" }); }
       });
+      if (respDeptCorrespondant && !nomsDejaVus.has(respDeptCorrespondant.nomDept)) {
+        nomsDejaVus.add(respDeptCorrespondant.nomDept);
+        servicesUniques.push({ nom: respDeptCorrespondant.nomDept, gemNom: "Responsable du département" });
+      }
 
-      const regularites = fiches.map(m => regulariteParMembre?.[m.id]).filter(Boolean);
+      const regularites = fiches.map(m => regulariteParMembre?.[m.id]).filter(r => r && r.tauxRegularite !== null && r.tauxRegularite !== undefined);
       const tauxMoyen = regularites.length > 0
-        ? Math.round(regularites.reduce((a, r) => a + (r.tauxRegularite || 0), 0) / regularites.length)
+        ? Math.round(regularites.reduce((a, r) => a + r.tauxRegularite, 0) / regularites.length)
         : null;
-      const maxAbsencesConsecutives = Math.max(0, ...regularites.map(r => r.absencesConsecutives || 0));
+      const maxAbsencesConsecutives = Math.max(0, ...fiches.map(m => regulariteParMembre?.[m.id]?.absencesConsecutives || 0));
 
-      const reference = ficheTribu || fichesDept[0];
+      const reference = ficheTribu || fiches[0] || null;
+      if (respDeptCorrespondant) idsGemsUtilises.add(cle);
       return {
         id: `boss-${cle}`,
-        nom: reference.nom,
-        telephone: reference.telephone,
-        quartier: reference.quartier,
-        dateNaissance: reference.date_naissance,
-        photo: reference.photo,
+        nom: reference ? reference.nom : respDeptCorrespondant.compte.nom,
+        telephone: reference ? reference.telephone : respDeptCorrespondant.compte.telephone,
+        quartier: reference ? reference.quartier : respDeptCorrespondant.compte.quartier,
+        dateNaissance: reference ? reference.date_naissance : respDeptCorrespondant.compte.date_naissance,
+        photo: reference ? reference.photo : null,
         nomTribu,
         services: servicesUniques,
         tauxMoyen,
@@ -3302,8 +3324,28 @@ function calculerListeBoss(membres, gems, tribus, departements, regulariteParMem
         fiches,
       };
     })
-    .filter(Boolean)
-    .sort((a, b) => a.nom.localeCompare(b.nom));
+    .filter(Boolean);
+
+  // Ajoute les responsables de département qui n'avaient encore aucune fiche membre du tout
+  responsablesDept.forEach(r => {
+    const cle = chiffresNumero(r.compte.telephone) || `sans-numero-resp-${r.compte.id}`;
+    if (idsGemsUtilises.has(cle) || resultats.some(res => res.id === `boss-${cle}`)) return;
+    resultats.push({
+      id: `boss-resp-${r.compte.id}`,
+      nom: r.compte.nom,
+      telephone: r.compte.telephone,
+      quartier: r.compte.quartier,
+      dateNaissance: r.compte.date_naissance,
+      photo: null,
+      nomTribu: null,
+      services: [{ nom: r.nomDept, gemNom: "Responsable du département" }],
+      tauxMoyen: null,
+      absencesConsecutives: 0,
+      fiches: [],
+    });
+  });
+
+  return resultats.sort((a, b) => a.nom.localeCompare(b.nom));
 }
 
 function couleurScore(score) {
@@ -4886,7 +4928,7 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
   personnesResponsables.forEach(pr => { if (!responsablesUtilises.has(pr.id)) toutesLesPersonnes.push(pr); });
 
   // --- BOSS ("Bon Ouvrier au Service du Seigneur") ---
-  const listeBoss = calculerListeBoss(membresDuPerimetre, gems, tribus, departements, regulariteParMembre);
+  const listeBoss = calculerListeBoss(membresDuPerimetre, gems, tribus, departements, regulariteParMembre, assignationsActives, tousLesComptes);
 
   const bossIrreguliers = listeBoss.filter(b => b.absencesConsecutives >= 2).sort((a, b) => b.absencesConsecutives - a.absencesConsecutives);
 
