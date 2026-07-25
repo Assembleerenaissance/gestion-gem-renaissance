@@ -5886,6 +5886,10 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
   const [vueBoss, setVueBoss] = useState(false);
   const [filtreBossIrreguliers, setFiltreBossIrreguliers] = useState(false);
   const [bossOuvert, setBossOuvert] = useState(null);
+  const [pageResultats, setPageResultats] = useState(1);
+  const PAR_PAGE_MEMBRES = 25;
+
+  useEffect(() => { setPageResultats(1); }, [recherche, filtreRole, filtreIrreguliers, vueBoss]);
   const [editionResponsableOuverte, setEditionResponsableOuverte] = useState(false);
   const [confirmerRetraitResponsable, setConfirmerRetraitResponsable] = useState(false);
   const [retraitEnCours, setRetraitEnCours] = useState(false);
@@ -6051,6 +6055,9 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
     .filter(p => p.nom.toLowerCase().includes(recherche.toLowerCase()))
     .filter(p => !filtreRole || p.types.includes(filtreRole))
     .filter(p => !filtreIrreguliers || (p.types.includes("membre") && (absencesRecentes[p.membreId]?.absences || 0) >= 2));
+
+  const totalPagesResultats = Math.max(1, Math.ceil(resultats.length / PAR_PAGE_MEMBRES));
+  const resultatsAffiches = resultats.slice((pageResultats - 1) * PAR_PAGE_MEMBRES, pageResultats * PAR_PAGE_MEMBRES);
 
   if (chargement) return <Chargement />;
 
@@ -6299,8 +6306,9 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
       ) : resultats.length === 0 ? (
         <EtatVide icone={IconeRecherche} titre="Aucune personne trouvée" />
       ) : (
+        <>
         <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {resultats.map(p => {
+          {resultatsAffiches.map(p => {
             const tauxReg = p.types.includes("membre") ? regulariteParMembre?.[p.membreId]?.tauxRegularite : null;
             return (
               <button key={p.id} className="btn-app card-app" onClick={() => setPersonneOuverte(p)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
@@ -6326,6 +6334,14 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
             );
           })}
         </div>
+        {totalPagesResultats > 1 && (
+          <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 14, marginTop: 20 }}>
+            <button className="btn-app" disabled={pageResultats === 1} onClick={() => setPageResultats(p => p - 1)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, cursor: pageResultats === 1 ? "not-allowed" : "pointer", opacity: pageResultats === 1 ? 0.5 : 1 }}>← Précédent</button>
+            <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>Page {pageResultats} / {totalPagesResultats}</span>
+            <button className="btn-app" disabled={pageResultats === totalPagesResultats} onClick={() => setPageResultats(p => p + 1)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, cursor: pageResultats === totalPagesResultats ? "not-allowed" : "pointer", opacity: pageResultats === totalPagesResultats ? 0.5 : 1 }}>Suivant →</button>
+          </div>
+        )}
+        </>
       )}
     </div>
   );
@@ -7081,9 +7097,11 @@ function PageSuppressions({ compte, cardStyle, onTraite }) {
         motif: d.motif, supprime_par: compte.id,
       });
     }
-    await supabase.from("presences").delete().eq("membre_id", d.membre_id);
-    await supabase.from("sante_spirituelle").delete().eq("membre_id", d.membre_id);
-    await supabase.from("visites").delete().eq("membre_id", d.membre_id);
+    await Promise.all([
+      supabase.from("presences").delete().eq("membre_id", d.membre_id),
+      supabase.from("sante_spirituelle").delete().eq("membre_id", d.membre_id),
+      supabase.from("visites").delete().eq("membre_id", d.membre_id),
+    ]);
     const { error } = await supabase.from("membres").delete().eq("id", d.membre_id);
     if (!error) {
       await supabase.from("demandes_suppression_membre").update({ statut: "approuvee", traite_par: compte.id, date_traitement: new Date().toISOString() }).eq("id", d.id);
@@ -7172,8 +7190,10 @@ function PageMotsDePasse({ cardStyle, onTraite }) {
 
   async function chargerDemandes() {
     setChargement(true);
-    const { data: d } = await supabase.from("demandes_mot_de_passe").select("*").eq("statut", "attente").order("date_demande");
-    const { data: tousLesComptes } = await supabase.from("comptes").select("*");
+    const [{ data: d }, { data: tousLesComptes }] = await Promise.all([
+      supabase.from("demandes_mot_de_passe").select("*").eq("statut", "attente").order("date_demande"),
+      supabase.from("comptes").select("*"),
+    ]);
     let map = {};
     (tousLesComptes || []).forEach(c => { map[c.id] = c; });
     // Rattrape les demandes non liées (compte_id null) en comparant les numéros chiffre par chiffre
