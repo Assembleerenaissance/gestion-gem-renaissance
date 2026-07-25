@@ -1398,6 +1398,11 @@ function TableauDeBord({ compte }) {
  onClick={() => { setPage("absences"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "absences" ? TEAL_700 : "transparent", color: page === "absences" ? GOLD_LIGHT : "#D8E8E1", display: "flex", alignItems: "center", gap: 6 }}>
                 <IconeInterdit size={15} /> Absences
               </button>
+              <button
+ className="btn-app"
+ onClick={() => { setPage("prediction"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "prediction" ? TEAL_700 : "transparent", color: page === "prediction" ? GOLD_LIGHT : "#D8E8E1", display: "flex", alignItems: "center", gap: 6 }}>
+                <IconeAnalyse size={15} /> Prédiction
+              </button>
               {compte.role === "pasteur" && (
                 <button
  className="btn-app"
@@ -1499,6 +1504,7 @@ function TableauDeBord({ compte }) {
                   { label: "Nouveaux", cible: "nouveaux", icone: IconePousse },
                   { label: "Membres", cible: "membres", icone: IconeGroupe },
                   { label: "Absences", cible: "absences", icone: IconeInterdit },
+                  { label: "Prédiction", cible: "prediction", icone: IconeAnalyse },
                 ];
                 if (compte.role === "pasteur") groupeGestion.push({ label: "Rôles & Accès", cible: "assistants", icone: IconeCle });
                 if (compte.role !== "pasteur") groupeGestion.push({ label: "Rôle supplémentaire", cible: "demande_role_supp" });
@@ -1778,6 +1784,8 @@ function TableauDeBord({ compte }) {
           <PageMembres membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} estPasteur={true} cardStyle={cardStyle} />
         ) : page === "absences" ? (
           <PageAbsences membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
+        ) : page === "prediction" ? (
+          <PagePrediction membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
         ) : (
           <PageAssistants compte={compte} tribus={tribus} departements={departements} gems={gems} onChange={chargerDonnees} cardStyle={cardStyle} />
         )}
@@ -3959,6 +3967,177 @@ function moyenneSante(s) {
 // personne inscrite dans au moins un GEM de type "département". Regroupe une
 // même personne à travers plusieurs départements (par numéro de téléphone),
 // en ne lui attribuant qu'une seule tribu (celle de son GEM de type "tribu").
+/* --------------------------- Prédiction : risque de décrochage --------------------------- */
+
+// Calcule un score de risque de décrochage (0-100) pour un membre, à partir de
+// TENDANCES (pas seulement de l'état actuel) : évolution de la présence sur 16
+// dimanches, évolution de la santé spirituelle, et progression du parcours de
+// conversion. But : repérer un décrochage AVANT qu'il ne soit consommé.
+function calculerRisqueMembre({ membre, dimanchesReels, presencesMembre, historiqueSante, absencesConsecutives }) {
+  let score = 0;
+  const raisons = [];
+
+  // --- Tendance de présence (8 dimanches récents vs 8 précédents) ---
+  const moitie = Math.floor(dimanchesReels.length / 2);
+  const recents = dimanchesReels.slice(-moitie);
+  const anciens = dimanchesReels.slice(0, dimanchesReels.length - moitie);
+  function tauxSur(liste) {
+    if (liste.length === 0) return null;
+    const presents = liste.filter(d => presencesMembre.some(p => p.dimanche_id === d.id && p.present)).length;
+    return Math.round((presents / liste.length) * 100);
+  }
+  const tauxRecent = tauxSur(recents);
+  const tauxAncien = tauxSur(anciens);
+  let tendancePresence = null;
+  if (tauxRecent !== null && tauxAncien !== null && anciens.length >= 3) {
+    tendancePresence = tauxRecent - tauxAncien;
+    if (tendancePresence <= -25) { score += 32; raisons.push(`Présence en forte baisse (${tauxAncien}% → ${tauxRecent}%)`); }
+    else if (tendancePresence <= -12) { score += 16; raisons.push(`Présence en baisse (${tauxAncien}% → ${tauxRecent}%)`); }
+  }
+
+  // --- Absences consécutives actuelles ---
+  if (absencesConsecutives >= 3) { score += 28; raisons.push(`${absencesConsecutives} dimanches consécutifs manqués`); }
+  else if (absencesConsecutives === 2) { score += 18; raisons.push("2 dimanches consécutifs manqués"); }
+  else if (absencesConsecutives === 1) { score += 8; }
+
+  // --- Tendance de santé spirituelle (2 dernières évaluations vs 2 précédentes) ---
+  if (historiqueSante.length >= 3) {
+    const scores = historiqueSante.map(s => moyenneSante(s)).filter(v => v !== null);
+    if (scores.length >= 3) {
+      const recentesSante = scores.slice(0, Math.ceil(scores.length / 2));
+      const anciennesSante = scores.slice(Math.ceil(scores.length / 2));
+      const moyRecente = recentesSante.reduce((a, b) => a + b, 0) / recentesSante.length;
+      const moyAncienne = anciennesSante.length > 0 ? anciennesSante.reduce((a, b) => a + b, 0) / anciennesSante.length : moyRecente;
+      const tendanceSante = moyRecente - moyAncienne;
+      if (tendanceSante <= -2) { score += 20; raisons.push("Santé spirituelle en baisse"); }
+    }
+  }
+  const derniereSante = historiqueSante.length > 0 ? moyenneSante(historiqueSante[0]) : null;
+  if (derniereSante !== null && derniereSante < 4) { score += 14; raisons.push(`Santé spirituelle faible (${derniereSante}/10)`); }
+
+  // --- Nouveau converti sans progression ---
+  if (membre.nouveau_converti && membre.etape_conversion === "accueil" && membre.created_at) {
+    const joursDepuis = Math.floor((Date.now() - new Date(membre.created_at).getTime()) / 86400000);
+    if (joursDepuis >= 30) { score += 16; raisons.push(`Nouveau converti sans progression depuis ${joursDepuis} jours`); }
+  }
+
+  score = Math.min(100, score);
+  const niveau = score >= 50 ? "eleve" : score >= 25 ? "modere" : "faible";
+  return { score, niveau, raisons, tendancePresence };
+}
+
+function PagePrediction({ membres, gems, tribus, departements, gemsAutorises, regulariteParMembre, cardStyle }) {
+  const [chargement, setChargement] = useState(true);
+  const [risques, setRisques] = useState([]);
+  const [filtreNiveau, setFiltreNiveau] = useState("");
+
+  const membresDuPerimetre = gemsAutorises ? membres.filter(m => gemsAutorises.includes(m.gem_id)) : membres;
+
+  useEffect(() => { calculerTout(); }, [membresDuPerimetre.length]);
+
+  async function calculerTout() {
+    setChargement(true);
+    if (membresDuPerimetre.length === 0) { setRisques([]); setChargement(false); return; }
+    const idsMembres = membresDuPerimetre.map(m => m.id);
+
+    const [{ data: dimanchesRecents }, { data: presencesTous }, { data: santeTous }] = await Promise.all([
+      supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(16),
+      supabase.from("presences").select("*").in("membre_id", idsMembres),
+      supabase.from("sante_spirituelle").select("*").in("membre_id", idsMembres).order("date_maj", { ascending: false }),
+    ]);
+
+    // Ne garde que les dimanches réellement pointés (au moins une présence)
+    const idsDimPointes = new Set((presencesTous || []).map(p => p.dimanche_id));
+    const dimanchesReels = (dimanchesRecents || []).filter(d => idsDimPointes.has(d.id)).reverse(); // du plus ancien au plus récent
+
+    const resultats = membresDuPerimetre.map(m => {
+      const presencesMembre = (presencesTous || []).filter(p => p.membre_id === m.id);
+      const historiqueSante = (santeTous || []).filter(s => s.membre_id === m.id);
+      const risque = calculerRisqueMembre({
+        membre: m, dimanchesReels, presencesMembre, historiqueSante,
+        absencesConsecutives: regulariteParMembre?.[m.id]?.absencesConsecutives || 0,
+      });
+      return { membre: m, ...risque };
+    });
+
+    setRisques(resultats.filter(r => r.score >= 25).sort((a, b) => b.score - a.score));
+    setChargement(false);
+  }
+
+  function nomGem(gemId) { return gems.find(g => g.id === gemId)?.nom || "GEM inconnu"; }
+  function provenance(gemId) {
+    const g = gems.find(gg => gg.id === gemId);
+    if (!g) return "";
+    if (g.tribu_id) return `Tribu de ${tribus?.find(t => t.id === g.tribu_id)?.nom || "?"}`;
+    if (g.departement_id) return `Département ${departements?.find(d => d.id === g.departement_id)?.nom || "?"}`;
+    return "";
+  }
+
+  const resultatsAffiches = filtreNiveau ? risques.filter(r => r.niveau === filtreNiveau) : risques;
+
+  if (chargement) return <Chargement />;
+
+  return (
+    <div>
+      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4, display: "flex", alignItems: "center", gap: 10 }}>
+        <IconeAnalyse size={22} /> Risque de décrochage
+      </h2>
+      <p style={{ fontSize: 13, color: "#B9D3CB", marginBottom: 20 }}>
+        Détection précoce basée sur les tendances (présence, santé spirituelle, parcours) — pas seulement l'état du moment. {risques.length} membre{risques.length > 1 ? "s" : ""} signalé{risques.length > 1 ? "s" : ""}.
+      </p>
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+        {[["", "Tous"], ["eleve", "🔴 Risque élevé"], ["modere", "🟠 Risque modéré"]].map(([cle, label]) => (
+          <button key={cle} className="btn-app" onClick={() => setFiltreNiveau(cle)} style={{ padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${TEAL_600}`, cursor: "pointer", backgroundColor: filtreNiveau === cle ? GOLD : "transparent", color: filtreNiveau === cle ? TEAL_950 : "#D8E8E1" }}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {resultatsAffiches.length === 0 ? (
+        <EtatVide icone={IconeValide} titre="Aucun signal de décrochage détecté" description="D'après les tendances actuelles, personne ne présente de risque notable." />
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {resultatsAffiches.map(({ membre, score, niveau, raisons }) => {
+            const couleur = niveau === "eleve" ? "#E2777B" : "#e8c25a";
+            return (
+              <div key={membre.id} style={{ ...cardStyle, borderColor: couleur }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
+                  <div style={{ flex: 1, minWidth: 180 }}>
+                    <p style={{ fontWeight: 700, marginBottom: 2 }}>{membre.nom}</p>
+                    <p style={{ fontSize: 12, color: "#B9D3CB", marginBottom: 6 }}>{nomGem(membre.gem_id)} — {provenance(membre.gem_id)}</p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                      {raisons.map((r, i) => (
+                        <span key={i} style={{ fontSize: 11, color: "#D8E8E1", backgroundColor: TEAL_950, borderRadius: 999, padding: "3px 10px" }}>{r}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 8 }}>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", backgroundColor: couleur, borderRadius: 999, padding: "5px 12px" }}>
+                      {niveau === "eleve" ? "🔴" : "🟠"} {score}/100
+                    </span>
+                    {membre.telephone && (
+                      <div style={{ display: "flex", gap: 8 }}>
+                        <a title="Appeler" href={`tel:${membre.telephone}`} style={{ fontSize: 15, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, borderRadius: 999, width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center" }}><IconeTelephone size={14} /></a>
+                        <a
+                          title="WhatsApp"
+                          href={`https://wa.me/${numeroPourWhatsApp(membre.telephone)}?text=${encodeURIComponent(`Bonjour ${membre.nom}, comment vas-tu ? On pense à toi et on aimerait prendre de tes nouvelles. 🙏\n\n— Pasteur Dimitri Koffi`)}`}
+                          target="_blank" rel="noopener noreferrer"
+                          style={{ fontSize: 15, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", borderRadius: 999, width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center" }}
+                        ><IconeMessage size={14} /></a>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function calculerListeBoss(membres, gems, tribus, departements, regulariteParMembre, assignationsActives, tousLesComptes) {
   function chiffresNumero(tel) { return (tel || "").replace(/[^\d]/g, "").slice(-8); }
 
@@ -7670,6 +7849,9 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
         <button
  className="btn-app"
  onClick={() => setSousOnglet("historique")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "historique" ? GOLD : TEAL_900, color: sousOnglet === "historique" ? TEAL_950 : "#D8E8E1" }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeCroissance size={14}/> Historique</span></button>
+        <button
+ className="btn-app"
+ onClick={() => setSousOnglet("prediction")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === "prediction" ? GOLD : TEAL_900, color: sousOnglet === "prediction" ? TEAL_950 : "#D8E8E1" }}><span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeAnalyse size={14}/> Prédiction</span></button>
       </div>
 
       {sousOnglet === "rapports" ? (
@@ -7686,6 +7868,8 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
         <PageAbsences membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} gemsAutorises={gemsDuPerimetre.map(g => g.id)} cardStyle={cardStyle} />
       ) : sousOnglet === "historique" ? (
         <HistoriquePerimetre gems={gemsDuPerimetre} membres={membresDuPerimetre} cardStyle={cardStyle} />
+      ) : sousOnglet === "prediction" ? (
+        <PagePrediction membres={membres} gems={gems} tribus={tribus} departements={departements} gemsAutorises={gemsDuPerimetre.map(g => g.id)} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
       ) : (
         <>
           <AnniversairesAVenir membres={membresDuPerimetre} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
