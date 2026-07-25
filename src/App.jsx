@@ -1413,7 +1413,7 @@ function TableauDeBord({ compte }) {
               </div>
             </div>
             <ClassementsDuMois gemDuMois={gemDuMois} tribuDeptDuMois={tribuDeptDuMois} />
-            <AnniversairesAVenir membres={membres} gems={gems} cardStyle={cardStyle} />
+            <AnniversairesAVenir membres={membres} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
             <AnniversairesResponsables comptes={tousLesComptes} cardStyle={cardStyle} />
 
             <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>📋 Rapports de la semaine en cours</p>
@@ -1610,9 +1610,17 @@ function ResumePerimetre({ gems, membres, onVoirAbsences, cardStyle }) {
   );
 }
 
-function AnniversairesAVenir({ membres, gems, cardStyle }) {
+function AnniversairesAVenir({ membres, gems, tribus, departements, cardStyle }) {
   function nomGem(gemId) {
     return gems.find(g => g.id === gemId)?.nom || "GEM inconnu";
+  }
+
+  function provenance(gemId) {
+    const g = gems.find(gg => gg.id === gemId);
+    if (!g) return "";
+    if (g.tribu_id) return `Tribu de ${tribus?.find(t => t.id === g.tribu_id)?.nom || "?"}`;
+    if (g.departement_id) return `Département ${departements?.find(d => d.id === g.departement_id)?.nom || "?"}`;
+    return "";
   }
 
   function prochainAnniversaire(dateNaissance) {
@@ -1650,7 +1658,7 @@ function AnniversairesAVenir({ membres, gems, cardStyle }) {
           <div key={membre.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
             <div>
               <p style={{ fontWeight: 700, marginBottom: 2 }}>{membre.nom}</p>
-              <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomGem(membre.gem_id)}</p>
+              <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomGem(membre.gem_id)}{provenance(membre.gem_id) ? ` — ${provenance(membre.gem_id)}` : ""}</p>
             </div>
             <span style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, backgroundColor: "#E8CA4A", borderRadius: 999, padding: "6px 12px" }}>
               {diffJours === 0 ? "🎉 Aujourd'hui !" : diffJours === 1 ? "Demain" : `Dans ${diffJours} jours`} — {date.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
@@ -2355,6 +2363,121 @@ async function calculerTribuDeptDuMoisGlobal(gems, membres, tribus, departements
 
 // Garantit que le numéro utilisé pour WhatsApp comporte bien l'indicatif +225 (Côte d'Ivoire),
 // même si le numéro a été enregistré sans, pour que le lien wa.me fonctionne correctement.
+// Génère une image (affiche) téléchargeable à partir d'un titre, d'un sous-titre
+// et d'un corps de texte — utilisée pour exporter un événement du calendrier ou
+// un message du pasteur en image partageable (WhatsApp, Facebook...).
+function genererAfficheImage({ titre, sousTitre, corps, piedDePage, nomFichier }) {
+  const largeur = 1080, hauteur = 1350;
+  const canvas = document.createElement("canvas");
+  canvas.width = largeur;
+  canvas.height = hauteur;
+  const ctx = canvas.getContext("2d");
+
+  // Fond dégradé teal
+  const degrade = ctx.createLinearGradient(0, 0, 0, hauteur);
+  degrade.addColorStop(0, "#0D5C52");
+  degrade.addColorStop(1, "#116A5F");
+  ctx.fillStyle = degrade;
+  ctx.fillRect(0, 0, largeur, hauteur);
+
+  // Bande dorée en haut
+  ctx.fillStyle = "#D0AF1C";
+  ctx.fillRect(0, 0, largeur, 14);
+
+  function dessinerLogoEtTexte() {
+    ctx.textAlign = "center";
+
+    // Nom de l'église
+    ctx.fillStyle = "#E8CA4A";
+    ctx.font = "bold 34px Arial";
+    ctx.fillText("ASSEMBLÉE RENAISSANCE", largeur / 2, 130);
+    ctx.font = "24px Arial";
+    ctx.fillStyle = "#cdeae4";
+    ctx.fillText("Bouaflé", largeur / 2, 168);
+
+    // Ligne de séparation
+    ctx.strokeStyle = "#D0AF1C";
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(largeur / 2 - 80, 200);
+    ctx.lineTo(largeur / 2 + 80, 200);
+    ctx.stroke();
+
+    // Titre principal (retour à la ligne automatique)
+    ctx.fillStyle = "#FFFFFF";
+    ctx.font = "bold 56px Arial";
+    let y = 300;
+    const lignesTitre = decouperTexte(ctx, titre, largeur - 160);
+    lignesTitre.forEach(ligne => { ctx.fillText(ligne, largeur / 2, y); y += 64; });
+
+    // Sous-titre (date, lieu...)
+    if (sousTitre) {
+      y += 20;
+      ctx.font = "32px Arial";
+      ctx.fillStyle = "#D0AF1C";
+      const lignesSousTitre = decouperTexte(ctx, sousTitre, largeur - 160);
+      lignesSousTitre.forEach(ligne => { ctx.fillText(ligne, largeur / 2, y); y += 42; });
+    }
+
+    // Corps de texte
+    if (corps) {
+      y += 50;
+      ctx.font = "30px Arial";
+      ctx.fillStyle = "#FFFFFF";
+      const lignesCorps = decouperTexte(ctx, corps, largeur - 200);
+      lignesCorps.slice(0, 12).forEach(ligne => { ctx.fillText(ligne, largeur / 2, y); y += 42; });
+    }
+
+    // Pied de page
+    ctx.font = "italic 26px Arial";
+    ctx.fillStyle = "#a9d6cf";
+    ctx.fillText(piedDePage || "Pasteur Dimitri Koffi", largeur / 2, hauteur - 60);
+
+    // Bande dorée en bas
+    ctx.fillStyle = "#D0AF1C";
+    ctx.fillRect(0, hauteur - 14, largeur, 14);
+
+    // Déclenche le téléchargement
+    canvas.toBlob(blob => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${nomFichier || "affiche"}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, "image/png");
+  }
+
+  function decouperTexte(context, texte, largeurMax) {
+    const mots = (texte || "").split(" ");
+    const lignes = [];
+    let ligneActuelle = "";
+    mots.forEach(mot => {
+      const test = ligneActuelle ? `${ligneActuelle} ${mot}` : mot;
+      if (context.measureText(test).width > largeurMax && ligneActuelle) {
+        lignes.push(ligneActuelle);
+        ligneActuelle = mot;
+      } else {
+        ligneActuelle = test;
+      }
+    });
+    if (ligneActuelle) lignes.push(ligneActuelle);
+    return lignes;
+  }
+
+  // Charge le logo avant de dessiner (facultatif, si l'image ne charge pas on continue quand même)
+  const logo = new Image();
+  logo.onload = () => {
+    ctx.drawImage(logo, largeur / 2 - 60, 40, 120, 84);
+    dessinerLogoEtTexte();
+  };
+  logo.onerror = () => dessinerLogoEtTexte();
+  logo.src = LOGO_VH;
+}
+
+
 function numeroPourWhatsApp(tel) {
   const chiffres = (tel || "").replace(/[^\d]/g, "");
   if (chiffres.startsWith("225")) return chiffres;
@@ -4273,6 +4396,7 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
   const [presencesAnneeCourante, setPresencesAnneeCourante] = useState([]);
   const [dimanchesAnneeCourante, setDimanchesAnneeCourante] = useState([]);
   const [courbeAnnuelle, setCourbeAnnuelle] = useState([]); // par année
+  const [responsablesAbsents, setResponsablesAbsents] = useState([]); // responsables GEM absents ce dimanche
 
   const membresDuPerimetre = gemsAutorises ? membres.filter(m => gemsAutorises.includes(m.gem_id)) : membres;
 
@@ -4305,6 +4429,30 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
       });
       setMotifsParMembre(mapMotifs);
       setPresentsIds(presents);
+
+      // Responsables GEM de ce périmètre — un responsable peut aussi être absent,
+      // et cela doit être visible comme pour n'importe quel membre.
+      const idsGemsConcernes = gemsAutorises || gems.map(g => g.id);
+      const { data: assignationsGem } = await supabase.from("assignations").select("gem_id, compte_id").eq("role_demande", "gem").eq("statut", "actif").in("gem_id", idsGemsConcernes);
+      if (assignationsGem && assignationsGem.length > 0) {
+        const idsComptes = assignationsGem.map(a => a.compte_id);
+        const [{ data: comptesResp }, { data: presencesResp }] = await Promise.all([
+          supabase.from("comptes").select("*").in("id", idsComptes),
+          supabase.from("presences_responsables_gem").select("*").eq("dimanche_id", dim.id).in("compte_id", idsComptes),
+        ]);
+        const idsPresentsResp = new Set((presencesResp || []).filter(p => p.present).map(p => p.compte_id));
+        const absents = assignationsGem
+          .filter(a => !idsPresentsResp.has(a.compte_id))
+          .map(a => {
+            const c = (comptesResp || []).find(cc => cc.id === a.compte_id);
+            const g = gems.find(gg => gg.id === a.gem_id);
+            return c ? { compte: c, gem: g } : null;
+          })
+          .filter(Boolean);
+        setResponsablesAbsents(absents);
+      } else {
+        setResponsablesAbsents([]);
+      }
     }
 
     // Courbe hebdomadaire : taux d'absence sur les 12 derniers dimanches réellement pointés
@@ -4522,6 +4670,36 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+
+          {responsablesAbsents.length > 0 && (
+            <div style={{ marginTop: 24 }}>
+              <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>👤 Responsables GEM absents ce dimanche ({responsablesAbsents.length})</p>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                {responsablesAbsents.map(({ compte: c, gem }) => (
+                  <div key={c.id} style={{ ...cardStyle, borderColor: RED_LIGHT }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
+                      <div>
+                        <p style={{ fontWeight: 700, marginBottom: 2 }}>{c.nom} <span style={{ fontSize: 10, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, borderRadius: 999, padding: "2px 8px", marginLeft: 4 }}>👤 Responsable</span></p>
+                        <p style={{ fontSize: 12, color: "#a9d6cf" }}>{gem?.nom || "GEM inconnu"} — {provenance(gem?.id)}</p>
+                      </div>
+                      {c.telephone && (
+                        <div style={{ display: "flex", gap: 8 }}>
+                          <a title="Appeler" href={`tel:${c.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}>📞</a>
+                          <a
+                            title="WhatsApp"
+                            href={`https://wa.me/${numeroPourWhatsApp(c.telephone)}?text=${encodeURIComponent(`Bonjour ${c.nom}, tu nous as manqué au culte. Est-ce que tout va bien ? 🙏`)}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}
+                          >💬</a>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </>
@@ -5007,7 +5185,11 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   {b.tauxMoyen !== null && (
-                    <span style={{ fontSize: 11, fontWeight: 700, color: b.tauxMoyen >= 70 ? "#6fcf97" : b.tauxMoyen >= 40 ? GOLD_LIGHT : RED_LIGHT, backgroundColor: TEAL_900, borderRadius: 999, padding: "4px 10px" }}>
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "4px 10px",
+                      color: b.tauxMoyen >= 40 ? TEAL_950 : "#fff",
+                      backgroundColor: b.tauxMoyen >= 70 ? "#6fcf97" : b.tauxMoyen >= 40 ? GOLD_LIGHT : RED_LIGHT,
+                    }}>
                       📊 {b.tauxMoyen}%
                     </span>
                   )}
@@ -5033,7 +5215,11 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
                   {tauxReg !== null && tauxReg !== undefined && (
-                    <span style={{ fontSize: 11, fontWeight: 700, color: tauxReg >= 70 ? "#6fcf97" : tauxReg >= 40 ? GOLD_LIGHT : RED_LIGHT, backgroundColor: TEAL_900, borderRadius: 999, padding: "4px 10px" }}>
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "4px 10px",
+                      color: tauxReg >= 40 ? TEAL_950 : "#fff",
+                      backgroundColor: tauxReg >= 70 ? "#6fcf97" : tauxReg >= 40 ? GOLD_LIGHT : RED_LIGHT,
+                    }}>
                       📊 {tauxReg}%
                     </span>
                   )}
@@ -6100,12 +6286,47 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
   const [presencesMois, setPresencesMois] = useState([]);
   const [santeMois, setSanteMois] = useState([]);
   const [chargement, setChargement] = useState(true);
+  const [responsablesParGem, setResponsablesParGem] = useState({}); // { gemId: { compte, santeMoyenne, present } }
 
   const idsMembres = membres.map(m => m.id);
 
-  useEffect(() => { chargerDimanches(); }, []);
-  useEffect(() => { if (dimancheChoisi && vue === "hebdomadaire") chargerHebdo(); }, [dimancheChoisi, vue]);
+  useEffect(() => { chargerDimanches(); chargerResponsablesGem(); }, []);
+  useEffect(() => { if (dimancheChoisi && vue === "hebdomadaire") { chargerHebdo(); chargerPresenceResponsables(); } }, [dimancheChoisi, vue]);
   useEffect(() => { if (moisChoisi && vue === "mensuelle") chargerMensuel(); }, [moisChoisi, vue]);
+
+  async function chargerResponsablesGem() {
+    const idsGems = gems.map(g => g.id);
+    if (idsGems.length === 0) return;
+    const { data: assignationsGem } = await supabase.from("assignations").select("gem_id, compte_id").eq("role_demande", "gem").eq("statut", "actif").in("gem_id", idsGems);
+    if (!assignationsGem || assignationsGem.length === 0) return;
+    const idsComptes = assignationsGem.map(a => a.compte_id);
+    const [{ data: comptes }, { data: santeResp }] = await Promise.all([
+      supabase.from("comptes").select("*").in("id", idsComptes),
+      supabase.from("sante_spirituelle_responsables").select("*").in("compte_id", idsComptes).order("date_maj", { ascending: false }),
+    ]);
+    const map = {};
+    assignationsGem.forEach(a => {
+      const c = (comptes || []).find(cc => cc.id === a.compte_id);
+      if (!c) return;
+      const derniereSante = (santeResp || []).find(s => s.compte_id === a.compte_id);
+      map[a.gem_id] = { compte: c, santeMoyenne: derniereSante ? moyenneSante(derniereSante) : null, present: null };
+    });
+    setResponsablesParGem(map);
+  }
+
+  async function chargerPresenceResponsables() {
+    const idsComptes = Object.values(responsablesParGem).map(r => r.compte.id);
+    if (idsComptes.length === 0 || !dimancheChoisi) return;
+    const { data: presResp } = await supabase.from("presences_responsables_gem").select("*").eq("dimanche_id", dimancheChoisi).in("compte_id", idsComptes);
+    setResponsablesParGem(prev => {
+      const copie = { ...prev };
+      Object.keys(copie).forEach(gemId => {
+        const p = (presResp || []).find(pp => pp.compte_id === copie[gemId].compte.id);
+        copie[gemId] = { ...copie[gemId], present: p ? p.present : null };
+      });
+      return copie;
+    });
+  }
 
   async function chargerDimanches() {
     const { data } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(52);
@@ -6217,13 +6438,37 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
                   const membresGem = membres.filter(m => m.gem_id === g.id);
                   const presentsGem = membresGem.filter(m => presences[m.id]).length;
                   const tauxGem = membresGem.length > 0 ? Math.round((presentsGem / membresGem.length) * 100) : 0;
+                  const resp = responsablesParGem[g.id];
                   return (
-                    <div key={g.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                      <p style={{ fontWeight: 700 }}>{g.nom}</p>
-                      <div style={{ textAlign: "right" }}>
-                        <p style={{ fontSize: 13, fontWeight: 700, color: GOLD_LIGHT }}>{presentsGem} / {membresGem.length} présents</p>
-                        <p style={{ fontSize: 12, color: "#a9d6cf" }}>{tauxGem}% de présence</p>
+                    <div key={g.id} style={cardStyle}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                        <p style={{ fontWeight: 700, margin: 0 }}>{g.nom}</p>
+                        <div style={{ textAlign: "right" }}>
+                          <p style={{ fontSize: 13, fontWeight: 700, color: GOLD_LIGHT, margin: 0 }}>{presentsGem} / {membresGem.length} présents</p>
+                          <p style={{ fontSize: 12, color: "#a9d6cf", margin: 0 }}>{tauxGem}% de présence</p>
+                        </div>
                       </div>
+                      {resp && (
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, paddingTop: 8, borderTop: `1px solid ${TEAL_800}`, flexWrap: "wrap", gap: 6 }}>
+                          <span style={{ fontSize: 12, color: "#a9d6cf" }}>👤 {resp.compte.nom} (responsable)</span>
+                          <div style={{ display: "flex", gap: 6 }}>
+                            {resp.present !== null && (
+                              <span style={{ fontSize: 10, fontWeight: 700, color: resp.present ? TEAL_950 : "#fff", backgroundColor: resp.present ? "#6fcf97" : RED_LIGHT, borderRadius: 999, padding: "3px 8px" }}>
+                                {resp.present ? "Présent" : "Absent"}
+                              </span>
+                            )}
+                            {resp.santeMoyenne !== null && (
+                              <span style={{
+                                fontSize: 10, fontWeight: 700, borderRadius: 999, padding: "3px 8px",
+                                color: resp.santeMoyenne >= 4 ? TEAL_950 : "#fff",
+                                backgroundColor: resp.santeMoyenne >= 7 ? GOLD_LIGHT : resp.santeMoyenne >= 4 ? "#e8c25a" : RED_LIGHT,
+                              }}>
+                                🌡️ {resp.santeMoyenne}/10
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   );
                 })}
@@ -6679,7 +6924,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
       <div>
         {selecteurRole}
         <ClassementsDuMois gemDuMois={gemDuMois} tribuDeptDuMois={tribuDeptDuMois} />
-        <AnniversairesAVenir membres={membresGem} gems={gems} cardStyle={cardStyle} />
+        <AnniversairesAVenir membres={membresGem} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
         <DetailGem
           compte={compte}
           gem={monGem}
@@ -6764,7 +7009,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
         <PageAbsences membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} gemsAutorises={gemsDuPerimetre.map(g => g.id)} cardStyle={cardStyle} />
       ) : (
         <>
-          <AnniversairesAVenir membres={membresDuPerimetre} gems={gems} cardStyle={cardStyle} />
+          <AnniversairesAVenir membres={membresDuPerimetre} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
           <div style={{ ...cardStyle, marginBottom: 20 }}>
             {creationOuverte ? (
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -7990,6 +8235,9 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                         <div>
                           <p style={{ fontWeight: 700 }}>{g.nom}</p>
                           <p style={{ fontSize: 12, color: "#a9d6cf" }}>{nomParent(g)}</p>
+                          {responsablesParGem?.[g.id] && (
+                            <p style={{ fontSize: 11, color: GOLD_LIGHT, marginTop: 2 }}>👤 {responsablesParGem[g.id]}</p>
+                          )}
                         </div>
                         <div style={{ textAlign: "right" }}>
                           <p style={{ fontSize: 13, fontWeight: 700, color: GOLD_LIGHT }}>{presentsGem} / {membresGem.length} présents</p>
@@ -8233,7 +8481,8 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
 
   async function envoyerDiffusion() {
     if (!texte.trim()) return;
-    const { error } = await supabase.from("messages").insert({ texte: texte.trim(), de_compte_id: compte.id });
+    const texteFinal = compte.role === "pasteur" ? `${texte.trim()}\n\n— Pasteur Dimitri Koffi` : texte.trim();
+    const { error } = await supabase.from("messages").insert({ texte: texteFinal, de_compte_id: compte.id });
     if (!error) { setTexte(""); chargerTout(); }
   }
 
@@ -8297,7 +8546,22 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
               {messages.map(m => (
                 <div key={m.id} style={cardStyle}>
                   <p style={{ whiteSpace: "pre-wrap" }}>{m.texte}</p>
-                  <p style={{ fontSize: 11, color: "#a9d6cf", marginTop: 8 }}>{formaterDate(m.date)}</p>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 8, flexWrap: "wrap", gap: 8 }}>
+                    <p style={{ fontSize: 11, color: "#a9d6cf", margin: 0 }}>{formaterDate(m.date)}</p>
+                    <button
+                      className="btn-app"
+                      onClick={() => genererAfficheImage({
+                        titre: "Message du Pasteur",
+                        sousTitre: formaterDate(m.date),
+                        corps: m.texte,
+                        piedDePage: "Pasteur Dimitri Koffi",
+                        nomFichier: `message_${m.id}`,
+                      })}
+                      style={{ fontSize: 11, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}
+                    >
+                      🖼️ Exporter en image
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -8419,6 +8683,17 @@ function PageCalendrier({ estPasteur, compte, onOuverture, cardStyle }) {
     URL.revokeObjectURL(url);
   }
 
+  function telechargerAfficheEvenement(e) {
+    const dateFormatee = new Date(e.debut).toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric", hour: "2-digit", minute: "2-digit" });
+    genererAfficheImage({
+      titre: e.titre,
+      sousTitre: `${dateFormatee}${e.lieu ? " — " + e.lieu : ""}`,
+      corps: e.description || "",
+      piedDePage: "Pasteur Dimitri Koffi",
+      nomFichier: e.titre.replace(/[^a-z0-9]/gi, "_"),
+    });
+  }
+
   const maintenant = new Date();
   const aVenir = evenements.filter(e => new Date(e.debut) >= maintenant);
   const passes = evenements.filter(e => new Date(e.debut) < maintenant).reverse();
@@ -8440,6 +8715,9 @@ function PageCalendrier({ estPasteur, compte, onOuverture, cardStyle }) {
             <button
  className="btn-app"
  onClick={() => telechargerICS(e)} style={{ fontSize: 11, color: GOLD_LIGHT, background: "none", border: `1px solid ${TEAL_600}`, borderRadius: 6, padding: "4px 8px", cursor: "pointer" }}>Ajouter au calendrier</button>
+            <button
+ className="btn-app"
+ onClick={() => telechargerAfficheEvenement(e)} style={{ fontSize: 11, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}>🖼️ Affiche</button>
             {estPasteur && (
               <button
  className="btn-app"
