@@ -99,6 +99,83 @@ function IconeTrophee({ size = 16, color = "currentColor" }) {
     </svg>
   );
 }
+function IconePousse({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M7 20h10" /><path d="M10 20c0-4.4-2-6-4-8 2-1 4 0 5 2" /><path d="M14 20c0-6 3-8 5-10-3-1-6 1-7 4" /><path d="M12 20V10" />
+    </svg>
+  );
+}
+function IconeInterdit({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" /><path d="m4.9 4.9 14.2 14.2" />
+    </svg>
+  );
+}
+function IconeThermometre({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 4v10.54a4 4 0 1 1-4 0V4a2 2 0 0 1 4 0Z" />
+    </svg>
+  );
+}
+function IconeClipboard({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="8" y="2" width="8" height="4" rx="1" /><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2" /><path d="M9 12h6" /><path d="M9 16h6" />
+    </svg>
+  );
+}
+function IconePoubelle({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 6h18" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" /><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+    </svg>
+  );
+}
+function IconeCalendrier({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" />
+    </svg>
+  );
+}
+function IconeGateau({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M20 21v-8a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8" /><path d="M4 16s.5-1 2-1 1.5 1 3 1 1.5-1 3-1 1.5 1 3 1 1.5-1 3-1 2 1 2 1" /><path d="M12 8v3" /><path d="M12 2s-2 2-2 3.5S11 8 12 8s2-1 2-2.5S12 2 12 2Z" />
+    </svg>
+  );
+}
+function IconeCle({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="7.5" cy="15.5" r="5.5" /><path d="m21 2-9.6 9.6" /><path d="m15.5 7.5 3 3L22 7l-3-3" />
+    </svg>
+  );
+}
+function IconePersonne({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" />
+    </svg>
+  );
+}
+function IconeAide({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" /><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" /><path d="M12 17h.01" />
+    </svg>
+  );
+}
+function IconeDeconnexion({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><path d="M16 17l5-5-5-5" /><path d="M21 12H9" />
+    </svg>
+  );
+}
 
 function StylesGlobaux() {
   return (
@@ -1137,7 +1214,7 @@ function TableauDeBord({ compte }) {
               {compte.role !== "pasteur" && (
                 <button
  className="btn-app"
- onClick={() => { setPage("demande_role_supp"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "demande_role_supp" ? TEAL_700 : "transparent", color: page === "demande_role_supp" ? GOLD_LIGHT : "#cdeae4" }}>➕ Rôle supplémentaire</button>
+ onClick={() => { setPage("demande_role_supp"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "demande_role_supp" ? TEAL_700 : "transparent", color: page === "demande_role_supp" ? GOLD_LIGHT : "#cdeae4" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>+ Rôle supplémentaire</span></button>
               )}
               <button
  className="btn-app"
@@ -1209,28 +1286,28 @@ function TableauDeBord({ compte }) {
               </button>
               <button
  className="btn-app"
- onClick={() => { setPage("corbeille"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "corbeille" ? TEAL_700 : "transparent", color: page === "corbeille" ? GOLD_LIGHT : "#cdeae4" }}>
-                🗑️ Corbeille
+ onClick={() => { setPage("corbeille"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "corbeille" ? TEAL_700 : "transparent", color: page === "corbeille" ? GOLD_LIGHT : "#cdeae4", display: "flex", alignItems: "center", gap: 6 }}>
+                <IconePoubelle size={15} /> Corbeille
               </button>
               <button
  className="btn-app"
- onClick={() => { setPage("sante_responsables"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "sante_responsables" ? TEAL_700 : "transparent", color: page === "sante_responsables" ? GOLD_LIGHT : "#cdeae4" }}>
-                🌡️ Santé responsables
+ onClick={() => { setPage("sante_responsables"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "sante_responsables" ? TEAL_700 : "transparent", color: page === "sante_responsables" ? GOLD_LIGHT : "#cdeae4", display: "flex", alignItems: "center", gap: 6 }}>
+                <IconeThermometre size={15} /> Santé responsables
               </button>
               <button
  className="btn-app"
- onClick={() => { setPage("nouveaux"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "nouveaux" ? TEAL_700 : "transparent", color: page === "nouveaux" ? GOLD_LIGHT : "#cdeae4" }}>
-                🌱 Nouveaux
+ onClick={() => { setPage("nouveaux"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "nouveaux" ? TEAL_700 : "transparent", color: page === "nouveaux" ? GOLD_LIGHT : "#cdeae4", display: "flex", alignItems: "center", gap: 6 }}>
+                <IconePousse size={15} /> Nouveaux
               </button>
               <button
  className="btn-app"
- onClick={() => { setPage("membres"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "membres" ? TEAL_700 : "transparent", color: page === "membres" ? GOLD_LIGHT : "#cdeae4" }}>
-                👥 Membres
+ onClick={() => { setPage("membres"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "membres" ? TEAL_700 : "transparent", color: page === "membres" ? GOLD_LIGHT : "#cdeae4", display: "flex", alignItems: "center", gap: 6 }}>
+                <IconeGroupe size={15} /> Membres
               </button>
               <button
  className="btn-app"
- onClick={() => { setPage("absences"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "absences" ? TEAL_700 : "transparent", color: page === "absences" ? GOLD_LIGHT : "#cdeae4" }}>
-                🚫 Absences
+ onClick={() => { setPage("absences"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "absences" ? TEAL_700 : "transparent", color: page === "absences" ? GOLD_LIGHT : "#cdeae4", display: "flex", alignItems: "center", gap: 6 }}>
+                <IconeInterdit size={15} /> Absences
               </button>
               {compte.role === "pasteur" && (
                 <button
@@ -1245,7 +1322,7 @@ function TableauDeBord({ compte }) {
  onClick={() => setPage("dashboard")} style={{ ...btnStyle, backgroundColor: (page !== "messagerie" && page !== "calendrier" && page !== "demande_role_supp") ? TEAL_700 : "transparent", color: (page !== "messagerie" && page !== "calendrier" && page !== "demande_role_supp") ? GOLD_LIGHT : "#cdeae4" }}>Mon espace</button>
               <button
  className="btn-app"
- onClick={() => setPage("demande_role_supp")} style={{ ...btnStyle, backgroundColor: page === "demande_role_supp" ? TEAL_700 : "transparent", color: page === "demande_role_supp" ? GOLD_LIGHT : "#cdeae4" }}>➕ Rôle supplémentaire</button>
+ onClick={() => setPage("demande_role_supp")} style={{ ...btnStyle, backgroundColor: page === "demande_role_supp" ? TEAL_700 : "transparent", color: page === "demande_role_supp" ? GOLD_LIGHT : "#cdeae4" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>+ Rôle supplémentaire</span></button>
               <button
  className="btn-app"
  onClick={() => setPage("calendrier")} style={{ ...btnStyle, backgroundColor: page === "calendrier" ? TEAL_700 : "transparent", color: page === "calendrier" ? GOLD_LIGHT : "#cdeae4", position: "relative" }}>
@@ -1270,10 +1347,10 @@ function TableauDeBord({ compte }) {
           )}
           <button
  className="btn-app"
- onClick={() => { setPage("mon_compte"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "mon_compte" ? TEAL_700 : "transparent", color: page === "mon_compte" ? GOLD_LIGHT : "#cdeae4" }}>👤 Mon compte</button>
+ onClick={() => { setPage("mon_compte"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "mon_compte" ? TEAL_700 : "transparent", color: page === "mon_compte" ? GOLD_LIGHT : "#cdeae4" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><IconePersonne size={15} /> Mon compte</span></button>
           <button
  className="btn-app"
- onClick={() => { setPage("aide"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "aide" ? TEAL_700 : "transparent", color: page === "aide" ? GOLD_LIGHT : "#cdeae4" }}>❓ Aide</button>
+ onClick={() => { setPage("aide"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "aide" ? TEAL_700 : "transparent", color: page === "aide" ? GOLD_LIGHT : "#cdeae4" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><IconeAide size={15} /> Aide</span></button>
           <button
  className="btn-app"
  onClick={seDeconnecter} style={{ ...btnStyle, backgroundColor: "transparent", color: "#cdeae4" }}>Déconnexion</button>
@@ -8644,13 +8721,13 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
         </button>
         <button
  className="btn-app"
- onClick={() => setVue("activites")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "activites" ? GOLD : TEAL_900, color: vue === "activites" ? TEAL_950 : "#cdeae4" }}>
-          📋 Activités
+ onClick={() => setVue("activites")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "activites" ? GOLD : TEAL_900, color: vue === "activites" ? TEAL_950 : "#cdeae4", display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <IconeClipboard size={14} /> Activités
         </button>
         <button
  className="btn-app"
- onClick={() => setVue("classement")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "classement" ? GOLD : TEAL_900, color: vue === "classement" ? TEAL_950 : "#cdeae4" }}>
-          🏆 Classement
+ onClick={() => setVue("classement")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "classement" ? GOLD : TEAL_900, color: vue === "classement" ? TEAL_950 : "#cdeae4", display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <IconeTrophee size={14} /> Classement
         </button>
       </div>
 
