@@ -373,6 +373,10 @@ function StylesGlobaux() {
 
       input, select, textarea { transition: border-color 0.15s ease, box-shadow 0.15s ease; }
       input:focus, select:focus, textarea:focus { outline: none; box-shadow: 0 0 0 2px rgba(214,165,76,0.45); }
+      input[type="checkbox"] { transition: transform 0.15s cubic-bezier(0.34,1.56,0.64,1); cursor: pointer; }
+      input[type="checkbox"]:active { transform: scale(1.25); }
+      input[type="checkbox"]:checked { animation: cocher 0.28s cubic-bezier(0.34,1.56,0.64,1); }
+      @keyframes cocher { 0% { transform: scale(1); } 50% { transform: scale(1.3); } 100% { transform: scale(1); } }
       button:focus-visible, a:focus-visible, [tabindex]:focus-visible { outline: 2px solid var(--gold-light); outline-offset: 2px; border-radius: 6px; }
       ::selection { background-color: rgba(214,165,76,0.35); }
 
@@ -854,8 +858,15 @@ function App() {
 
   if (chargement) {
     return (
-      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", backgroundColor: TEAL_950, color: CREAM }}>
-        Chargement…
+      <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 18, backgroundColor: TEAL_950 }}>
+        <div style={{ animation: "respirer 1.8s ease-in-out infinite" }}>
+          <img src={LOGO_VH} alt="Vases d'Honneur" style={{ height: 64, width: "auto" }} />
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span className="spinner-app" />
+          <span className="titre-moisson" style={{ color: "var(--text-primary)", fontSize: 15 }}>Gestion des GEM</span>
+        </div>
+        <style>{`@keyframes respirer { 0%, 100% { opacity: 0.85; transform: scale(1); } 50% { opacity: 1; transform: scale(1.04); } }`}</style>
       </div>
     );
   }
@@ -1371,7 +1382,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme }) {
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <img src={LOGO_VH} alt="Vases d'Honneur" style={{ height: 36, width: "auto" }} />
           <div>
-            <p style={{ fontSize: 13, color: "var(--text-secondary-2)", margin: 0 }}>Bienvenue, <b style={{ color: CREAM }}>{compte.nom}</b></p>
+            <p style={{ fontSize: 13, color: "var(--text-secondary-2)", margin: 0 }}>{(() => { const h = new Date().getHours(); return h < 5 ? "Bonne nuit" : h < 12 ? "Bonjour" : h < 18 ? "Bon après-midi" : "Bonsoir"; })()}, <b style={{ color: CREAM }}>{compte.nom}</b></p>
             <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: 0 }}>{compte.role === "pasteur" ? "Pasteur" : compte.assistant ? "Assistant désigné" : "Responsable"}</p>
           </div>
         </div>
