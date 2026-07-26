@@ -274,6 +274,22 @@ function IconeTelechargement({ size = 16, color = "currentColor" }) {
   );
 }
 
+function IconeEnregistrer({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2Z" /><polyline points="17 21 17 13 7 13 7 21" /><polyline points="7 3 7 8 15 8" />
+    </svg>
+  );
+}
+
+function IconeImprimante({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polyline points="6 9 6 2 18 2 18 9" /><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" /><rect x="6" y="14" width="12" height="8" />
+    </svg>
+  );
+}
+
 function IconeCrayon({ size = 16, color = "currentColor" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -1886,7 +1902,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme }) {
               <button
  className="btn-app"
  onClick={exporterDonneesJSON} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
-                💾 Exporter toutes les données (JSON)
+                <span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeTelechargement size={14}/> Exporter toutes les données (JSON)</span>
               </button>
               <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 6 }}>Sauvegarde complète de secours — à faire régulièrement.</p>
             </div>
@@ -4027,7 +4043,7 @@ function RapportSanteSemaine({ gem, membres, compte, cardStyle }) {
                   onClick={enregistrerSanteResponsable}
                   style={{ padding: "10px 0", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, var(--gold-light), var(--gold))", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer" }}
                 >
-                  {enregistrementResponsable ? "…" : "💾 Enregistrer ma fiche"}
+                  {enregistrementResponsable ? "…" : <span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeEnregistrer size={14}/> Enregistrer ma fiche</span>}
                 </button>
               </div>
             )}
@@ -4927,7 +4943,7 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
                   onClick={e => { e.stopPropagation(); enregistrerInfosMembre(); }}
                   style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD, border: "none", borderRadius: 8, padding: "10px 18px", cursor: "pointer" }}
                 >
-                  {enregistrementInfos ? "…" : "💾 Enregistrer les modifications"}
+                  {enregistrementInfos ? "…" : <span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeEnregistrer size={14}/> Enregistrer les modifications</span>}
                 </button>
                 <label style={{ display: "inline-block", fontSize: 11, color: GOLD_LIGHT, cursor: "pointer", border: `1px solid ${TEAL_600}`, borderRadius: 8, padding: "6px 10px" }}>
                   📷 {membre.photo ? "Changer la photo" : "Ajouter une photo"}
@@ -7169,7 +7185,7 @@ function PageMonCompte({ compte, cardStyle, onMisAJour }) {
             onClick={enregistrerProfil}
             style={{ padding: "10px 16px", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, var(--gold-light), var(--gold))", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer", alignSelf: "flex-start" }}
           >
-            {enregistrementProfil ? "…" : "💾 Enregistrer"}
+            {enregistrementProfil ? "…" : <span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeEnregistrer size={14}/> Enregistrer</span>}
           </button>
         </div>
       </div>
@@ -7625,7 +7641,7 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
                 <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: 0 }}>Rapport du dimanche {dateFormatee}</p>
                 <button
  className="btn-app"
- onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
+ onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}><IconeImprimante size={13} style={{verticalAlign:"-2px",marginRight:4}} /> Imprimer / PDF</button>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
                 <div style={cardStyle}><p style={{ fontSize: 11, color: "var(--text-primary)", textTransform: "uppercase" }}>Membres</p><p style={{ fontSize: 24, fontWeight: 700 }}>{totalMembres}</p></div>
@@ -7722,7 +7738,7 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
                 <p style={{ fontSize: 13, color: "var(--text-secondary)", margin: 0, textTransform: "capitalize" }}>Rapport de {libelleMois(moisChoisi)} — {dimanchesDuMois.length} dimanche(s)</p>
                 <button
  className="btn-app"
- onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
+ onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}><IconeImprimante size={13} style={{verticalAlign:"-2px",marginRight:4}} /> Imprimer / PDF</button>
               </div>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
                 <div style={cardStyle}><p style={{ fontSize: 11, color: "var(--text-primary)", textTransform: "uppercase" }}>Membres</p><p style={{ fontSize: 24, fontWeight: 700 }}>{totalMembres}</p></div>
@@ -9416,7 +9432,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
  onClick={exporterCSVHebdomadaire} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}><IconeTelechargement size={13} style={{verticalAlign:"-2px",marginRight:4}} /> Exporter CSV (Excel)</button>
                   <button
  className="btn-app"
- onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
+ onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}><IconeImprimante size={13} style={{verticalAlign:"-2px",marginRight:4}} /> Imprimer / PDF</button>
                   <button
  className="btn-app"
  onClick={partagerRapportHebdomadaire} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>📤 Partager</button>
@@ -9550,7 +9566,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
  onClick={exporterCSVMensuel} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}><IconeTelechargement size={13} style={{verticalAlign:"-2px",marginRight:4}} /> Exporter CSV (Excel)</button>
                   <button
  className="btn-app"
- onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
+ onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}><IconeImprimante size={13} style={{verticalAlign:"-2px",marginRight:4}} /> Imprimer / PDF</button>
                 </div>
               </div>
 
@@ -9613,7 +9629,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
  onClick={exporterCSVAnnuel} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}><IconeTelechargement size={13} style={{verticalAlign:"-2px",marginRight:4}} /> Exporter CSV (Excel)</button>
                   <button
  className="btn-app"
- onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
+ onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}><IconeImprimante size={13} style={{verticalAlign:"-2px",marginRight:4}} /> Imprimer / PDF</button>
                 </div>
               </div>
 
