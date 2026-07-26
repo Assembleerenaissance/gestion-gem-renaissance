@@ -49,6 +49,72 @@ function AvatarInitiales({ nom, taille = 64 }) {
   );
 }
 
+// Carrousel d'images — défile automatiquement, avec indicateurs et
+// possibilité de glisser au doigt sur mobile.
+function CarrouselImages({ evenements }) {
+  const [index, setIndex] = useState(0);
+  const debutGlissement = useRef(null);
+
+  useEffect(() => {
+    if (evenements.length <= 1) return;
+    const intervalle = setInterval(() => setIndex(i => (i + 1) % evenements.length), 5000);
+    return () => clearInterval(intervalle);
+  }, [evenements.length]);
+
+  if (evenements.length === 0) return null;
+
+  function surDebutGlissement(e) { debutGlissement.current = e.touches[0].clientX; }
+  function surFinGlissement(e) {
+    if (debutGlissement.current === null) return;
+    const diff = debutGlissement.current - e.changedTouches[0].clientX;
+    if (diff > 50) setIndex(i => (i + 1) % evenements.length);
+    else if (diff < -50) setIndex(i => (i - 1 + evenements.length) % evenements.length);
+    debutGlissement.current = null;
+  }
+
+  const e = evenements[index];
+
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <div
+        onTouchStart={surDebutGlissement}
+        onTouchEnd={surFinGlissement}
+        style={{ position: "relative", borderRadius: 18, overflow: "hidden", height: 200, backgroundColor: TEAL_900, boxShadow: "0 10px 26px rgba(0,0,0,0.28)" }}
+      >
+        {evenements.map((ev, i) => (
+          <img
+            key={ev.id}
+            src={ev.image}
+            alt={ev.titre}
+            style={{
+              position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover",
+              opacity: i === index ? 1 : 0, transition: "opacity 0.6s ease",
+            }}
+          />
+        ))}
+        <div style={{ position: "absolute", inset: 0, background: "linear-gradient(180deg, transparent 40%, rgba(0,0,0,0.72) 100%)" }} />
+        <div style={{ position: "absolute", left: 16, right: 16, bottom: 14 }}>
+          <p style={{ color: "#fff", fontWeight: 700, fontSize: 15, margin: 0, textShadow: "0 2px 6px rgba(0,0,0,0.5)" }}>{e.titre}</p>
+          <p style={{ color: "rgba(255,255,255,0.85)", fontSize: 12, margin: "2px 0 0" }}>
+            {new Date(e.debut).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}{e.lieu ? ` — ${e.lieu}` : ""}
+          </p>
+        </div>
+        {evenements.length > 1 && (
+          <div style={{ position: "absolute", top: 14, right: 14, display: "flex", gap: 5 }}>
+            {evenements.map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setIndex(i)}
+                style={{ width: i === index ? 18 : 6, height: 6, borderRadius: 999, border: "none", cursor: "pointer", backgroundColor: i === index ? GOLD : "rgba(255,255,255,0.5)", transition: "width 0.3s ease", padding: 0 }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function EtatVide({ icone: Icone, titre, description }) {
   return (
     <div style={{ textAlign: "center", padding: "36px 16px" }}>
@@ -1230,8 +1296,14 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
   const [dernierMessageLu, setDernierMessageLu] = useState(compte.dernier_message_lu || null);
   const [dernierEvenementVu, setDernierEvenementVu] = useState(compte.dernier_evenement_vu || null);
   const [nbNouveauxEvenements, setNbNouveauxEvenements] = useState(0);
+  const [evenementsAvecImage, setEvenementsAvecImage] = useState([]);
 
-  useEffect(() => { chargerDonnees(); }, []);
+  useEffect(() => { chargerDonnees(); chargerEvenementsCarrousel(); }, []);
+
+  async function chargerEvenementsCarrousel() {
+    const { data } = await supabase.from("evenements").select("*").not("image", "is", null).order("debut", { ascending: false }).limit(8);
+    setEvenementsAvecImage(data || []);
+  }
 
   useEffect(() => {
     const intervalle = setInterval(() => { rafraichirCompteurs(); }, 20000);
@@ -1868,6 +1940,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
               <EpiDeBle size={22} />
               <h2 className="titre-moisson" style={{ fontSize: 24, fontWeight: 600, margin: 0 }}>Tableau de bord</h2>
             </div>
+            <CarrouselImages evenements={evenementsAvecImage} />
             <BanniereRappelPointage rappel={rappelPointageGlobal} />
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 24 }}>
               <div className="card-app" style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 14 }}>
