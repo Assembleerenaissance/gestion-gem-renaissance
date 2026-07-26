@@ -2558,6 +2558,11 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
   const [page, setPage] = useState(1);
   const [gemEnEdition, setGemEnEdition] = useState(null); // id du GEM en cours de renommage
   const [nomEdite, setNomEdite] = useState("");
+  const [respEnEdition, setRespEnEdition] = useState(null); // id du GEM dont on édite le responsable
+  const [nomRespEdite, setNomRespEdite] = useState("");
+  const [telRespEdite, setTelRespEdite] = useState("");
+  const [membreEnEdition, setMembreEnEdition] = useState(null); // membre en cours de modification
+  const [infosMembreEditees, setInfosMembreEditees] = useState({ nom: "", telephone: "", quartier: "" });
   const [gemAConfirmerSuppression, setGemAConfirmerSuppression] = useState(null);
   const [suppressionGemEnCours, setSuppressionGemEnCours] = useState(false);
   const [fusionOuverte, setFusionOuverte] = useState(false);
@@ -2610,6 +2615,30 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
     if (error) { toast("Erreur : " + error.message, "erreur"); return; }
     toast("✓ GEM renommé avec succès.", "succes");
     setGemEnEdition(null);
+    if (onChange) onChange();
+  }
+
+  async function enregistrerResponsableGemListe(gemId) {
+    const { error } = await supabase.from("gems").update({
+      responsable_nom: nomRespEdite.trim() || null,
+      responsable_telephone: telRespEdite.trim() || null,
+    }).eq("id", gemId);
+    if (error) { toast("Erreur : " + error.message, "erreur"); return; }
+    toast("✓ Responsable mis à jour.", "succes");
+    setRespEnEdition(null);
+    if (onChange) onChange();
+  }
+
+  async function enregistrerInfosMembre(membreId) {
+    if (!infosMembreEditees.nom.trim()) { toast("Le nom ne peut pas être vide.", "erreur"); return; }
+    const { error } = await supabase.from("membres").update({
+      nom: infosMembreEditees.nom.trim(),
+      telephone: infosMembreEditees.telephone.trim() || null,
+      quartier: infosMembreEditees.quartier.trim() || null,
+    }).eq("id", membreId);
+    if (error) { toast("Erreur : " + error.message, "erreur"); return; }
+    toast("✓ Informations du membre mises à jour.", "succes");
+    setMembreEnEdition(null);
     if (onChange) onChange();
   }
 
@@ -2867,7 +2896,7 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
                           onClick={() => { setGemEnEdition(g.id); setNomEdite(g.nom); }}
                           style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, cursor: "pointer", fontSize: 12, fontWeight: 700 }}
                         >
-                          ✏️ Modifier
+                          ✏️ Nom du GEM
                         </button>
                         <button
                           className="btn-app"
@@ -2879,6 +2908,26 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
                       </div>
                     )}
                   </div>
+                )}
+                {estPasteur && !enEdition && (
+                  respEnEdition === g.id ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10, borderTop: `1px solid ${TEAL_800}`, paddingTop: 10 }}>
+                      <input value={nomRespEdite} onChange={e => setNomRespEdite(e.target.value)} placeholder="Nom du responsable" style={{ padding: 7, borderRadius: 7, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
+                      <input value={telRespEdite} onChange={e => setTelRespEdite(e.target.value)} placeholder="Téléphone (optionnel)" style={{ padding: 7, borderRadius: 7, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button className="btn-app" onClick={() => enregistrerResponsableGemListe(g.id)} style={{ padding: "6px 12px", borderRadius: 7, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, fontSize: 11, cursor: "pointer" }}>Enregistrer</button>
+                        <button className="btn-app" onClick={() => setRespEnEdition(null)} style={{ padding: "6px 12px", borderRadius: 7, backgroundColor: "transparent", color: "var(--text-secondary)", border: `1px solid ${TEAL_600}`, fontWeight: 600, fontSize: 11, cursor: "pointer" }}>Annuler</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <button
+                      className="btn-app"
+                      onClick={() => { setRespEnEdition(g.id); setNomRespEdite(g.responsable_nom || ""); setTelRespEdite(g.responsable_telephone || ""); }}
+                      style={{ marginTop: 8, background: "none", border: "none", color: GOLD_LIGHT, fontSize: 11, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4 }}
+                    >
+                      <IconeCrayon size={11} /> {g.responsable_nom || nomResponsable ? "Modifier le responsable" : "Indiquer un responsable"}
+                    </button>
+                  )
                 )}
               </div>
             );
@@ -2910,6 +2959,17 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
 — Pasteur Dimitri Koffi`);
             return (
               <div key={m.id} className="card-app" style={cardStyle}>
+                {membreEnEdition === m.id ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    <input value={infosMembreEditees.nom} onChange={e => setInfosMembreEditees(v => ({ ...v, nom: e.target.value }))} placeholder="Nom" style={{ padding: 8, borderRadius: 7, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 13 }} />
+                    <input value={infosMembreEditees.telephone} onChange={e => setInfosMembreEditees(v => ({ ...v, telephone: e.target.value }))} placeholder="Téléphone" style={{ padding: 8, borderRadius: 7, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 13 }} />
+                    <input value={infosMembreEditees.quartier} onChange={e => setInfosMembreEditees(v => ({ ...v, quartier: e.target.value }))} placeholder="Quartier" style={{ padding: 8, borderRadius: 7, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 13 }} />
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button className="btn-app" onClick={() => enregistrerInfosMembre(m.id)} style={{ padding: "7px 14px", borderRadius: 7, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Enregistrer</button>
+                      <button className="btn-app" onClick={() => setMembreEnEdition(null)} style={{ padding: "7px 14px", borderRadius: 7, backgroundColor: "transparent", color: "var(--text-secondary)", border: `1px solid ${TEAL_600}`, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>Annuler</button>
+                    </div>
+                  </div>
+                ) : (
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 10 }}>
                   <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
                     {m.photo ? (
@@ -2959,6 +3019,14 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
                       </>
                     )}
                     <button
+                      title="Modifier"
+                      className="btn-app"
+                      onClick={() => { setMembreEnEdition(m.id); setInfosMembreEditees({ nom: m.nom, telephone: m.telephone || "", quartier: m.quartier || "" }); }}
+                      style={{ fontSize: 15, color: TEAL_950, backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", flexShrink: 0 }}
+                    >
+                      <IconeCrayon size={13} />
+                    </button>
+                    <button
                       title="Supprimer"
                       className="btn-app"
                       onClick={() => setMembreAConfirmer(m)}
@@ -2969,6 +3037,7 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
                     </button>
                   </div>
                 </div>
+                )}
               </div>
             );
           })}
