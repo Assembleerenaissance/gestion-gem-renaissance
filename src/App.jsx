@@ -2841,7 +2841,7 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
                           onClick={() => setGemAConfirmerSuppression(g)}
                           style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: RED_LIGHT, color: "#fff", border: "none", cursor: "pointer", fontSize: 12, fontWeight: 700 }}
                         >
-                          🗑️ Supprimer
+                          <span style={{display:"inline-flex",alignItems:"center",gap:5}}><IconePoubelle size={13}/> Supprimer</span>
                         </button>
                       </div>
                     )}
@@ -2932,7 +2932,7 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
                       disabled={suppressionEnCours === m.id}
                       style={{ fontSize: 15, color: "#fff", backgroundColor: RED_LIGHT, border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", flexShrink: 0 }}
                     >
-                      {suppressionEnCours === m.id ? "…" : "🗑️"}
+                      {suppressionEnCours === m.id ? "…" : <IconePoubelle size={13} />}
                     </button>
                   </div>
                 </div>
@@ -4954,7 +4954,7 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
                   onClick={e => { e.stopPropagation(); setDemandeSuppressionOuverte(true); }}
                   style={{ fontSize: 11, fontWeight: 700, color: RED_LIGHT, background: "none", border: `1px solid ${RED_LIGHT}`, borderRadius: 8, padding: "6px 10px", cursor: "pointer" }}
                 >
-                  🗑️ Demander la suppression
+                  <span style={{display:"inline-flex",alignItems:"center",gap:5}}><IconePoubelle size={13}/> Demander la suppression</span>
                 </button>
               </div>
             </div>
@@ -5942,7 +5942,7 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
 
           {responsablesAbsents.length > 0 && (
             <div style={{ marginTop: 24 }}>
-              <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>👤 Responsables GEM absents ce dimanche ({responsablesAbsents.length})</p>
+              <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><IconePersonne size={14} /> Responsables GEM absents ce dimanche ({responsablesAbsents.length})</p>
               <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {responsablesAbsents.map(({ compte: c, gem }) => (
                   <div key={c.id} style={{ ...cardStyle, borderColor: RED_LIGHT }}>
@@ -7153,7 +7153,7 @@ function PageMonCompte({ compte, cardStyle, onMisAJour }) {
 
   return (
     <div style={{ maxWidth: 480 }}>
-      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>👤 Mon compte</h2>
+      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4, display: "flex", alignItems: "center", gap: 10 }}><IconePersonne size={22} /> Mon compte</h2>
       <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 20 }}>Tes informations et la gestion de ton mot de passe.</p>
 
       <div style={{ ...cardStyle, marginBottom: 20 }}>
@@ -8268,7 +8268,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
                   <div>
                     <p style={{ fontWeight: 700, margin: 0 }}>{g.nom}</p>
                     <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0 }}>
-                      {responsablesGemPerimetre[g.id] ? `👤 ${responsablesGemPerimetre[g.id]}` : "Aucun responsable désigné"}
+                      {responsablesGemPerimetre[g.id] ? <span style={{display:"inline-flex",alignItems:"center",gap:4}}><IconePersonne size={11}/> {responsablesGemPerimetre[g.id]}</span> : "Aucun responsable désigné"}
                     </p>
                   </div>
                   <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{membres.filter(m => m.gem_id === g.id).length} membre(s)</span>
@@ -9482,7 +9482,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                               onClick={() => setGemRapportASupprimer(g)}
                               style={{ fontSize: 11, fontWeight: 700, color: RED_LIGHT, background: "none", border: `1px solid ${RED_LIGHT}`, borderRadius: 6, padding: "5px 10px", cursor: "pointer" }}
                             >
-                              🗑️ Supprimer ce rapport
+                              <span style={{display:"inline-flex",alignItems:"center",gap:5}}><IconePoubelle size={13}/> Supprimer ce rapport</span>
                             </button>
                           ) : (
                             <span style={{ fontSize: 11, color: "var(--text-secondary)", fontStyle: "italic" }}>Aucun pointage pour cette semaine</span>
@@ -10279,7 +10279,7 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
             </div>
             {actif.cle === "gem" && (item.nomResponsable || item.rattachement) && (
               <p style={{ fontSize: 10, color: "var(--text-secondary)", margin: "2px 0 0 18px" }}>
-                {item.nomResponsable ? `👤 ${item.nomResponsable}` : "Aucun responsable"}{item.rattachement ? ` — ${item.rattachement}` : ""}
+                {item.nomResponsable ? <span style={{display:"inline-flex",alignItems:"center",gap:4}}><IconePersonne size={11}/> {item.nomResponsable}</span> : "Aucun responsable"}{item.rattachement ? ` — ${item.rattachement}` : ""}
               </p>
             )}
           </div>
