@@ -3416,8 +3416,26 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
   const [responsableGem, setResponsableGem] = useState(null); // { assignationId, compte }
   const [chargementResponsable, setChargementResponsable] = useState(true);
   const [presenceResponsable, setPresenceResponsable] = useState(false);
+  const [editionResponsableProvisoire, setEditionResponsableProvisoire] = useState(false);
+  const [nomResponsableProvisoire, setNomResponsableProvisoire] = useState(gem.responsable_nom || "");
+  const [telResponsableProvisoire, setTelResponsableProvisoire] = useState(gem.responsable_telephone || "");
 
   const estAdmin = compte.role === "pasteur" || compte.assistant === true;
+
+  async function enregistrerResponsableProvisoire() {
+    const { error } = await supabase.from("gems").update({
+      responsable_nom: nomResponsableProvisoire.trim() || null,
+      responsable_telephone: telResponsableProvisoire.trim() || null,
+    }).eq("id", gem.id);
+    setEditionResponsableProvisoire(false);
+    if (!error) toast("✓ Responsable indiqué pour ce GEM.", "succes");
+  }
+
+  async function retirerResponsableProvisoire() {
+    const { error } = await supabase.from("gems").update({ responsable_nom: null, responsable_telephone: null }).eq("id", gem.id);
+    if (!error) { setNomResponsableProvisoire(""); setTelResponsableProvisoire(""); toast("Responsable retiré.", "succes"); }
+  }
+
 
   useEffect(() => { chargerResponsableGem(); }, [gem.id]);
   useEffect(() => { chargerPresenceResponsable(); }, [dimancheId, responsableGem?.compte?.id]);
@@ -3743,6 +3761,37 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
               </span>
             </label>
             <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 4 }}>{responsableGem.compte.telephone}{responsableGem.compte.quartier ? ` · ${responsableGem.compte.quartier}` : ""}</p>
+          </div>
+        )}
+
+        {!chargementResponsable && !responsableGem && (
+          <div style={{ border: `1px dashed ${TEAL_600}`, borderRadius: 8, padding: "10px 14px", marginBottom: 12 }}>
+            {editionResponsableProvisoire ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: 0 }}>Ce GEM n'a pas encore de responsable avec un compte de connexion — tu peux au moins indiquer son nom.</p>
+                <input value={nomResponsableProvisoire} onChange={e => setNomResponsableProvisoire(e.target.value)} placeholder="Nom du responsable GEM" style={{ padding: 7, borderRadius: 7, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
+                <input value={telResponsableProvisoire} onChange={e => setTelResponsableProvisoire(e.target.value)} placeholder="Téléphone (optionnel)" style={{ padding: 7, borderRadius: 7, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
+                <div style={{ display: "flex", gap: 6 }}>
+                  <button className="btn-app" onClick={enregistrerResponsableProvisoire} style={{ padding: "6px 12px", borderRadius: 7, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, fontSize: 11, cursor: "pointer" }}>Enregistrer</button>
+                  <button className="btn-app" onClick={() => setEditionResponsableProvisoire(false)} style={{ padding: "6px 12px", borderRadius: 7, backgroundColor: "transparent", color: "var(--text-secondary)", border: `1px solid ${TEAL_600}`, fontWeight: 600, fontSize: 11, cursor: "pointer" }}>Annuler</button>
+                </div>
+              </div>
+            ) : nomResponsableProvisoire ? (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                <div>
+                  <span style={{ fontWeight: 700, fontSize: 13 }}><IconePersonne size={11} style={{verticalAlign:"-1px",marginRight:4}} /> {nomResponsableProvisoire}</span>
+                  <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: "2px 0 0" }}>{telResponsableProvisoire || "Pas de compte de connexion"}</p>
+                </div>
+                <div style={{ display: "flex", gap: 10 }}>
+                  <button className="btn-app" onClick={() => setEditionResponsableProvisoire(true)} style={{ background: "none", border: "none", color: GOLD_LIGHT, fontSize: 11, fontWeight: 700, cursor: "pointer" }}><IconeCrayon size={11} /></button>
+                  <button className="btn-app" onClick={retirerResponsableProvisoire} style={{ background: "none", border: "none", color: RED_LIGHT, fontSize: 11, fontWeight: 700, cursor: "pointer" }}><IconePoubelle size={11} /></button>
+                </div>
+              </div>
+            ) : (
+              <button className="btn-app" onClick={() => setEditionResponsableProvisoire(true)} style={{ background: "none", border: "none", color: GOLD_LIGHT, fontSize: 12, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}>
+                <IconePersonne size={12} /> Ajouter un responsable à ce GEM
+              </button>
+            )}
           </div>
         )}
 
