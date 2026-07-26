@@ -130,6 +130,126 @@ function CarrouselImages({ evenements }) {
   );
 }
 
+// Parcours de bienvenue — quelques écrans montrés une seule fois, à la
+// première connexion, adaptés selon que la personne est pasteur ou responsable.
+function ParcoursBienvenue({ compte, onTermine }) {
+  const [etape, setEtape] = useState(0);
+
+  const etapesPasteur = [
+    { icone: EpiDeBle, titre: "Bienvenue, Pasteur Dimitri", texte: "Cette application t'aide à suivre chaque membre, GEM, tribu et département de l'Assemblée RENAISSANCE — présence, santé spirituelle, et bien plus." },
+    { icone: IconeGroupe, titre: "Tout part des GEM", texte: "Chaque tribu et département est organisé en GEM. Les responsables y pointent la présence, les activités et la santé spirituelle de leurs membres chaque semaine." },
+    { icone: IconeAnalyse, titre: "Des analyses intelligentes", texte: "Le Tableau de bord, les Rapports et la page Prédiction t'aident à repérer les tendances — croissance, décrochage, membres à visiter — avant qu'elles ne deviennent des problèmes." },
+    { icone: IconeCloche, titre: "Tu es prêt", texte: "Explore librement — le menu en haut (ou le ☰ sur mobile) te donne accès à tout. Bonne œuvre ! 🙏" },
+  ];
+  const etapesResponsable = [
+    { icone: EpiDeBle, titre: `Bienvenue, ${compte.nom}`, texte: "Cette application t'aide à suivre les membres de ton GEM — présence, santé spirituelle, et bien plus." },
+    { icone: IconeGroupe, titre: "Ton espace", texte: "\"Mon espace\" est ton point de départ : tu y gères tes membres, pointes la présence chaque dimanche, et remplis la santé spirituelle chaque mois." },
+    { icone: IconeCalendrier, titre: "Reste connecté", texte: "Le Calendrier et la Messagerie te tiennent informé des événements et des messages du pasteur." },
+    { icone: IconeCloche, titre: "Tu es prêt", texte: "N'hésite pas à explorer — bonne œuvre ! 🙏" },
+  ];
+  const etapes = (compte.role === "pasteur" || compte.assistant) ? etapesPasteur : etapesResponsable;
+  const e = etapes[etape];
+
+  async function terminer() {
+    await supabase.from("comptes").update({ a_vu_bienvenue: true }).eq("id", compte.id);
+    onTermine();
+  }
+
+  return (
+    <div className="fade-in" style={{ position: "fixed", inset: 0, backgroundColor: "var(--overlay)", backdropFilter: "blur(4px)", zIndex: 3000, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+      <div style={{ backgroundColor: TEAL_950, border: `1px solid ${GOLD}`, borderRadius: 20, padding: 32, maxWidth: 420, width: "100%", boxShadow: "0 30px 70px rgba(0,0,0,0.5)", textAlign: "center" }}>
+        <div style={{ width: 64, height: 64, borderRadius: 999, backgroundColor: "rgba(214,165,76,0.12)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 18px" }}>
+          <e.icone size={28} color={GOLD} />
+        </div>
+        <h2 className="titre-moisson" style={{ fontSize: 20, fontWeight: 600, marginBottom: 10, color: CREAM }}>{e.titre}</h2>
+        <p style={{ fontSize: 14, color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: 24 }}>{e.texte}</p>
+
+        <div style={{ display: "flex", justifyContent: "center", gap: 6, marginBottom: 20 }}>
+          {etapes.map((_, i) => (
+            <span key={i} style={{ width: i === etape ? 20 : 6, height: 6, borderRadius: 999, backgroundColor: i === etape ? GOLD : TEAL_700, transition: "width 0.3s ease" }} />
+          ))}
+        </div>
+
+        <div style={{ display: "flex", gap: 10 }}>
+          {etape > 0 && (
+            <button className="btn-app" onClick={() => setEtape(e => e - 1)} style={{ flex: 1, padding: "12px 0", borderRadius: 10, backgroundColor: "transparent", color: "var(--text-secondary)", border: `1px solid ${TEAL_600}`, fontWeight: 600, cursor: "pointer" }}>Précédent</button>
+          )}
+          {etape < etapes.length - 1 ? (
+            <button className="btn-app" onClick={() => setEtape(e => e + 1)} style={{ flex: 2, padding: "12px 0", borderRadius: 10, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, var(--gold-light), var(--gold))", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer" }}>Suivant</button>
+          ) : (
+            <button className="btn-app" onClick={terminer} style={{ flex: 2, padding: "12px 0", borderRadius: 10, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, var(--gold-light), var(--gold))", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer" }}>C'est parti !</button>
+          )}
+        </div>
+        <button onClick={terminer} style={{ marginTop: 14, background: "none", border: "none", color: "var(--text-secondary)", fontSize: 12, cursor: "pointer", textDecoration: "underline" }}>Passer</button>
+      </div>
+    </div>
+  );
+}
+
+function PageJournalAudit({ cardStyle }) {
+  const [journal, setJournal] = useState([]);
+  const [chargement, setChargement] = useState(true);
+  const [page, setPage] = useState(1);
+  const PAR_PAGE = 25;
+
+  useEffect(() => { chargerJournal(); }, []);
+
+  async function chargerJournal() {
+    setChargement(true);
+    const { data } = await supabase.from("journal_audit").select("*").order("date_action", { ascending: false }).limit(500);
+    setJournal(data || []);
+    setChargement(false);
+  }
+
+  const LIBELLES_ACTIONS = {
+    suppression_membre: "Membre supprimé",
+    suppression_gem: "GEM supprimé",
+    fusion_gem: "GEM fusionné",
+  };
+
+  const totalPages = Math.max(1, Math.ceil(journal.length / PAR_PAGE));
+  const affiches = journal.slice((page - 1) * PAR_PAGE, page * PAR_PAGE);
+
+  if (chargement) return <ChargementSquelette lignes={6} />;
+
+  return (
+    <div>
+      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4, display: "flex", alignItems: "center", gap: 10 }}>
+        <IconeClipboard size={22} /> Journal d'audit
+      </h2>
+      <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 20 }}>Historique des actions sensibles (suppressions, fusions) effectuées dans l'application — {journal.length} entrée(s).</p>
+
+      {journal.length === 0 ? (
+        <EtatVide icone={IconeClipboard} titre="Aucune action enregistrée pour l'instant" />
+      ) : (
+        <>
+          <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {affiches.map(entree => (
+              <div key={entree.id} style={cardStyle}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
+                  <div>
+                    <p style={{ fontWeight: 700, margin: 0, fontSize: 13 }}>{LIBELLES_ACTIONS[entree.action] || entree.action}{entree.cible ? ` — ${entree.cible}` : ""}</p>
+                    {entree.details && <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "2px 0 0" }}>{entree.details}</p>}
+                    <p style={{ fontSize: 11, color: GOLD_LIGHT, margin: "4px 0 0", display: "flex", alignItems: "center", gap: 4 }}><IconePersonne size={10} /> {entree.compte_nom}</p>
+                  </div>
+                  <span style={{ fontSize: 11, color: "var(--text-secondary)", whiteSpace: "nowrap" }}>{new Date(entree.date_action).toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })} à {new Date(entree.date_action).toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          {totalPages > 1 && (
+            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 14, marginTop: 20 }}>
+              <button className="btn-app" disabled={page === 1} onClick={() => setPage(p => p - 1)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, cursor: page === 1 ? "not-allowed" : "pointer", opacity: page === 1 ? 0.5 : 1 }}>← Précédent</button>
+              <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>Page {page} / {totalPages}</span>
+              <button className="btn-app" disabled={page === totalPages} onClick={() => setPage(p => p + 1)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, cursor: page === totalPages ? "not-allowed" : "pointer", opacity: page === totalPages ? 0.5 : 1 }}>Suivant →</button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
 function EtatVide({ icone: Icone, titre, description }) {
   return (
     <div style={{ textAlign: "center", padding: "36px 16px" }}>
@@ -760,6 +880,18 @@ function toast(message, type = "info") {
   window.dispatchEvent(new CustomEvent("app-toast", { detail: { message, type } }));
 }
 
+// Enregistre une action sensible dans le journal d'audit — appel "silencieux"
+// (ne bloque jamais l'action même si l'enregistrement échoue).
+async function journaliser(compte, action, cible, details) {
+  try {
+    await supabase.from("journal_audit").insert({
+      compte_id: compte?.id || null,
+      compte_nom: compte?.nom || "Inconnu",
+      action, cible: cible || null, details: details || null,
+    });
+  } catch {}
+}
+
 // Effet vague au clic — un seul gestionnaire global, s'applique automatiquement
 // à tous les boutons ".btn-app" de l'application sans avoir à toucher chacun.
 function EffetVague() {
@@ -1127,6 +1259,7 @@ function EcranConnexion({ theme, onBasculerTheme }) {
 
   async function sInscrire() {
     setErreur(""); setChargement(true);
+    if (!numeroTelephoneValide(telephone)) { setErreur("Ce numéro de téléphone ne semble pas valide — vérifie qu'il est complet."); setChargement(false); return; }
     if (motDePasse.length < 8) { setErreur("Le mot de passe doit contenir au moins 8 caractères."); setChargement(false); return; }
     if (roleDemande === "gem" && !nomGem.trim()) { setErreur("Merci de donner un nom au GEM souhaité."); setChargement(false); return; }
 
@@ -1299,6 +1432,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
   const [menuMobileOuvert, setMenuMobileOuvert] = useState(false);
   const [gemOuvert, setGemOuvert] = useState(null);
   const [parentOuvert, setParentOuvert] = useState(null); // { item, type } - vue d'ensemble d'une tribu/département
+  const [bienvenueVisible, setBienvenueVisible] = useState(!compte.a_vu_bienvenue);
 
   // Rattache la touche "retour" du téléphone à la navigation interne de l'appli,
   // au lieu de la quitter directement. Fonctionne sans avoir à modifier chaque bouton.
@@ -1549,7 +1683,11 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
       ).slice(0, 4).map(c => ({ type: "responsable", data: c }))
     : [];
 
-  const tousLesResultats = [...resultatsRecherche, ...resultatsResponsables];
+  const resultatsGems = rechercheGlobale.trim().length >= 2
+    ? gems.filter(g => g.nom.toLowerCase().includes(rechercheGlobale.toLowerCase())).slice(0, 4).map(g => ({ type: "gem", data: g }))
+    : [];
+
+  const tousLesResultats = [...resultatsRecherche, ...resultatsResponsables, ...resultatsGems];
 
   function libelleRoleCompte(c) {
     if (c.role === "pasteur") return "Pasteur";
@@ -1560,6 +1698,9 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
   function surClicResultat(resultat) {
     if (resultat.type === "membre") {
       allerAuMembre(resultat.data);
+    } else if (resultat.type === "gem") {
+      setGemOuvert(resultat.data);
+      setRechercheGlobale("");
     } else {
       toast(`👤 ${resultat.data.nom} — ${resultat.data.telephone || "téléphone non renseigné"} — ${libelleRoleCompte(resultat.data)}`, "info");
       setRechercheGlobale("");
@@ -1575,6 +1716,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: TEAL_950, color: CREAM, fontFamily: "system-ui, sans-serif" }}>
+      {bienvenueVisible && <ParcoursBienvenue compte={compte} onTermine={() => setBienvenueVisible(false)} />}
       {!enLigne && (
         <div style={{ position: "sticky", top: 0, zIndex: 1500, backgroundColor: RED_LIGHT, color: "#fff", textAlign: "center", padding: "8px 16px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
           <IconeAlerte size={15} /> Tu es hors ligne — certaines actions (enregistrer, envoyer...) ne fonctionneront pas tant que le réseau n'est pas rétabli.
@@ -1610,9 +1752,14 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
                         <IconePersonne size={9} style={{verticalAlign:"-1px",marginRight:3}} /> {libelleRoleCompte(r.data)}
                       </span>
                     )}
+                    {r.type === "gem" && (
+                      <span style={{ fontSize: 9, fontWeight: 700, color: TEAL_950, backgroundColor: "var(--green)", borderRadius: 999, padding: "2px 7px", marginLeft: 6 }}>
+                        <IconeMaison size={9} style={{verticalAlign:"-1px",marginRight:3}} /> GEM
+                      </span>
+                    )}
                   </p>
                   <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: 0 }}>
-                    {r.type === "membre" ? `${nomGemMembre(r.data)} · ${r.data.telephone}` : (r.data.telephone || "Téléphone non renseigné")}
+                    {r.type === "membre" ? `${nomGemMembre(r.data)} · ${r.data.telephone}` : r.type === "gem" ? (r.data.tribu_id ? `Tribu de ${tribus.find(t => t.id === r.data.tribu_id)?.nom || "?"}` : `Département ${departements.find(d => d.id === r.data.departement_id)?.nom || "?"}`) : (r.data.telephone || "Téléphone non renseigné")}
                   </p>
                 </button>
               ))}
@@ -1741,6 +1888,13 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
                 <button
  className="btn-app"
  onClick={() => { setPage("assistants"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "assistants" ? TEAL_700 : "transparent", color: page === "assistants" ? GOLD_LIGHT : "var(--text-secondary-2)" }}>Rôles & Accès</button>
+              )}
+              {compte.role === "pasteur" && (
+                <button
+ className="btn-app"
+ onClick={() => { setPage("audit"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "audit" ? TEAL_700 : "transparent", color: page === "audit" ? GOLD_LIGHT : "var(--text-secondary-2)", display: "flex", alignItems: "center", gap: 6 }}>
+                  <IconeClipboard size={15} /> Journal
+                </button>
               )}
             </>
           ) : (
@@ -2134,6 +2288,8 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
           <PageAbsences membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
         ) : page === "prediction" ? (
           <PagePrediction membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
+        ) : page === "audit" ? (
+          <PageJournalAudit cardStyle={cardStyle} />
         ) : (
           <PageAssistants compte={compte} tribus={tribus} departements={departements} gems={gems} onChange={chargerDonnees} cardStyle={cardStyle} />
         )}
@@ -2798,6 +2954,7 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
     setGemAConfirmerSuppression(null);
     if (error) { toast("Suppression impossible : " + error.message, "erreur"); return; }
     toast(`Le GEM "${gem.nom}" et tous ses membres ont été supprimés.`, "succes");
+    journaliser(compte, "suppression_gem", gem.nom, `${type === "tribu" ? "Tribu" : "Département"} : ${parent.nom}`);
     if (onChange) onChange();
   }
 
@@ -2864,6 +3021,7 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
     setGemSource(""); setGemDestination("");
     if (err2) { toast("Erreur lors de la suppression du GEM fusionné : " + err2.message, "erreur"); return; }
     toast(`✓ "${gemA?.nom}" a été fusionné dans "${gemB?.nom}" (${aDeplacer.length} membre(s) déplacé(s)${aSupprimer.length > 0 ? `, ${aSupprimer.length} doublon(s) ignoré(s)` : ""}${totalPerdus > 0 ? ` — ⚠️ ${totalPerdus} rapport(s) hebdomadaire(s) perdu(s) car la semaine existait déjà des deux côtés` : ""}).`, "succes");
+    journaliser(compte, "fusion_gem", `${gemA?.nom} → ${gemB?.nom}`, `${aDeplacer.length} membre(s) déplacé(s)`);
     if (onChange) onChange();
   }
 
@@ -2899,6 +3057,7 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
       setSuppressionEnCours(null);
       if (error) { toast("Suppression impossible : " + error.message, "erreur"); return; }
       toast(`${membre.nom} a été supprimé.`, "succes");
+      journaliser(compte, "suppression_membre", membre.nom);
       if (onChange) onChange();
       return;
     }
@@ -3520,6 +3679,17 @@ function genererAfficheImage({ titre, sousTitre, corps, piedDePage, nomFichier }
 }
 
 
+// Vérifie qu'un numéro de téléphone a une forme plausible avant de l'enregistrer
+// — en Côte d'Ivoire, les numéros comptent 10 chiffres (avec le 0 initial) ou
+// 8 chiffres sans le préfixe. On reste tolérant sur le format (espaces, +225...)
+// mais on rejette les numéros manifestement incomplets ou avec des lettres.
+function numeroTelephoneValide(tel) {
+  if (!tel || !tel.trim()) return false;
+  const chiffres = tel.replace(/[^\d]/g, "");
+  const sansIndicatif = chiffres.startsWith("225") ? chiffres.slice(3) : chiffres;
+  return sansIndicatif.length >= 8 && sansIndicatif.length <= 10;
+}
+
 function numeroPourWhatsApp(tel) {
   const chiffres = (tel || "").replace(/[^\d]/g, "");
   if (chiffres.startsWith("225")) return chiffres;
@@ -3794,6 +3964,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
   async function ajouterMembre() {
     setErreur("");
     if (!nom.trim() || !telephone.trim()) { setErreur("Nom et téléphone requis."); return; }
+    if (!numeroTelephoneValide(telephone)) { setErreur("Ce numéro de téléphone ne semble pas valide — vérifie qu'il est complet."); return; }
     const chiffresTel = telephone.replace(/[^\d]/g, "");
     const { data: existants } = await supabase.from("membres").select("id, nom, gem_id").not("telephone", "is", null);
     const doublon = (existants || []).find(m => m.telephone && m.telephone.replace(/[^\d]/g, "").endsWith(chiffresTel.slice(-8)));
@@ -5015,6 +5186,7 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
       const { error } = await supabase.from("membres").delete().eq("id", membre.id);
       if (error) { toast("Suppression impossible : " + error.message, "erreur"); return; }
       toast(`${membre.nom} a été supprimé.`, "succes");
+      journaliser(compte, "suppression_membre", membre.nom);
       if (onMisAJour) onMisAJour();
       return;
     }
