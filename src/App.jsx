@@ -259,6 +259,21 @@ function IconeCroissance({ size = 16, color = "currentColor" }) {
     </svg>
   );
 }
+function IconeGraphique({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="18" y1="20" x2="18" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="6" y1="20" x2="6" y2="14" />
+    </svg>
+  );
+}
+function IconeTelechargement({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
+    </svg>
+  );
+}
+
 function IconeEtoile({ size = 16, color = "currentColor" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2480,6 +2495,11 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
   const [nomEdite, setNomEdite] = useState("");
   const [gemAConfirmerSuppression, setGemAConfirmerSuppression] = useState(null);
   const [suppressionGemEnCours, setSuppressionGemEnCours] = useState(false);
+  const [fusionOuverte, setFusionOuverte] = useState(false);
+  const [gemSource, setGemSource] = useState("");
+  const [gemDestination, setGemDestination] = useState("");
+  const [fusionEnCours, setFusionEnCours] = useState(false);
+  const [confirmerFusion, setConfirmerFusion] = useState(false);
 
   useEffect(() => { setPage(1); }, [recherche]);
 
@@ -2506,6 +2526,71 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
     setGemAConfirmerSuppression(null);
     if (error) { toast("Suppression impossible : " + error.message, "erreur"); return; }
     toast(`Le GEM "${gem.nom}" et tous ses membres ont été supprimés.`, "succes");
+    if (onChange) onChange();
+  }
+
+  async function fusionnerGems() {
+    if (!gemSource || !gemDestination || gemSource === gemDestination) return;
+    setFusionEnCours(true);
+    const gemA = gemsDuParent.find(g => g.id === gemSource); // absorbé
+    const gemB = gemsDuParent.find(g => g.id === gemDestination); // conservé
+
+    // Récupère les membres des deux GEM pour éviter les doublons de nom
+    const { data: membresSource } = await supabase.from("membres").select("*").eq("gem_id", gemSource);
+    const { data: membresDest } = await supabase.from("membres").select("nom").eq("gem_id", gemDestination);
+    const nomsDejaLa = new Set((membresDest || []).map(m => m.nom.trim().toLowerCase()));
+
+    const aDeplacer = (membresSource || []).filter(m => !nomsDejaLa.has(m.nom.trim().toLowerCase()));
+    const aSupprimer = (membresSource || []).filter(m => nomsDejaLa.has(m.nom.trim().toLowerCase()));
+
+    if (aDeplacer.length > 0) {
+      const { error: err1 } = await supabase.from("membres").update({ gem_id: gemDestination }).in("id", aDeplacer.map(m => m.id));
+      if (err1) { toast("Erreur lors du déplacement des membres : " + err1.message, "erreur"); setFusionEnCours(false); return; }
+    }
+    // Les membres en double (même nom déjà présent dans le GEM destination) sont retirés du GEM source
+    if (aSupprimer.length > 0) {
+      await supabase.from("membres").delete().in("id", aSupprimer.map(m => m.id));
+    }
+    // Nettoie puis supprime le GEM source, désormais vide
+    await supabase.from("assignations").delete().eq("gem_id", gemSource);
+    // On ne supprime l'historique de présence QUE pour les membres réellement
+    // écartés (doublons) — les membres déplacés gardent tout leur historique.
+    if (aSupprimer.length > 0) {
+      await supabase.from("presences").delete().in("membre_id", aSupprimer.map(m => m.id));
+    }
+
+    // Récupère les rapports hebdomadaires validés (présence, activités, santé)
+    // des deux GEM, pour transférer ceux du GEM absorbé vers le GEM conservé —
+    // sauf s'il y a déjà un rapport pour la même semaine (on garde alors celui
+    // du GEM conservé, et celui du GEM absorbé est perdu pour cette semaine-là).
+    async function transfererRapports(table) {
+      const [{ data: rapportsSource }, { data: rapportsDest }] = await Promise.all([
+        supabase.from(table).select("*").eq("gem_id", gemSource),
+        supabase.from(table).select("dimanche_id").eq("gem_id", gemDestination),
+      ]);
+      const semainesDejaLa = new Set((rapportsDest || []).map(r => r.dimanche_id));
+      const aTransferer = (rapportsSource || []).filter(r => !semainesDejaLa.has(r.dimanche_id));
+      const aAbandonner = (rapportsSource || []).filter(r => semainesDejaLa.has(r.dimanche_id));
+      if (aTransferer.length > 0) {
+        await supabase.from(table).update({ gem_id: gemDestination }).in("id", aTransferer.map(r => r.id));
+      }
+      if (aAbandonner.length > 0) {
+        await supabase.from(table).delete().in("id", aAbandonner.map(r => r.id));
+      }
+      return { transferes: aTransferer.length, perdus: aAbandonner.length };
+    }
+    const resPresence = await transfererRapports("validations_presence");
+    const resActivites = await transfererRapports("activites_semaine");
+    const resSante = await transfererRapports("validations_sante");
+    const totalPerdus = resPresence.perdus + resActivites.perdus + resSante.perdus;
+    const { error: err2 } = await supabase.from("gems").delete().eq("id", gemSource);
+
+    setFusionEnCours(false);
+    setConfirmerFusion(false);
+    setFusionOuverte(false);
+    setGemSource(""); setGemDestination("");
+    if (err2) { toast("Erreur lors de la suppression du GEM fusionné : " + err2.message, "erreur"); return; }
+    toast(`✓ "${gemA?.nom}" a été fusionné dans "${gemB?.nom}" (${aDeplacer.length} membre(s) déplacé(s)${aSupprimer.length > 0 ? `, ${aSupprimer.length} doublon(s) ignoré(s)` : ""}${totalPerdus > 0 ? ` — ⚠️ ${totalPerdus} rapport(s) hebdomadaire(s) perdu(s) car la semaine existait déjà des deux côtés` : ""}).`, "succes");
     if (onChange) onChange();
   }
 
@@ -2572,6 +2657,49 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
       <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 20 }}>{membresDuParent.length} membre{membresDuParent.length > 1 ? "s" : ""} au total, répartis sur {gemsDuParent.length} GEM</p>
 
       <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><IconeClipboard size={15} /> GEM de ce {type === "tribu" ? "tribu" : "département"} ({gemsDuParent.length})</p>
+
+      {estPasteur && gemsDuParent.length >= 2 && (
+        <button
+          className="btn-app"
+          onClick={() => setFusionOuverte(v => !v)}
+          style={{ marginBottom: 14, padding: "10px 16px", borderRadius: 9, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${GOLD}`, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
+        >
+          🔀 Fusionner deux GEM en doublon
+        </button>
+      )}
+
+      {fusionOuverte && (
+        <div style={{ ...cardStyle, marginBottom: 20, border: `1px solid ${GOLD}` }}>
+          <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 6 }}>Fusionner deux GEM</p>
+          <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 14 }}>
+            Utile quand un même GEM a été créé deux fois sous des noms différents (ex : un responsable a nommé son groupe autrement que dans le fichier importé). Les membres du GEM "absorbé" rejoignent le GEM "conservé" — les doublons de nom sont ignorés automatiquement. Le GEM absorbé est ensuite supprimé.
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div>
+              <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>GEM à absorber (sera supprimé)</label>
+              <select value={gemSource} onChange={e => setGemSource(e.target.value)} style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}>
+                <option value="">— Choisir —</option>
+                {gemsDuParent.map(g => <option key={g.id} value={g.id}>{g.nom} ({membres.filter(m => m.gem_id === g.id).length} membres)</option>)}
+              </select>
+            </div>
+            <div>
+              <label style={{ fontSize: 12, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>GEM à conserver (reçoit les membres)</label>
+              <select value={gemDestination} onChange={e => setGemDestination(e.target.value)} style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}>
+                <option value="">— Choisir —</option>
+                {gemsDuParent.filter(g => g.id !== gemSource).map(g => <option key={g.id} value={g.id}>{g.nom} ({membres.filter(m => m.gem_id === g.id).length} membres)</option>)}
+              </select>
+            </div>
+            <button
+              className="btn-app"
+              disabled={!gemSource || !gemDestination}
+              onClick={() => setConfirmerFusion(true)}
+              style={{ padding: "10px 0", borderRadius: 9, backgroundColor: gemSource && gemDestination ? RED_LIGHT : TEAL_700, color: "#fff", border: "none", fontWeight: 700, fontSize: 13, cursor: gemSource && gemDestination ? "pointer" : "not-allowed" }}
+            >
+              Fusionner
+            </button>
+          </div>
+        </div>
+      )}
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
         {gemsDuParent.length === 0 ? (
           <EtatVide icone={IconeMaison} titre="Aucun GEM créé pour l'instant" />
@@ -2752,6 +2880,17 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
           dangereux
           onConfirmer={confirmerSuppressionGem}
           onAnnuler={() => setGemAConfirmerSuppression(null)}
+        />
+      )}
+
+      {confirmerFusion && (
+        <BoiteConfirmation
+          titre="Confirmer la fusion ?"
+          message={`Tous les membres de "${gemsDuParent.find(g => g.id === gemSource)?.nom}" vont rejoindre "${gemsDuParent.find(g => g.id === gemDestination)?.nom}". Le GEM absorbé sera ensuite supprimé définitivement. Cette action est irréversible.`}
+          texteConfirmer={fusionEnCours ? "…" : "Fusionner définitivement"}
+          dangereux
+          onConfirmer={fusionnerGems}
+          onAnnuler={() => setConfirmerFusion(false)}
         />
       )}
     </div>
@@ -6096,7 +6235,7 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
             </div>
             {b.tauxMoyen !== null && (
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>📊 Taux de régularité moyen</span>
+                <span style={{ color: "var(--text-secondary)", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 5 }}><IconeGraphique size={13} /> Taux de régularité moyen</span>
                 <span style={{ fontSize: 13, fontWeight: 700, color: b.tauxMoyen >= 70 ? "var(--green-success)" : b.tauxMoyen >= 40 ? GOLD_LIGHT : RED_LIGHT }}>{b.tauxMoyen}%</span>
               </div>
             )}
@@ -6186,7 +6325,7 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
             )}
             {estMembre && regularite && regularite.tauxRegularite !== null && (
               <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>📊 Taux de régularité au culte</span>
+                <span style={{ color: "var(--text-secondary)", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 5 }}><IconeGraphique size={13} /> Taux de régularité au culte</span>
                 <span style={{ fontSize: 13, fontWeight: 700, color: regularite.tauxRegularite >= 70 ? "var(--green-success)" : regularite.tauxRegularite >= 40 ? GOLD_LIGHT : RED_LIGHT }}>{regularite.tauxRegularite}%</span>
               </div>
             )}
@@ -8535,7 +8674,7 @@ function DetailTribuDeptClassement({ type, item, gems, membres, onBack, cardStyl
           <p style={{ fontSize: 22, fontWeight: 700 }}>{membresDuPerimetre.length}</p>
         </div>
         <div className="card-app" style={cardStyle}>
-          <p style={{ fontSize: 11, color: "var(--text-primary)", textTransform: "uppercase" }}>📊 Régularité moy.</p>
+          <p style={{ fontSize: 11, color: "var(--text-primary)", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 5 }}><IconeGraphique size={12} /> Régularité moy.</p>
           <p style={{ fontSize: 22, fontWeight: 700, color: tauxRegulariteMoyen !== null ? (tauxRegulariteMoyen >= 70 ? "var(--green-success)" : tauxRegulariteMoyen >= 40 ? GOLD_LIGHT : RED_LIGHT) : "var(--text-secondary)" }}>
             {tauxRegulariteMoyen !== null ? `${tauxRegulariteMoyen}%` : "—"}
           </p>
@@ -9265,7 +9404,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <button
  className="btn-app"
- onClick={exporterCSVHebdomadaire} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>📊 Exporter CSV (Excel)</button>
+ onClick={exporterCSVHebdomadaire} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}><IconeTelechargement size={13} style={{verticalAlign:"-2px",marginRight:4}} /> Exporter CSV (Excel)</button>
                   <button
  className="btn-app"
  onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
@@ -9399,7 +9538,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
  className="btn-app"
- onClick={exporterCSVMensuel} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>📊 Exporter CSV (Excel)</button>
+ onClick={exporterCSVMensuel} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}><IconeTelechargement size={13} style={{verticalAlign:"-2px",marginRight:4}} /> Exporter CSV (Excel)</button>
                   <button
  className="btn-app"
  onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
@@ -9462,7 +9601,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
  className="btn-app"
- onClick={exporterCSVAnnuel} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>📊 Exporter CSV (Excel)</button>
+ onClick={exporterCSVAnnuel} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}><IconeTelechargement size={13} style={{verticalAlign:"-2px",marginRight:4}} /> Exporter CSV (Excel)</button>
                   <button
  className="btn-app"
  onClick={() => window.print()} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 12, cursor: "pointer" }}>🖨️ Imprimer / PDF</button>
