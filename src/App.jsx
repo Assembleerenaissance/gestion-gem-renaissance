@@ -4042,8 +4042,7 @@ const CHAMPS_ACTIVITE_TEXTE = [
 // Rapport de santé spirituelle hebdomadaire — même logique que le rapport de
 // présence et d'activités : sélecteur de semaine + validation par GEM.
 function RapportSanteSemaine({ gem, membres, compte, cardStyle }) {
-  const [dimanches, setDimanches] = useState([]);
-  const [dimancheId, setDimancheId] = useState(null);
+  const [mois, setMois] = useState(() => new Date().toISOString().slice(0, 7)); // "YYYY-MM"
   const [valide, setValide] = useState(false);
   const [valeursParMembre, setValeursParMembre] = useState({}); // { membre_id: { meditation, jeune, priere, sanctification, dons, caractere } }
   const [membreOuvert, setMembreOuvert] = useState(null);
@@ -4054,8 +4053,15 @@ function RapportSanteSemaine({ gem, membres, compte, cardStyle }) {
   const [responsableOuvert, setResponsableOuvert] = useState(false);
   const [enregistrementResponsable, setEnregistrementResponsable] = useState(false);
 
-  useEffect(() => { initialiser(); chargerResponsableGem(); }, [gem.id]);
-  useEffect(() => { if (dimancheId) chargerDonnees(); }, [dimancheId, membres.length]);
+  // Les 12 derniers mois, du plus récent au plus ancien
+  const moisDisponibles = Array.from({ length: 12 }, (_, i) => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - i);
+    return d.toISOString().slice(0, 7);
+  });
+
+  useEffect(() => { chargerResponsableGem(); }, [gem.id]);
+  useEffect(() => { chargerDonnees(); }, [mois, membres.length]);
 
   async function chargerResponsableGem() {
     const { data } = await supabase.from("assignations").select("compte_id").eq("gem_id", gem.id).eq("role_demande", "gem").eq("statut", "actif").limit(1).maybeSingle();
@@ -4080,19 +4086,6 @@ function RapportSanteSemaine({ gem, membres, compte, cardStyle }) {
     toast(`✓ Santé spirituelle de ${responsableGem.nom} enregistrée.`, "succes");
   }
 
-  async function initialiser() {
-    setChargement(true);
-    const dateAuj = dimancheActuel();
-    let { data: dimAuj } = await supabase.from("dimanches").select("*").eq("date", dateAuj).maybeSingle();
-    if (!dimAuj) {
-      const { data: nouveauDim } = await supabase.from("dimanches").insert({ date: dateAuj }).select().single();
-      dimAuj = nouveauDim;
-    }
-    const { data: toutesLesSemaines } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(52);
-    setDimanches(toutesLesSemaines || []);
-    setDimancheId(dimAuj.id);
-  }
-
   async function chargerDonnees() {
     setChargement(true);
     if (membres.length > 0) {
@@ -4109,7 +4102,7 @@ function RapportSanteSemaine({ gem, membres, compte, cardStyle }) {
       });
       setValeursParMembre(init);
     }
-    const { data: validation } = await supabase.from("validations_sante").select("*").eq("gem_id", gem.id).eq("dimanche_id", dimancheId).maybeSingle();
+    const { data: validation } = await supabase.from("validations_sante").select("*").eq("gem_id", gem.id).eq("mois", mois).maybeSingle();
     setValide(!!validation?.valide);
     setChargement(false);
   }
@@ -4127,13 +4120,13 @@ function RapportSanteSemaine({ gem, membres, compte, cardStyle }) {
     if (err1) { toast("Erreur d'enregistrement : " + err1.message, "erreur"); setEnregistrement(false); return; }
 
     const { error: err2 } = await supabase.from("validations_sante").upsert(
-      { gem_id: gem.id, dimanche_id: dimancheId, valide: true, valide_par: compte?.id || null, date_validation: new Date().toISOString() },
-      { onConflict: "gem_id,dimanche_id" }
+      { gem_id: gem.id, mois, valide: true, valide_par: compte?.id || null, date_validation: new Date().toISOString() },
+      { onConflict: "gem_id,mois" }
     );
     setEnregistrement(false);
     if (err2) { toast("Erreur de validation : " + err2.message, "erreur"); return; }
     setValide(true);
-    toast("✓ Rapport de santé spirituelle validé pour cette semaine. 🙏", "succes");
+    toast("✓ Rapport de santé spirituelle validé pour ce mois. 🙏", "succes");
   }
 
   if (chargement) return <Chargement />;
@@ -4142,23 +4135,27 @@ function RapportSanteSemaine({ gem, membres, compte, cardStyle }) {
     <div>
       <div style={{ ...cardStyle, marginBottom: 20 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10, flexWrap: "wrap", gap: 8 }}>
-          <p style={{ fontWeight: 600, fontSize: 14, margin: 0 }}>🌡️ Santé spirituelle — semaine</p>
+          <p style={{ fontWeight: 600, fontSize: 14, margin: 0 }}>🌡️ Santé spirituelle — mois</p>
           {valide && (
             <span style={{ fontSize: 11, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD, borderRadius: 999, padding: "4px 10px" }}><IconeValide size={11} style={{verticalAlign:"-1px",marginRight:3}} /> Rapport validé</span>
           )}
         </div>
         <select
-          value={dimancheId || ""}
-          onChange={e => setDimancheId(e.target.value)}
+          value={mois}
+          onChange={e => setMois(e.target.value)}
           style={{ padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, marginBottom: 12 }}
         >
-          {dimanches.map(d => (
-            <option key={d.id} value={d.id}>
-              {new Date(d.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}
-            </option>
-          ))}
+          {moisDisponibles.map(m => {
+            const [annee, moisNum] = m.split("-");
+            return (
+              <option key={m} value={m}>
+                {new Date(annee, moisNum - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}
+              </option>
+            );
+          })}
         </select>
-        <p style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 12 }}>Évalue chaque membre de 0 (faible) à 10 (excellent), puis valide le rapport de la semaine.</p>
+        <p style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 12 }}>Évalue chaque membre de 0 (faible) à 10 (excellent), une fois par mois, puis valide le rapport du mois.</p>
+
 
         {responsableGem && valeursResponsable && (
           <div style={{ border: `2px solid ${GOLD}`, borderRadius: 8, marginBottom: 14, backgroundColor: "rgba(208,175,28,0.08)" }}>
