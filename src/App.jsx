@@ -274,6 +274,14 @@ function IconeTelechargement({ size = 16, color = "currentColor" }) {
   );
 }
 
+function IconeCrayon({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+    </svg>
+  );
+}
+
 function IconeEtoile({ size = 16, color = "currentColor" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -4837,7 +4845,7 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 4 }}>
             {membre.nouveau_converti && (
               <span style={{ fontSize: 10, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, borderRadius: 999, padding: "2px 8px", display: "inline-block" }}>
-                🌱 {LIBELLES_ETAPES[membre.etape_conversion || "accueil"]}
+                <span style={{display:"inline-flex",alignItems:"center",gap:4}}><IconePousse size={12} /> {LIBELLES_ETAPES[membre.etape_conversion || "accueil"]}</span>
               </span>
             )}
             {regularite?.tauxRegularite !== null && regularite?.tauxRegularite !== undefined && (
@@ -4874,7 +4882,7 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
       {ouvert && (
         <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${TEAL_700}` }}>
           <div style={{ ...cardStyle, marginBottom: 14, padding: 14 }}>
-            <p style={{ fontWeight: 600, fontSize: 12, color: GOLD_LIGHT, marginBottom: 10 }}>✏️ Informations du membre</p>
+            <p style={{ fontWeight: 600, fontSize: 12, color: GOLD_LIGHT, marginBottom: 10, display: "flex", alignItems: "center", gap: 5 }}><IconeCrayon size={12} /> Informations du membre</p>
             <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 <div style={{ flex: 1, minWidth: 140 }}>
@@ -6351,8 +6359,8 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
 
         {estPasteur && roleAGerer && (
           <div style={{ display: "flex", gap: 10 }}>
-            <button className="btn-app" onClick={() => setEditionResponsableOuverte(true)} style={{ flex: 1, padding: "12px 0", borderRadius: 10, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>✏️ Modifier ses infos</button>
-            <button className="btn-app" onClick={() => setConfirmerRetraitResponsable(true)} style={{ flex: 1, padding: "12px 0", borderRadius: 10, backgroundColor: RED_LIGHT, color: "#fff", border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>🗑️ Retirer cette responsabilité</button>
+            <button className="btn-app" onClick={() => setEditionResponsableOuverte(true)} style={{ flex: 1, padding: "12px 0", borderRadius: 10, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 13, cursor: "pointer" }}><IconeCrayon size={13} style={{verticalAlign:"-2px",marginRight:4}} /> Modifier ses infos</button>
+            <button className="btn-app" onClick={() => setConfirmerRetraitResponsable(true)} style={{ flex: 1, padding: "12px 0", borderRadius: 10, backgroundColor: RED_LIGHT, color: "#fff", border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer" }}><IconePoubelle size={13} style={{verticalAlign:"-2px",marginRight:4}} /> Retirer cette responsabilité</button>
           </div>
         )}
 
@@ -6577,7 +6585,7 @@ function PageNouveaux({ membres, gems, tribus, departements, gemsAutorises, card
                   </div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     <span style={{ fontSize: 11, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, borderRadius: 999, padding: "4px 10px" }}>
-                      🌱 {LIBELLES_ETAPES_SUIVI[m.etape_conversion || "accueil"]}
+                      <span style={{display:"inline-flex",alignItems:"center",gap:4}}><IconePousse size={12} /> {LIBELLES_ETAPES_SUIVI[m.etape_conversion || "accueil"]}</span>
                     </span>
                     <span style={{ fontSize: 11, fontWeight: 700, color: moyenne !== null ? couleurScore(moyenne) : "var(--text-secondary)", backgroundColor: TEAL_900, borderRadius: 999, padding: "4px 10px" }}>
                       🌡️ {moyenne !== null ? `${moyenne}/10` : "Non évaluée"}
@@ -7140,7 +7148,7 @@ function PageMonCompte({ compte, cardStyle, onMisAJour }) {
       </div>
 
       <div style={{ ...cardStyle, marginBottom: 20 }}>
-        <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>✏️ Compléter mon profil</p>
+        <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><IconeCrayon size={14} /> Compléter mon profil</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           <div>
             <label style={{ fontSize: 11, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>🎂 Date de naissance (jour et mois)</label>
@@ -9332,10 +9340,10 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                 <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>🏆 Classement par régularité (présence)</p>
                 <Classement titre="Tribus" liste={classementTribusPresenceMois} suffixe="%" maxValeur={100} onClicItem={(it) => setDetailOuvert({ type: "tribu", item: tribus.find(t => t.id === it.id) })} />
                 <Classement titre="Départements" liste={classementDepartementsPresenceMois} suffixe="%" maxValeur={100} onClicItem={(it) => setDetailOuvert({ type: "departement", item: departements.find(d => d.id === it.id) })} />
-                <p style={{ fontWeight: 700, fontSize: 16, marginTop: 24, marginBottom: 14 }}>🌱 Classement par santé spirituelle</p>
+                <p style={{ fontWeight: 700, fontSize: 16, marginTop: 24, marginBottom: 14, display: "flex", alignItems: "center", gap: 6 }}><IconeThermometre size={16} /> Classement par santé spirituelle</p>
                 <Classement titre="Tribus" liste={classementTribusSanteMois} suffixe="/10" maxValeur={10} onClicItem={(it) => setDetailOuvert({ type: "tribu", item: tribus.find(t => t.id === it.id) })} />
                 <Classement titre="Départements" liste={classementDepartementsSanteMois} suffixe="/10" maxValeur={10} onClicItem={(it) => setDetailOuvert({ type: "departement", item: departements.find(d => d.id === it.id) })} />
-                <p style={{ fontWeight: 700, fontSize: 16, marginTop: 24, marginBottom: 14 }}>🌱 Suivi des âmes — intégration des nouveaux convertis</p>
+                <p style={{ fontWeight: 700, fontSize: 16, marginTop: 24, marginBottom: 14, display: "flex", alignItems: "center", gap: 6 }}><IconePousse size={16} /> Suivi des âmes — intégration des nouveaux convertis</p>
                 <Classement titre="Tribus" liste={classementTribusAmes} suffixe="%" maxValeur={100} onClicItem={(it) => setDetailOuvert({ type: "tribu", item: tribus.find(t => t.id === it.id) })} />
                 <Classement titre="Départements" liste={classementDepartementsAmes} suffixe="%" maxValeur={100} onClicItem={(it) => setDetailOuvert({ type: "departement", item: departements.find(d => d.id === it.id) })} />
                 <p style={{ fontWeight: 700, fontSize: 16, marginTop: 24, marginBottom: 14, display: "flex", alignItems: "center", gap: 6 }}><IconeClipboard size={16} /> Rapports d'activités hebdomadaires validés</p>
@@ -9351,10 +9359,10 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                 <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>🏆 Classement annuel par régularité (présence)</p>
                 <Classement titre="Tribus" liste={classementTribusPresenceAnnee} suffixe="%" maxValeur={100} onClicItem={(it) => setDetailOuvert({ type: "tribu", item: tribus.find(t => t.id === it.id) })} />
                 <Classement titre="Départements" liste={classementDepartementsPresenceAnnee} suffixe="%" maxValeur={100} onClicItem={(it) => setDetailOuvert({ type: "departement", item: departements.find(d => d.id === it.id) })} />
-                <p style={{ fontWeight: 700, fontSize: 16, marginTop: 24, marginBottom: 14 }}>🌱 Classement annuel par santé spirituelle</p>
+                <p style={{ fontWeight: 700, fontSize: 16, marginTop: 24, marginBottom: 14, display: "flex", alignItems: "center", gap: 6 }}><IconeThermometre size={16} /> Classement annuel par santé spirituelle</p>
                 <Classement titre="Tribus" liste={classementTribusSanteAnnee} suffixe="/10" maxValeur={10} onClicItem={(it) => setDetailOuvert({ type: "tribu", item: tribus.find(t => t.id === it.id) })} />
                 <Classement titre="Départements" liste={classementDepartementsSanteAnnee} suffixe="/10" maxValeur={10} onClicItem={(it) => setDetailOuvert({ type: "departement", item: departements.find(d => d.id === it.id) })} />
-                <p style={{ fontWeight: 700, fontSize: 16, marginTop: 24, marginBottom: 14 }}>🌱 Suivi des âmes — intégration des nouveaux convertis</p>
+                <p style={{ fontWeight: 700, fontSize: 16, marginTop: 24, marginBottom: 14, display: "flex", alignItems: "center", gap: 6 }}><IconePousse size={16} /> Suivi des âmes — intégration des nouveaux convertis</p>
                 <Classement titre="Tribus" liste={classementTribusAmes} suffixe="%" maxValeur={100} onClicItem={(it) => setDetailOuvert({ type: "tribu", item: tribus.find(t => t.id === it.id) })} />
                 <Classement titre="Départements" liste={classementDepartementsAmes} suffixe="%" maxValeur={100} onClicItem={(it) => setDetailOuvert({ type: "departement", item: departements.find(d => d.id === it.id) })} />
                 <p style={{ fontWeight: 700, fontSize: 16, marginTop: 24, marginBottom: 14, display: "flex", alignItems: "center", gap: 6 }}><IconeClipboard size={16} /> Rapports d'activités hebdomadaires validés</p>
