@@ -790,6 +790,18 @@ function App() {
   const [theme, setTheme] = useState(() => {
     try { return localStorage.getItem("gem_theme") || "dark"; } catch { return "dark"; }
   });
+  const [enLigne, setEnLigne] = useState(() => (typeof navigator !== "undefined" ? navigator.onLine : true));
+
+  useEffect(() => {
+    function surConnexion() { setEnLigne(true); }
+    function surDeconnexion() { setEnLigne(false); }
+    window.addEventListener("online", surConnexion);
+    window.addEventListener("offline", surDeconnexion);
+    return () => {
+      window.removeEventListener("online", surConnexion);
+      window.removeEventListener("offline", surDeconnexion);
+    };
+  }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -915,7 +927,7 @@ function App() {
 
   if (verrouille) return <EcranVerrouillage compte={compte} onDeverrouille={() => { setVerrouille(false); enregistrerDerniereActivite(); }} />;
 
-  return <TableauDeBord compte={compte} theme={theme} onBasculerTheme={basculerTheme} />;
+  return <TableauDeBord compte={compte} theme={theme} onBasculerTheme={basculerTheme} enLigne={enLigne} />;
 }
 
 export default function AppAvecProtection() {
@@ -1143,7 +1155,7 @@ function EcranConnexion({ theme, onBasculerTheme }) {
 
 /* ----------------------------- Tableau de bord ----------------------------- */
 
-function TableauDeBord({ compte, theme, onBasculerTheme }) {
+function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
   const [page, setPage] = useState("dashboard");
   const [menuMobileOuvert, setMenuMobileOuvert] = useState(false);
   const [gemOuvert, setGemOuvert] = useState(null);
@@ -1418,6 +1430,11 @@ function TableauDeBord({ compte, theme, onBasculerTheme }) {
 
   return (
     <div style={{ minHeight: "100vh", backgroundColor: TEAL_950, color: CREAM, fontFamily: "system-ui, sans-serif" }}>
+      {!enLigne && (
+        <div style={{ position: "sticky", top: 0, zIndex: 1500, backgroundColor: RED_LIGHT, color: "#fff", textAlign: "center", padding: "8px 16px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <IconeAlerte size={15} /> Tu es hors ligne — certaines actions (enregistrer, envoyer...) ne fonctionneront pas tant que le réseau n'est pas rétabli.
+        </div>
+      )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 24px", borderBottom: `1px solid ${TEAL_800}`, flexWrap: "wrap", gap: 10 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <img src={LOGO_VH} alt="Vases d'Honneur" style={{ height: 36, width: "auto" }} />
