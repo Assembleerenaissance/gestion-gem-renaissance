@@ -8215,6 +8215,8 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
   const [telResponsableGem, setTelResponsableGem] = useState("");
   const [creationOuverte, setCreationOuverte] = useState(false);
   const [gemResponsableEnEdition, setGemResponsableEnEdition] = useState(null);
+  const [gemNomEnEdition, setGemNomEnEdition] = useState(null);
+  const [nouveauNomGem, setNouveauNomGem] = useState("");
   const [nomResponsableEnEdition, setNomResponsableEnEdition] = useState("");
   const [telResponsableEnEdition, setTelResponsableEnEdition] = useState("");
   const [sousOnglet, setSousOnglet] = useState("gems");
@@ -8324,6 +8326,15 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
     : tribus.find(t => t.id === assignation.tribu_id);
   const gemsDuPerimetre = gems.filter(g => estDept ? g.departement_id === assignation.departement_id : g.tribu_id === assignation.tribu_id);
   const membresDuPerimetre = membres.filter(m => gemsDuPerimetre.some(g => g.id === m.gem_id));
+
+  async function renommerGemPerimetre(gemId) {
+    if (!nouveauNomGem.trim()) { toast("Le nom du GEM ne peut pas être vide.", "erreur"); return; }
+    const { error } = await supabase.from("gems").update({ nom: nouveauNomGem.trim() }).eq("id", gemId);
+    if (error) { toast("Erreur : " + error.message, "erreur"); return; }
+    toast("✓ GEM renommé avec succès.", "succes");
+    setGemNomEnEdition(null);
+    if (onCreerGem) onCreerGem();
+  }
 
   async function creerGem() {
     if (!nomNouveauGem.trim()) return;
@@ -8441,16 +8452,27 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
               {gemsDuPerimetre.map(g => (
                 <div key={g.id} style={{ ...cardStyle, display: "flex", flexDirection: "column", gap: 8 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                    <button onClick={() => setGemOuvert(g)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}>
-                      <p style={{ fontWeight: 700, margin: 0, color: CREAM }}>{g.nom}</p>
-                      <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0 }}>
-                        {responsablesGemPerimetre[g.id] ? (
-                          <span style={{display:"inline-flex",alignItems:"center",gap:4}}><IconePersonne size={11}/> {responsablesGemPerimetre[g.id]} (compte actif)</span>
-                        ) : g.responsable_nom ? (
-                          <span style={{display:"inline-flex",alignItems:"center",gap:4}}><IconePersonne size={11}/> {g.responsable_nom}{g.responsable_telephone ? ` — ${g.responsable_telephone}` : ""}</span>
-                        ) : "Aucun responsable désigné"}
-                      </p>
-                    </button>
+                    {gemNomEnEdition === g.id ? (
+                      <div style={{ display: "flex", gap: 6, flex: 1, minWidth: 180 }}>
+                        <input value={nouveauNomGem} onChange={e => setNouveauNomGem(e.target.value)} style={{ flex: 1, padding: 6, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 13 }} />
+                        <button className="btn-app" onClick={() => renommerGemPerimetre(g.id)} style={{ padding: "6px 10px", borderRadius: 6, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, fontSize: 11, cursor: "pointer" }}>OK</button>
+                        <button className="btn-app" onClick={() => setGemNomEnEdition(null)} style={{ padding: "6px 10px", borderRadius: 6, backgroundColor: "transparent", color: "var(--text-secondary)", border: `1px solid ${TEAL_600}`, fontWeight: 600, fontSize: 11, cursor: "pointer" }}>✕</button>
+                      </div>
+                    ) : (
+                      <button onClick={() => setGemOuvert(g)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}>
+                        <p style={{ fontWeight: 700, margin: 0, color: CREAM, display: "flex", alignItems: "center", gap: 6 }}>
+                          {g.nom}
+                          <span onClick={e => { e.stopPropagation(); setGemNomEnEdition(g.id); setNouveauNomGem(g.nom); }} style={{ color: GOLD_LIGHT, cursor: "pointer" }}><IconeCrayon size={11} /></span>
+                        </p>
+                        <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0 }}>
+                          {responsablesGemPerimetre[g.id] ? (
+                            <span style={{display:"inline-flex",alignItems:"center",gap:4}}><IconePersonne size={11}/> {responsablesGemPerimetre[g.id]} (compte actif)</span>
+                          ) : g.responsable_nom ? (
+                            <span style={{display:"inline-flex",alignItems:"center",gap:4}}><IconePersonne size={11}/> {g.responsable_nom}{g.responsable_telephone ? ` — ${g.responsable_telephone}` : ""}</span>
+                          ) : "Aucun responsable désigné"}
+                        </p>
+                      </button>
+                    )}
                     <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{membres.filter(m => m.gem_id === g.id).length} membre(s)</span>
                   </div>
 
