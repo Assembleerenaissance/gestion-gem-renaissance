@@ -274,6 +274,14 @@ function IconeTelechargement({ size = 16, color = "currentColor" }) {
   );
 }
 
+function IconeCadenas({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="11" width="18" height="11" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" />
+    </svg>
+  );
+}
+
 function IconeEnregistrer({ size = 16, color = "currentColor" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -9798,7 +9806,7 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
         <button
  className="btn-app"
  onClick={() => setOnglet("prive")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "prive" ? GOLD : TEAL_900, color: onglet === "prive" ? TEAL_950 : "var(--text-secondary-2)" }}>
-          <span style={{display:"inline-flex",alignItems:"center",gap:6}}>🔒 Message privé</span>
+          <span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeCadenas size={13}/> Message privé</span>
         </button>
         <button
  className="btn-app"
@@ -9924,7 +9932,7 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
           ) : (
             <>
               <button className="btn-app" onClick={() => setDestinataireChoisi(null)} style={{ background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", marginBottom: 14, fontSize: 13 }}>← Choisir une autre personne</button>
-              <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}>🔒 Conversation avec {destinataireChoisi.nom}</p>
+              <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}><IconeCadenas size={15}/> Conversation avec {destinataireChoisi.nom}</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16, maxHeight: 420, overflowY: "auto" }}>
                 {messagesPrives.filter(m => (m.de_compte_id === compte.id && m.destinataire_id === destinataireChoisi.id) || (m.de_compte_id === destinataireChoisi.id && m.destinataire_id === compte.id)).length === 0 ? (
                   <EtatVide icone={IconeMessage} titre="Aucun message pour l'instant" description="Écris le premier message ci-dessous." />
