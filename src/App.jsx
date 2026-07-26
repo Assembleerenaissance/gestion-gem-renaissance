@@ -2206,7 +2206,7 @@ function ResumePerimetre({ gems, membres, onVoirAbsences, cardStyle }) {
 
       {afficherRetard && gemsEnRetard.length > 0 && (
         <div style={{ ...cardStyle, borderColor: RED_LIGHT, marginBottom: 24 }}>
-          <p style={{ fontWeight: 700, fontSize: 13, color: RED_LIGHT, marginBottom: 8 }}>⚠️ GEM n'ayant pas encore soumis leur rapport ({gemsEnRetard.length})</p>
+          <p style={{ fontWeight: 700, fontSize: 13, color: RED_LIGHT, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}><IconeAlerte size={14} /> GEM n'ayant pas encore soumis leur rapport ({gemsEnRetard.length})</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {gemsEnRetard.map(g => (
               <span key={g.id} style={{ fontSize: 12, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "4px 10px" }}>{g.nom}</span>
@@ -2373,7 +2373,7 @@ function PrioritesPastorales({ membres, gems, regulariteParMembre, cardStyle }) 
                 <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>{nomGem(membre.gem_id)}</p>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "6px 12px" }}>⚠️ {regularite.absencesConsecutives} absences consécutives</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "6px 12px" }}><IconeAlerte size={12} style={{verticalAlign:"-2px",marginRight:3}} /> {regularite.absencesConsecutives} absences consécutives</span>
                 {membre.telephone && (
                   <>
                     <a title="Appeler" href={`tel:${membre.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
@@ -6272,7 +6272,7 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
             )}
             {b.absencesConsecutives >= 2 && (
               <div style={{ ...cardStyle, borderColor: RED_LIGHT, marginTop: 4 }}>
-                <p style={{ fontSize: 13, fontWeight: 700, color: RED_LIGHT, margin: 0 }}>⚠️ {b.absencesConsecutives} cultes consécutifs manqués</p>
+                <p style={{ fontSize: 13, fontWeight: 700, color: RED_LIGHT, margin: 0, display: "flex", alignItems: "center", gap: 6 }}><IconeAlerte size={13} /> {b.absencesConsecutives} cultes consécutifs manqués</p>
                 {motifIrregularite && <p style={{ fontSize: 12, color: GOLD_LIGHT, margin: "6px 0 0 0" }}>Motif : {motifIrregularite}</p>}
               </div>
             )}
@@ -6466,7 +6466,7 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
                     </span>
                   )}
                   {b.absencesConsecutives >= 2 && (
-                    <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "3px 9px" }}>⚠️ {b.absencesConsecutives} cultes ratés</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "3px 9px" }}><IconeAlerte size={10} style={{verticalAlign:"-1px",marginRight:2}} /> {b.absencesConsecutives} cultes ratés</span>
                   )}
                 </div>
               </button>
@@ -6497,7 +6497,7 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
                     </span>
                   )}
                   {p.types.includes("membre") && (absencesRecentes[p.membreId]?.absences || 0) >= 2 && (
-                    <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "3px 9px" }}>⚠️ {absencesRecentes[p.membreId].absences}/{absencesRecentes[p.membreId].total} absences</span>
+                    <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "3px 9px" }}><IconeAlerte size={10} style={{verticalAlign:"-1px",marginRight:2}} /> {absencesRecentes[p.membreId].absences}/{absencesRecentes[p.membreId].total} absences</span>
                   )}
                 </div>
               </button>
@@ -7046,7 +7046,7 @@ function PageAnalyse({ gems, membres, cardStyle }) {
 
           {gemsEnBaisse.length > 0 && (
             <>
-              <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14 }}>⚠️ GEM à surveiller</p>
+              <p style={{ fontWeight: 700, fontSize: 16, marginBottom: 14, display: "flex", alignItems: "center", gap: 6 }}><IconeAlerte size={16} /> GEM à surveiller</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 28 }}>
                 {gemsEnBaisse.map((t, i) => (
                   <div key={i} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
@@ -8709,7 +8709,7 @@ function DetailTribuDeptClassement({ type, item, gems, membres, onBack, cardStyl
           <p style={{ fontSize: 22, fontWeight: 700, color: couleurScore(santeMoyenne) }}>{santeMoyenne !== null ? `${santeMoyenne}/10` : "—"}</p>
         </div>
         <div className="card-app" style={cardStyle}>
-          <p style={{ fontSize: 11, color: "var(--text-primary)", textTransform: "uppercase" }}>⚠️ À surveiller</p>
+          <p style={{ fontSize: 11, color: "var(--text-primary)", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 5 }}><IconeAlerte size={12} /> À surveiller</p>
           <p style={{ fontSize: 22, fontWeight: 700, color: nbIrreguliers > 0 ? RED_LIGHT : "var(--green-success)" }}>{nbIrreguliers}</p>
         </div>
       </div>
