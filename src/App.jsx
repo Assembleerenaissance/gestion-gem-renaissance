@@ -274,6 +274,14 @@ function IconeTelechargement({ size = 16, color = "currentColor" }) {
   );
 }
 
+function IconeFusion({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 7c0-1.1-.9-2-2-2h-2a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h2c1.1 0 2-.9 2-2" /><path d="M6 7c0-1.1.9-2 2-2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8c-1.1 0-2-.9-2-2" /><path d="M12 12h6" /><path d="M6 12h6" />
+    </svg>
+  );
+}
+
 function IconeCadenas({ size = 16, color = "currentColor" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2748,7 +2756,7 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
                   onClick={() => { setFusionOuverte(true); setGemSource(d.gemA.id); setGemDestination(d.gemB.id); }}
                   style={{ padding: "6px 12px", borderRadius: 7, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, var(--gold-light), var(--gold))", color: TEAL_950, border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer" }}
                 >
-                  🔀 Préparer la fusion de ces deux GEM
+                  <span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeFusion size={13}/> Préparer la fusion de ces deux GEM</span>
                 </button>
               </div>
             ))}
@@ -2762,7 +2770,7 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
           onClick={() => setFusionOuverte(v => !v)}
           style={{ marginBottom: 14, padding: "10px 16px", borderRadius: 9, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${GOLD}`, fontWeight: 700, fontSize: 13, cursor: "pointer" }}
         >
-          🔀 Fusionner deux GEM en doublon
+          <span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeFusion size={14}/> Fusionner deux GEM en doublon</span>
         </button>
       )}
 
