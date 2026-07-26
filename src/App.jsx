@@ -2507,6 +2507,23 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
   const idsGems = gemsDuParent.map(g => g.id);
   const membresDuParent = membres.filter(m => idsGems.includes(m.gem_id));
 
+  // Détecte les paires de GEM qui partagent plusieurs membres (même nom,
+  // insensible à la casse/espaces) — signe probable d'un doublon créé sous
+  // deux noms différents. Un seul nom en commun peut être une coïncidence
+  // (prénom courant), donc on ne signale qu'à partir de 2 noms partagés.
+  const doublonsProbables = [];
+  for (let i = 0; i < gemsDuParent.length; i++) {
+    for (let j = i + 1; j < gemsDuParent.length; j++) {
+      const gemA = gemsDuParent[i], gemB = gemsDuParent[j];
+      const nomsA = new Set(membres.filter(m => m.gem_id === gemA.id).map(m => m.nom.trim().toLowerCase()));
+      const nomsB = membres.filter(m => m.gem_id === gemB.id).map(m => m.nom.trim().toLowerCase());
+      const communs = nomsB.filter(n => nomsA.has(n));
+      if (communs.length >= 2) {
+        doublonsProbables.push({ gemA, gemB, nomsCommuns: communs });
+      }
+    }
+  }
+
   async function renommerGem(gemId) {
     if (!nomEdite.trim()) { toast("Le nom du GEM ne peut pas être vide.", "erreur"); return; }
     const { error } = await supabase.from("gems").update({ nom: nomEdite.trim() }).eq("id", gemId);
@@ -2657,6 +2674,31 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
       <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 20 }}>{membresDuParent.length} membre{membresDuParent.length > 1 ? "s" : ""} au total, répartis sur {gemsDuParent.length} GEM</p>
 
       <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><IconeClipboard size={15} /> GEM de ce {type === "tribu" ? "tribu" : "département"} ({gemsDuParent.length})</p>
+
+      {estPasteur && doublonsProbables.length > 0 && (
+        <div style={{ ...cardStyle, marginBottom: 14, border: `1px solid ${RED_LIGHT}` }}>
+          <p style={{ fontWeight: 700, fontSize: 13, color: RED_LIGHT, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+            <IconeAlerte size={15} /> {doublonsProbables.length} doublon{doublonsProbables.length > 1 ? "s" : ""} probable{doublonsProbables.length > 1 ? "s" : ""} détecté{doublonsProbables.length > 1 ? "s" : ""}
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {doublonsProbables.map((d, i) => (
+              <div key={i} style={{ backgroundColor: TEAL_950, borderRadius: 8, padding: "10px 12px" }}>
+                <p style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>"{d.gemA.nom}" et "{d.gemB.nom}"</p>
+                <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 8 }}>
+                  {d.nomsCommuns.length} membre{d.nomsCommuns.length > 1 ? "s" : ""} en commun : {d.nomsCommuns.join(", ")}
+                </p>
+                <button
+                  className="btn-app"
+                  onClick={() => { setFusionOuverte(true); setGemSource(d.gemA.id); setGemDestination(d.gemB.id); }}
+                  style={{ padding: "6px 12px", borderRadius: 7, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, var(--gold-light), var(--gold))", color: TEAL_950, border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer" }}
+                >
+                  🔀 Préparer la fusion de ces deux GEM
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {estPasteur && gemsDuParent.length >= 2 && (
         <button
