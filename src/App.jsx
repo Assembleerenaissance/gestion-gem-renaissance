@@ -51,6 +51,21 @@ function AvatarInitiales({ nom, taille = 64 }) {
 
 // Carrousel d'images — défile automatiquement, avec indicateurs et
 // possibilité de glisser au doigt sur mobile.
+// Barre de progression qui se remplit progressivement à l'affichage, au lieu
+// d'apparaître déjà pleine — plus vivant, surtout dans les classements.
+function BarreProgression({ pourcentage, couleur, hauteur = 6 }) {
+  const [largeur, setLargeur] = useState(0);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setLargeur(Math.min(100, pourcentage)));
+    return () => cancelAnimationFrame(id);
+  }, [pourcentage]);
+  return (
+    <div style={{ height: hauteur, borderRadius: 999, backgroundColor: TEAL_900, overflow: "hidden" }}>
+      <div style={{ height: "100%", width: `${largeur}%`, backgroundColor: couleur || GOLD, borderRadius: 999, transition: "width 0.9s cubic-bezier(0.22,1,0.36,1)" }} />
+    </div>
+  );
+}
+
 function CarrouselImages({ evenements }) {
   const [index, setIndex] = useState(0);
   const debutGlissement = useRef(null);
@@ -479,6 +494,13 @@ function StylesGlobaux() {
 
       input, select, textarea { transition: border-color 0.15s ease, box-shadow 0.15s ease; }
       input:focus, select:focus, textarea:focus { outline: none; box-shadow: 0 0 0 2px rgba(214,165,76,0.45); }
+      .squelette-shimmer {
+        background: linear-gradient(90deg, var(--bg-surface-3) 25%, var(--border-1) 50%, var(--bg-surface-3) 75%);
+        background-size: 200% 100%;
+        animation: scintiller 1.6s ease-in-out infinite;
+      }
+      @keyframes scintiller { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
       input[type="checkbox"] { transition: transform 0.15s cubic-bezier(0.34,1.56,0.64,1); cursor: pointer; }
       input[type="checkbox"]:active { transform: scale(1.25); }
       input[type="checkbox"]:checked { animation: cocher 0.28s cubic-bezier(0.34,1.56,0.64,1); }
@@ -512,6 +534,22 @@ function Chargement({ texte = "Chargement…" }) {
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "28px 0", color: "var(--text-secondary)", fontSize: 13.5 }}>
       <span className="spinner-app" />
       {texte}
+    </div>
+  );
+}
+
+// Écran de chargement en "squelette" — de fausses cartes qui scintillent
+// doucement, à la place d'un simple rond qui tourne. Donne l'impression que
+// le contenu est presque prêt, plus agréable pour les listes.
+function ChargementSquelette({ lignes = 5 }) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      {Array.from({ length: lignes }).map((_, i) => (
+        <div key={i} style={{ borderRadius: 14, padding: 16, backgroundColor: TEAL_850, border: `1px solid ${TEAL_700}`, display: "flex", flexDirection: "column", gap: 8 }}>
+          <div className="squelette-shimmer" style={{ height: 14, width: `${55 + (i % 3) * 12}%`, borderRadius: 6 }} />
+          <div className="squelette-shimmer" style={{ height: 10, width: `${30 + (i % 4) * 8}%`, borderRadius: 6 }} />
+        </div>
+      ))}
     </div>
   );
 }
@@ -720,6 +758,40 @@ function BoiteConfirmation({ titre, message, texteConfirmer, dangereux, onConfir
 // Utilisable depuis n'importe quel composant via toast("message", "succes"|"erreur"|"info").
 function toast(message, type = "info") {
   window.dispatchEvent(new CustomEvent("app-toast", { detail: { message, type } }));
+}
+
+// Effet vague au clic — un seul gestionnaire global, s'applique automatiquement
+// à tous les boutons ".btn-app" de l'application sans avoir à toucher chacun.
+function EffetVague() {
+  useEffect(() => {
+    function surClic(e) {
+      const bouton = e.target.closest(".btn-app");
+      if (!bouton) return;
+      const rect = bouton.getBoundingClientRect();
+      const taille = Math.max(rect.width, rect.height) * 2;
+      const vague = document.createElement("span");
+      vague.style.position = "absolute";
+      vague.style.left = `${e.clientX - rect.left - taille / 2}px`;
+      vague.style.top = `${e.clientY - rect.top - taille / 2}px`;
+      vague.style.width = `${taille}px`;
+      vague.style.height = `${taille}px`;
+      vague.style.borderRadius = "50%";
+      vague.style.backgroundColor = "rgba(255,255,255,0.35)";
+      vague.style.pointerEvents = "none";
+      vague.style.transform = "scale(0)";
+      vague.style.opacity = "1";
+      vague.style.transition = "transform 0.5s ease-out, opacity 0.5s ease-out";
+      const stylePrecedent = getComputedStyle(bouton).position;
+      if (stylePrecedent === "static") bouton.style.position = "relative";
+      bouton.style.overflow = "hidden";
+      bouton.appendChild(vague);
+      requestAnimationFrame(() => { vague.style.transform = "scale(1)"; vague.style.opacity = "0"; });
+      setTimeout(() => vague.remove(), 520);
+    }
+    document.addEventListener("click", surClic);
+    return () => document.removeEventListener("click", surClic);
+  }, []);
+  return null;
 }
 
 function ConteneurToasts() {
@@ -1001,6 +1073,7 @@ export default function AppAvecProtection() {
     <LimiteErreurs>
       <StylesGlobaux />
       <ConteneurToasts />
+      <EffetVague />
       <App />
     </LimiteErreurs>
   );
@@ -4647,7 +4720,7 @@ function PagePrediction({ membres, gems, tribus, departements, gemsAutorises, re
 
   const resultatsAffiches = filtreNiveau ? risques.filter(r => r.niveau === filtreNiveau) : risques;
 
-  if (chargement) return <Chargement />;
+  if (chargement) return <ChargementSquelette lignes={4} />;
 
   return (
     <div>
@@ -5112,12 +5185,12 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
           <span style={{ fontSize: 12, fontWeight: 700, color: couleurScore(moyenne) }}>
             {moyenne !== null ? `Santé ${moyenne}/10` : "Non évaluée"}
           </span>
-          <span style={{ color: "var(--text-secondary)" }}>{ouvert ? "▲" : "▼"}</span>
+          <span style={{ color: "var(--text-secondary)", display: "inline-block", transition: "transform 0.3s cubic-bezier(0.22,1,0.36,1)", transform: ouvert ? "rotate(180deg)" : "rotate(0deg)" }}>▼</span>
         </div>
       </button>
 
       {ouvert && (
-        <div style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${TEAL_700}` }}>
+        <div className="fade-in" style={{ marginTop: 14, paddingTop: 14, borderTop: `1px solid ${TEAL_700}` }}>
           <div style={{ ...cardStyle, marginBottom: 14, padding: 14 }}>
             <p style={{ fontWeight: 600, fontSize: 12, color: GOLD_LIGHT, marginBottom: 10, display: "flex", alignItems: "center", gap: 5 }}><IconeCrayon size={12} /> Informations du membre</p>
             <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -6060,7 +6133,7 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
   const pireDepartement = pireParType("departement");
   const pireTribu = pireParType("tribu");
 
-  if (chargement) return <Chargement />;
+  if (chargement) return <ChargementSquelette lignes={5} />;
 
   return (
     <div>
@@ -6450,7 +6523,7 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
   const totalPagesResultats = Math.max(1, Math.ceil(resultats.length / PAR_PAGE_MEMBRES));
   const resultatsAffiches = resultats.slice((pageResultats - 1) * PAR_PAGE_MEMBRES, pageResultats * PAR_PAGE_MEMBRES);
 
-  if (chargement) return <Chargement />;
+  if (chargement) return <ChargementSquelette lignes={6} />;
 
   if (bossOuvert) {
     const b = bossOuvert;
@@ -9534,9 +9607,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                   </span>
                   <span style={{ fontWeight: 700, fontSize: 13, color: GOLD_LIGHT }}>{item.valeur}{suffixe}</span>
                 </div>
-                <div style={{ height: 6, borderRadius: 999, backgroundColor: TEAL_900, overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${Math.min(100, (item.valeur / maxValeur) * 100)}%`, backgroundColor: GOLD, borderRadius: 999 }} />
-                </div>
+                <BarreProgression pourcentage={(item.valeur / maxValeur) * 100} />
               </div>
             ))}
           </div>
