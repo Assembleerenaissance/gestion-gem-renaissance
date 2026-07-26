@@ -2507,17 +2507,32 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
   const idsGems = gemsDuParent.map(g => g.id);
   const membresDuParent = membres.filter(m => idsGems.includes(m.gem_id));
 
-  // Détecte les paires de GEM qui partagent plusieurs membres (même nom,
-  // insensible à la casse/espaces) — signe probable d'un doublon créé sous
-  // deux noms différents. Un seul nom en commun peut être une coïncidence
-  // (prénom courant), donc on ne signale qu'à partir de 2 noms partagés.
+  // Normalise un nom pour la comparaison : sans accents, sans casse, et avec
+  // les mots triés — "Fleur Yao" et "Yao Fleur" deviennent alors identiques,
+  // tout comme "José" et "Jose".
+  function normaliserNomPourComparaison(nom) {
+    return (nom || "")
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "") // retire les accents
+      .toLowerCase().trim()
+      .split(/\s+/).filter(Boolean).sort().join(" ");
+  }
+
+  // Détecte les paires de GEM qui partagent plusieurs membres (même personne,
+  // même en cas d'accents ou d'ordre prénom/nom différents) — signe probable
+  // d'un doublon créé sous deux noms différents. Un seul nom en commun peut
+  // être une coïncidence (prénom courant), donc on ne signale qu'à partir de
+  // 2 noms partagés.
   const doublonsProbables = [];
   for (let i = 0; i < gemsDuParent.length; i++) {
     for (let j = i + 1; j < gemsDuParent.length; j++) {
       const gemA = gemsDuParent[i], gemB = gemsDuParent[j];
-      const nomsA = new Set(membres.filter(m => m.gem_id === gemA.id).map(m => m.nom.trim().toLowerCase()));
-      const nomsB = membres.filter(m => m.gem_id === gemB.id).map(m => m.nom.trim().toLowerCase());
-      const communs = nomsB.filter(n => nomsA.has(n));
+      const membresA = membres.filter(m => m.gem_id === gemA.id);
+      const membresB = membres.filter(m => m.gem_id === gemB.id);
+      const nomsA = new Map(membresA.map(m => [normaliserNomPourComparaison(m.nom), m.nom]));
+      const communs = membresB
+        .map(m => ({ cle: normaliserNomPourComparaison(m.nom), nom: m.nom }))
+        .filter(m => nomsA.has(m.cle))
+        .map(m => m.nom);
       if (communs.length >= 2) {
         doublonsProbables.push({ gemA, gemB, nomsCommuns: communs });
       }
@@ -2552,13 +2567,14 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
     const gemA = gemsDuParent.find(g => g.id === gemSource); // absorbé
     const gemB = gemsDuParent.find(g => g.id === gemDestination); // conservé
 
-    // Récupère les membres des deux GEM pour éviter les doublons de nom
+    // Récupère les membres des deux GEM pour éviter les doublons de nom —
+    // comparaison insensible aux accents et à l'ordre prénom/nom.
     const { data: membresSource } = await supabase.from("membres").select("*").eq("gem_id", gemSource);
     const { data: membresDest } = await supabase.from("membres").select("nom").eq("gem_id", gemDestination);
-    const nomsDejaLa = new Set((membresDest || []).map(m => m.nom.trim().toLowerCase()));
+    const nomsDejaLa = new Set((membresDest || []).map(m => normaliserNomPourComparaison(m.nom)));
 
-    const aDeplacer = (membresSource || []).filter(m => !nomsDejaLa.has(m.nom.trim().toLowerCase()));
-    const aSupprimer = (membresSource || []).filter(m => nomsDejaLa.has(m.nom.trim().toLowerCase()));
+    const aDeplacer = (membresSource || []).filter(m => !nomsDejaLa.has(normaliserNomPourComparaison(m.nom)));
+    const aSupprimer = (membresSource || []).filter(m => nomsDejaLa.has(normaliserNomPourComparaison(m.nom)));
 
     if (aDeplacer.length > 0) {
       const { error: err1 } = await supabase.from("membres").update({ gem_id: gemDestination }).in("id", aDeplacer.map(m => m.id));
