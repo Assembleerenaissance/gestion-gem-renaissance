@@ -8096,7 +8096,12 @@ function EvolutionPerimetre({ membres, cardStyle }) {
 
 function MonEspace({ compte, assignationsActives, gems, membres, tribus, departements, gemOuvert, setGemOuvert, onMembreAjoute, onCreerGem, regulariteParMembre, membreCible, onMembreCibleConsomme, gemDuMois, tribuDeptDuMois, cardStyle }) {
   const [nomNouveauGem, setNomNouveauGem] = useState("");
+  const [nomResponsableGem, setNomResponsableGem] = useState("");
+  const [telResponsableGem, setTelResponsableGem] = useState("");
   const [creationOuverte, setCreationOuverte] = useState(false);
+  const [gemResponsableEnEdition, setGemResponsableEnEdition] = useState(null);
+  const [nomResponsableEnEdition, setNomResponsableEnEdition] = useState("");
+  const [telResponsableEnEdition, setTelResponsableEnEdition] = useState("");
   const [sousOnglet, setSousOnglet] = useState("gems");
   const [indexRoleSelectionne, setIndexRoleSelectionne] = useState(0);
   const [responsablesGemPerimetre, setResponsablesGemPerimetre] = useState({}); // { gemId: nom }
@@ -8212,9 +8217,24 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
       type: estDept ? "departement" : "tribu",
       departement_id: estDept ? assignation.departement_id : null,
       tribu_id: estDept ? null : assignation.tribu_id,
+      responsable_nom: nomResponsableGem.trim() || null,
+      responsable_telephone: telResponsableGem.trim() || null,
     };
     const { error } = await supabase.from("gems").insert(payload);
-    if (!error) { setNomNouveauGem(""); setCreationOuverte(false); onCreerGem(); }
+    if (!error) { setNomNouveauGem(""); setNomResponsableGem(""); setTelResponsableGem(""); setCreationOuverte(false); onCreerGem(); }
+  }
+
+  async function enregistrerResponsableGem(gemId) {
+    const { error } = await supabase.from("gems").update({
+      responsable_nom: nomResponsableEnEdition.trim() || null,
+      responsable_telephone: telResponsableEnEdition.trim() || null,
+    }).eq("id", gemId);
+    if (!error) { setGemResponsableEnEdition(null); onCreerGem(); }
+  }
+
+  async function retirerResponsableGemProvisoire(gemId) {
+    const { error } = await supabase.from("gems").update({ responsable_nom: null, responsable_telephone: null }).eq("id", gemId);
+    if (!error) onCreerGem();
   }
 
   return (
@@ -8279,11 +8299,18 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
           <AnniversairesAVenir membres={membresDuPerimetre} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
           <div style={{ ...cardStyle, marginBottom: 20 }}>
             {creationOuverte ? (
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <input value={nomNouveauGem} onChange={e => setNomNouveauGem(e.target.value)} placeholder="Nom du nouveau GEM" style={{ flex: 1, minWidth: 160, padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
-                <button
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <input value={nomNouveauGem} onChange={e => setNomNouveauGem(e.target.value)} placeholder="Nom du nouveau GEM" style={{ padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+                <input value={nomResponsableGem} onChange={e => setNomResponsableGem(e.target.value)} placeholder="Nom du responsable GEM (optionnel)" style={{ padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+                <input value={telResponsableGem} onChange={e => setTelResponsableGem(e.target.value)} placeholder="Téléphone du responsable (optionnel)" style={{ padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
  className="btn-app"
  onClick={creerGem} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, var(--gold-light), var(--gold))", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer" }}>Créer</button>
+                  <button
+ className="btn-app"
+ onClick={() => { setCreationOuverte(false); setNomNouveauGem(""); setNomResponsableGem(""); setTelResponsableGem(""); }} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: "transparent", color: "var(--text-secondary)", border: `1px solid ${TEAL_600}`, fontWeight: 600, cursor: "pointer" }}>Annuler</button>
+                </div>
               </div>
             ) : (
               <button
@@ -8297,15 +8324,45 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {gemsDuPerimetre.map(g => (
-                <button key={g.id} onClick={() => setGemOuvert(g)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                  <div>
-                    <p style={{ fontWeight: 700, margin: 0 }}>{g.nom}</p>
-                    <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0 }}>
-                      {responsablesGemPerimetre[g.id] ? <span style={{display:"inline-flex",alignItems:"center",gap:4}}><IconePersonne size={11}/> {responsablesGemPerimetre[g.id]}</span> : "Aucun responsable désigné"}
-                    </p>
+                <div key={g.id} style={{ ...cardStyle, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                    <button onClick={() => setGemOuvert(g)} style={{ background: "none", border: "none", padding: 0, cursor: "pointer", textAlign: "left" }}>
+                      <p style={{ fontWeight: 700, margin: 0, color: CREAM }}>{g.nom}</p>
+                      <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0 }}>
+                        {responsablesGemPerimetre[g.id] ? (
+                          <span style={{display:"inline-flex",alignItems:"center",gap:4}}><IconePersonne size={11}/> {responsablesGemPerimetre[g.id]} (compte actif)</span>
+                        ) : g.responsable_nom ? (
+                          <span style={{display:"inline-flex",alignItems:"center",gap:4}}><IconePersonne size={11}/> {g.responsable_nom}{g.responsable_telephone ? ` — ${g.responsable_telephone}` : ""}</span>
+                        ) : "Aucun responsable désigné"}
+                      </p>
+                    </button>
+                    <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{membres.filter(m => m.gem_id === g.id).length} membre(s)</span>
                   </div>
-                  <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{membres.filter(m => m.gem_id === g.id).length} membre(s)</span>
-                </button>
+
+                  {!responsablesGemPerimetre[g.id] && (
+                    gemResponsableEnEdition === g.id ? (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 6, borderTop: `1px solid ${TEAL_800}`, paddingTop: 8 }}>
+                        <input value={nomResponsableEnEdition} onChange={e => setNomResponsableEnEdition(e.target.value)} placeholder="Nom du responsable GEM" style={{ padding: 7, borderRadius: 7, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
+                        <input value={telResponsableEnEdition} onChange={e => setTelResponsableEnEdition(e.target.value)} placeholder="Téléphone (optionnel)" style={{ padding: 7, borderRadius: 7, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button className="btn-app" onClick={() => enregistrerResponsableGem(g.id)} style={{ padding: "6px 12px", borderRadius: 7, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, fontSize: 11, cursor: "pointer" }}>Enregistrer</button>
+                          <button className="btn-app" onClick={() => setGemResponsableEnEdition(null)} style={{ padding: "6px 12px", borderRadius: 7, backgroundColor: "transparent", color: "var(--text-secondary)", border: `1px solid ${TEAL_600}`, fontWeight: 600, fontSize: 11, cursor: "pointer" }}>Annuler</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", gap: 12, borderTop: `1px solid ${TEAL_800}`, paddingTop: 8 }}>
+                        <button className="btn-app" onClick={() => { setGemResponsableEnEdition(g.id); setNomResponsableEnEdition(g.responsable_nom || ""); setTelResponsableEnEdition(g.responsable_telephone || ""); }} style={{ background: "none", border: "none", color: GOLD_LIGHT, fontSize: 11, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                          <IconeCrayon size={11} /> {g.responsable_nom ? "Modifier" : "Indiquer un responsable"}
+                        </button>
+                        {g.responsable_nom && (
+                          <button className="btn-app" onClick={() => retirerResponsableGemProvisoire(g.id)} style={{ background: "none", border: "none", color: RED_LIGHT, fontSize: 11, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                            <IconePoubelle size={11} /> Retirer
+                          </button>
+                        )}
+                      </div>
+                    )
+                  )}
+                </div>
               ))}
             </div>
           )}
