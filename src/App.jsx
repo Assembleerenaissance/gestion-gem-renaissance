@@ -158,6 +158,63 @@ function EnregistreurVocal({ onEnregistrementPret, onAnnuler }) {
   );
 }
 
+// "Parole du jour" — un verset ou une pensée qui change chaque jour, avec une
+// animation de révélation douce. Donne une vraie raison spirituelle de se
+// connecter chaque matin, sans tomber dans la mécanique de "streak" forcée.
+const PAROLES_DU_JOUR = [
+  { verset: "Car je connais les projets que j'ai formés sur vous, dit l'Éternel, projets de paix et non de malheur, afin de vous donner un avenir et de l'espérance.", reference: "Jérémie 29:11" },
+  { verset: "Fortifie-toi et prends courage, ne t'effraie point et ne t'épouvante point ; car l'Éternel, ton Dieu, est avec toi dans tout ce que tu entreprendras.", reference: "Josué 1:9" },
+  { verset: "Je puis tout par celui qui me fortifie.", reference: "Philippiens 4:13" },
+  { verset: "L'Éternel est mon berger : je ne manquerai de rien.", reference: "Psaume 23:1" },
+  { verset: "C'est par la grâce que vous êtes sauvés, par le moyen de la foi.", reference: "Éphésiens 2:8" },
+  { verset: "Ne t'ai-je pas donné cet ordre : Fortifie-toi et prends courage ? Ne te laisse point effrayer, et ne t'épouvante point.", reference: "Josué 1:9" },
+  { verset: "Approchez-vous de Dieu, et il s'approchera de vous.", reference: "Jacques 4:8" },
+  { verset: "Confie-toi en l'Éternel de tout ton cœur, et ne t'appuie pas sur ta sagesse.", reference: "Proverbes 3:5" },
+  { verset: "Le Seigneur lui-même marchera devant toi, il sera lui-même avec toi, il ne te délaissera point.", reference: "Deutéronome 31:8" },
+  { verset: "Ne crains rien, car je suis avec toi ; ne prends pas d'inquiétude, car je suis ton Dieu.", reference: "Ésaïe 41:10" },
+  { verset: "Tout ce que vous faites, faites-le de bon cœur, comme pour le Seigneur et non pour des hommes.", reference: "Colossiens 3:23" },
+  { verset: "Heureux ceux qui sèment dans les larmes ! Ils moissonneront avec chants d'allégresse.", reference: "Psaume 126:5" },
+  { verset: "Un seul est votre Maître, et vous êtes tous frères.", reference: "Matthieu 23:8" },
+  { verset: "La joie de l'Éternel sera votre force.", reference: "Néhémie 8:10" },
+  { verset: "Que celui qui sème abondamment moissonne aussi abondamment.", reference: "2 Corinthiens 9:6" },
+  { verset: "Prends garde à toi-même et à ton enseignement ; persévère dans ces choses.", reference: "1 Timothée 4:16" },
+  { verset: "Ceux qui sèment avec larmes moissonneront avec chants d'allégresse.", reference: "Psaume 126:5" },
+  { verset: "Servez-vous les uns les autres, chacun selon le don qu'il a reçu.", reference: "1 Pierre 4:10" },
+  { verset: "Or, sans la foi il est impossible de lui être agréable.", reference: "Hébreux 11:6" },
+  { verset: "Là où deux ou trois sont assemblés en mon nom, je suis au milieu d'eux.", reference: "Matthieu 18:20" },
+];
+
+function ParoleDuJour() {
+  const [revelee, setRevelee] = useState(false);
+  const jourAnnee = Math.floor((Date.now() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+  const parole = PAROLES_DU_JOUR[jourAnnee % PAROLES_DU_JOUR.length];
+
+  useEffect(() => {
+    const id = setTimeout(() => setRevelee(true), 300);
+    return () => clearTimeout(id);
+  }, []);
+
+  return (
+    <div style={{ position: "relative", overflow: "hidden", background: "linear-gradient(135deg, rgba(214,165,76,0.12), rgba(143,203,168,0.06))", border: `1px solid ${GOLD}55`, borderRadius: 16, padding: "18px 20px", marginBottom: 20, textAlign: "center" }}>
+      <div style={{ position: "absolute", top: -10, left: -10, pointerEvents: "none" }}><EpiDeBle size={40} opacity={0.08} /></div>
+      <p style={{ fontSize: 11, fontWeight: 700, color: GOLD_LIGHT, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>🕊️ Parole du jour</p>
+      <div style={{ minHeight: 62, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        <p
+          className="titre-moisson"
+          style={{
+            fontSize: 15, fontStyle: "italic", color: "var(--text-primary)", lineHeight: 1.6, maxWidth: 480, margin: 0,
+            opacity: revelee ? 1 : 0, transform: revelee ? "translateY(0)" : "translateY(8px)",
+            transition: "opacity 0.9s ease, transform 0.9s ease",
+          }}
+        >
+          « {parole.verset} »
+        </p>
+      </div>
+      <p style={{ fontSize: 12, color: GOLD_LIGHT, fontWeight: 700, marginTop: 8, opacity: revelee ? 1 : 0, transition: "opacity 1s ease 0.3s" }}>— {parole.reference}</p>
+    </div>
+  );
+}
+
 function CarrouselImages({ evenements }) {
   const [index, setIndex] = useState(0);
   const debutGlissement = useRef(null);
@@ -2343,6 +2400,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
               <EpiDeBle size={22} />
               <h2 className="titre-moisson" style={{ fontSize: 24, fontWeight: 600, margin: 0 }}>Tableau de bord</h2>
             </div>
+            <ParoleDuJour />
             <CarrouselImages evenements={evenementsAvecImage} />
             <BanniereRappelPointage rappel={rappelPointageGlobal} />
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 24 }}>
