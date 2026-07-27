@@ -342,12 +342,79 @@ function PageJournalAudit({ cardStyle }) {
   );
 }
 
-function EtatVide({ icone: Icone, titre, description }) {
+// Illustrations personnalisées — tracé simple à la main, liées à l'identité
+// de l'église (le vase, la moisson, la prière) plutôt que des icônes génériques.
+function IllustrationVide({ variante = "vase", taille = 92 }) {
+  const or = "var(--gold)", orClair = "var(--gold-light)", trait = "var(--border-1)";
+  if (variante === "moisson") {
+    return (
+      <svg width={taille} height={taille} viewBox="0 0 100 100" fill="none">
+        <ellipse cx="50" cy="86" rx="34" ry="4" fill={trait} opacity="0.3" />
+        <path d="M50 82V28" stroke={or} strokeWidth="2" strokeLinecap="round" />
+        {[0, 1, 2, 3].map(i => (
+          <g key={i}>
+            <path d={`M50 ${34 + i * 11} C42 ${29 + i * 11} 37 ${31 + i * 11} 34 ${36 + i * 11}`} stroke={orClair} strokeWidth="1.6" strokeLinecap="round" fill="none" />
+            <path d={`M50 ${34 + i * 11} C58 ${29 + i * 11} 63 ${31 + i * 11} 66 ${36 + i * 11}`} stroke={orClair} strokeWidth="1.6" strokeLinecap="round" fill="none" />
+          </g>
+        ))}
+        <path d="M50 28 L45 18 L50 12 L55 18 Z" fill={or} />
+        <circle cx="22" cy="70" r="2" fill={orClair} opacity="0.6" /><circle cx="78" cy="66" r="2" fill={orClair} opacity="0.6" /><circle cx="30" cy="58" r="1.5" fill={orClair} opacity="0.5" />
+      </svg>
+    );
+  }
+  if (variante === "groupe") {
+    return (
+      <svg width={taille} height={taille} viewBox="0 0 100 100" fill="none">
+        <ellipse cx="50" cy="88" rx="36" ry="4" fill={trait} opacity="0.3" />
+        <circle cx="35" cy="42" r="10" stroke={orClair} strokeWidth="2" />
+        <path d="M20 78c0-10 7-18 15-18s15 8 15 18" stroke={orClair} strokeWidth="2" strokeLinecap="round" fill="none" />
+        <circle cx="66" cy="38" r="11" stroke={or} strokeWidth="2" />
+        <path d="M48 80c0-11 8-20 18-20s18 9 18 20" stroke={or} strokeWidth="2" strokeLinecap="round" fill="none" />
+      </svg>
+    );
+  }
+  if (variante === "recherche") {
+    return (
+      <svg width={taille} height={taille} viewBox="0 0 100 100" fill="none">
+        <ellipse cx="50" cy="88" rx="30" ry="4" fill={trait} opacity="0.3" />
+        <circle cx="44" cy="44" r="22" stroke={orClair} strokeWidth="2.5" />
+        <line x1="60" y1="60" x2="76" y2="76" stroke={or} strokeWidth="3" strokeLinecap="round" />
+        <path d="M34 44a10 10 0 0 1 10-10" stroke={or} strokeWidth="2" strokeLinecap="round" fill="none" />
+      </svg>
+    );
+  }
+  if (variante === "priere") {
+    return (
+      <svg width={taille} height={taille} viewBox="0 0 100 100" fill="none">
+        <ellipse cx="50" cy="88" rx="26" ry="4" fill={trait} opacity="0.3" />
+        <path d="M50 20v50" stroke={orClair} strokeWidth="2" strokeLinecap="round" />
+        <path d="M38 34c0 8 5 12 12 14 7-2 12-6 12-14" stroke={or} strokeWidth="2" strokeLinecap="round" fill="none" />
+        <path d="M50 70c-14 0-22 8-22 14h44c0-6-8-14-22-14Z" stroke={orClair} strokeWidth="2" strokeLinejoin="round" fill="none" />
+      </svg>
+    );
+  }
+  // "vase" — motif par défaut, en écho à "Vases d'Honneur"
   return (
-    <div style={{ textAlign: "center", padding: "36px 16px" }}>
-      <div style={{ width: 52, height: 52, borderRadius: 999, backgroundColor: "rgba(214,165,76,0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
-        {Icone ? <Icone size={24} color="var(--gold)" /> : <EpiDeBle size={24} />}
-      </div>
+    <svg width={taille} height={taille} viewBox="0 0 100 100" fill="none">
+      <ellipse cx="50" cy="88" rx="26" ry="4" fill={trait} opacity="0.3" />
+      <path d="M40 20h20l3 8-5 6c4 6 6 14 6 22 0 16-9 26-14 26s-14-10-14-26c0-8 2-16 6-22l-5-6Z" stroke={or} strokeWidth="2" strokeLinejoin="round" fill="none" />
+      <path d="M42 20h16" stroke={or} strokeWidth="2" strokeLinecap="round" />
+      <path d="M44 50c3 2 9 2 12 0" stroke={orClair} strokeWidth="1.5" strokeLinecap="round" fill="none" />
+      <circle cx="30" cy="34" r="1.8" fill={orClair} opacity="0.6" /><circle cx="70" cy="42" r="1.8" fill={orClair} opacity="0.6" />
+    </svg>
+  );
+}
+
+function EtatVide({ icone: Icone, titre, description, illustration }) {
+  return (
+    <div className="fade-in" style={{ textAlign: "center", padding: "36px 16px" }}>
+      {illustration ? (
+        <div style={{ marginBottom: 10 }}><IllustrationVide variante={illustration} /></div>
+      ) : (
+        <div style={{ width: 52, height: 52, borderRadius: 999, backgroundColor: "rgba(214,165,76,0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 14px" }}>
+          {Icone ? <Icone size={24} color="var(--gold)" /> : <EpiDeBle size={24} />}
+        </div>
+      )}
       <p style={{ fontWeight: 700, fontSize: 14.5, margin: 0, color: "var(--text-primary)" }}>{titre}</p>
       {description && <p style={{ fontSize: 12.5, color: "var(--text-secondary)", maxWidth: 280, margin: "6px auto 0", lineHeight: 1.5 }}>{description}</p>}
     </div>
@@ -1428,8 +1495,17 @@ function EcranConnexion({ theme, onBasculerTheme }) {
         minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
         backgroundImage: `linear-gradient(180deg, rgba(11,64,56,0.5) 0%, rgba(11,64,56,0.94) 100%), url(${BERGER_IMG})`,
         backgroundSize: "cover", backgroundPosition: "center",
+        position: "relative", overflow: "hidden",
       }}
     >
+      <div
+        style={{
+          position: "absolute", inset: "-20%", pointerEvents: "none",
+          background: "radial-gradient(circle at 30% 30%, rgba(214,165,76,0.14), transparent 55%), radial-gradient(circle at 75% 70%, rgba(143,203,168,0.10), transparent 50%)",
+          animation: "deriveDouce 16s ease-in-out infinite alternate",
+        }}
+      />
+      <style>{`@keyframes deriveDouce { 0% { transform: translate(-3%, -2%) scale(1); } 100% { transform: translate(3%, 2%) scale(1.08); } }`}</style>
       <div className="fade-in" style={{ position: "relative", width: "100%", maxWidth: mode === "inscription" ? 420 : 380, maxHeight: "92vh", overflowY: "auto", backgroundColor: "rgba(18,77,67,0.94)", backdropFilter: "blur(10px)", border: "1px solid rgba(239,203,119,0.22)", borderRadius: 20, padding: 28, boxShadow: "0 30px 70px rgba(0,0,0,0.45)" }}>
         {onBasculerTheme && (
           <div style={{ position: "absolute", top: 14, right: 14 }}>
@@ -3259,7 +3335,7 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
       )}
       <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 24 }}>
         {gemsDuParent.length === 0 ? (
-          <EtatVide icone={IconeMaison} titre="Aucun GEM créé pour l'instant" />
+          <EtatVide illustration="vase" titre="Aucun GEM créé pour l'instant" />
         ) : (
           gemsDuParent.map(g => {
             const nbMembresGem = membres.filter(m => m.gem_id === g.id).length;
@@ -4340,7 +4416,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
       <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 2 }}>Tous les membres</p>
         {membres.length === 0 ? (
-          <EtatVide icone={IconeGroupe} titre="Aucun membre pour l'instant" description="Ajoute le premier membre de ce GEM avec le formulaire ci-dessus." />
+          <EtatVide illustration="groupe" titre="Aucun membre pour l'instant" description="Ajoute le premier membre de ce GEM avec le formulaire ci-dessus." />
         ) : (
           membres.map(m => (
             <div key={m.id} id={`membre-${m.id}`}>
@@ -5011,7 +5087,7 @@ function PagePrediction({ membres, gems, tribus, departements, gemsAutorises, re
       </div>
 
       {resultatsAffiches.length === 0 ? (
-        <EtatVide icone={IconeValide} titre="Aucun signal de décrochage détecté" description="D'après les tendances actuelles, personne ne présente de risque notable." />
+        <EtatVide illustration="priere" titre="Aucun signal de décrochage détecté" description="D'après les tendances actuelles, personne ne présente de risque notable." />
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {resultatsAffiches.map(({ membre, score, niveau, raisons }) => {
@@ -7040,7 +7116,7 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
           </div>
         )
       ) : resultats.length === 0 ? (
-        <EtatVide icone={IconeRecherche} titre="Aucune personne trouvée" />
+        <EtatVide illustration="recherche" titre="Aucune personne trouvée" />
       ) : (
         <>
         <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -10083,7 +10159,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
 
               <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>Détail par GEM</p>
               {gems.length === 0 ? (
-                <EtatVide icone={IconeMaison} titre="Aucun GEM créé pour l'instant" />
+                <EtatVide illustration="vase" titre="Aucun GEM créé pour l'instant" />
               ) : (
                 <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   {gems.map(g => {
@@ -10543,7 +10619,7 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
               <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}><IconeCadenas size={15}/> Conversation avec {destinataireChoisi.nom}</p>
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16, maxHeight: 420, overflowY: "auto" }}>
                 {messagesPrives.filter(m => (m.de_compte_id === compte.id && m.destinataire_id === destinataireChoisi.id) || (m.de_compte_id === destinataireChoisi.id && m.destinataire_id === compte.id)).length === 0 ? (
-                  <EtatVide icone={IconeMessage} titre="Aucun message pour l'instant" description="Écris le premier message ci-dessous." />
+                  <EtatVide illustration="priere" titre="Aucun message pour l'instant" description="Écris le premier message ci-dessous." />
                 ) : (
                   messagesPrives
                     .filter(m => (m.de_compte_id === compte.id && m.destinataire_id === destinataireChoisi.id) || (m.de_compte_id === destinataireChoisi.id && m.destinataire_id === compte.id))
@@ -10791,7 +10867,7 @@ function PageCalendrier({ estPasteur, compte, onOuverture, cardStyle }) {
         <>
           <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>À venir</p>
           {aVenir.length === 0 ? (
-            <EtatVide icone={IconeCalendrier} titre="Aucun événement prévu" description="Crée le premier événement du calendrier avec le bouton ci-dessus." />
+            <EtatVide illustration="moisson" titre="Aucun événement prévu" description="Crée le premier événement du calendrier avec le bouton ci-dessus." />
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
               {aVenir.map(e => <CarteEvenement key={e.id} e={e} />)}
@@ -10886,7 +10962,7 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
   const iconesUtilisees = [...new Set(actif.cles.map(([, icone]) => icone))];
 
   return (
-    <div style={{ position: "relative", overflow: "hidden", backgroundColor: TEAL_900, border: `1px solid ${GOLD}`, borderRadius: 12, padding: 12, marginBottom: 20 }}>
+    <div style={{ position: "relative", overflow: "hidden", backgroundColor: "rgba(23,89,78,0.55)", backdropFilter: "blur(8px)", border: `1px solid ${GOLD}`, borderRadius: 14, padding: 14, marginBottom: 20, boxShadow: "0 10px 26px rgba(0,0,0,0.22)" }}>
       <div style={{ position: "absolute", bottom: -6, right: 4, pointerEvents: "none" }}><EpiDeBle size={44} opacity={0.1} /></div>
       <p style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>🏆 Classement — Top 3 du mois</p>
       <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
