@@ -66,6 +66,98 @@ function BarreProgression({ pourcentage, couleur, hauteur = 6 }) {
   );
 }
 
+// Enregistreur de message vocal — enregistre depuis le micro (limité à 90
+// secondes), permet d'écouter avant d'envoyer, ou d'annuler et recommencer.
+function EnregistreurVocal({ onEnregistrementPret, onAnnuler }) {
+  const [statut, setStatut] = useState("pret"); // pret | enregistrement | termine
+  const [duree, setDuree] = useState(0);
+  const [audioUrl, setAudioUrl] = useState(null);
+  const mediaRecorderRef = useRef(null);
+  const morceauxRef = useRef([]);
+  const intervalleRef = useRef(null);
+  const DUREE_MAX = 90;
+
+  useEffect(() => {
+    return () => {
+      if (intervalleRef.current) clearInterval(intervalleRef.current);
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
+        mediaRecorderRef.current.stream.getTracks().forEach(t => t.stop());
+      }
+    };
+  }, []);
+
+  async function demarrerEnregistrement() {
+    try {
+      const flux = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const recorder = new MediaRecorder(flux);
+      morceauxRef.current = [];
+      recorder.ondataavailable = e => morceauxRef.current.push(e.data);
+      recorder.onstop = () => {
+        const blob = new Blob(morceauxRef.current, { type: "audio/webm" });
+        const lecteur = new FileReader();
+        lecteur.onload = () => { setAudioUrl(lecteur.result); setStatut("termine"); };
+        lecteur.readAsDataURL(blob);
+        flux.getTracks().forEach(t => t.stop());
+      };
+      mediaRecorderRef.current = recorder;
+      recorder.start();
+      setStatut("enregistrement");
+      setDuree(0);
+      intervalleRef.current = setInterval(() => {
+        setDuree(d => {
+          if (d + 1 >= DUREE_MAX) { arreterEnregistrement(); return d; }
+          return d + 1;
+        });
+      }, 1000);
+    } catch {
+      toast("Impossible d'accéder au microphone — vérifie les autorisations.", "erreur");
+    }
+  }
+
+  function arreterEnregistrement() {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") mediaRecorderRef.current.stop();
+    if (intervalleRef.current) clearInterval(intervalleRef.current);
+  }
+
+  function recommencer() {
+    setStatut("pret"); setAudioUrl(null); setDuree(0);
+  }
+
+  function formaterDuree(s) {
+    const min = Math.floor(s / 60), sec = s % 60;
+    return `${min}:${sec.toString().padStart(2, "0")}`;
+  }
+
+  return (
+    <div style={{ backgroundColor: TEAL_900, border: `1px solid ${TEAL_600}`, borderRadius: 12, padding: 14, display: "flex", flexDirection: "column", gap: 10 }}>
+      {statut === "pret" && (
+        <button className="btn-app" onClick={demarrerEnregistrement} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "12px 0", borderRadius: 10, backgroundColor: RED_LIGHT, color: "#fff", border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
+          <IconeMicro size={16} /> Enregistrer un message vocal
+        </button>
+      )}
+      {statut === "enregistrement" && (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <span style={{ width: 10, height: 10, borderRadius: 999, backgroundColor: RED_LIGHT, animation: "cocher 1s ease-in-out infinite" }} />
+            <span style={{ fontSize: 13, fontWeight: 700 }}>{formaterDuree(duree)} / {formaterDuree(DUREE_MAX)}</span>
+          </div>
+          <button className="btn-app" onClick={arreterEnregistrement} style={{ padding: "8px 16px", borderRadius: 8, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Arrêter</button>
+        </div>
+      )}
+      {statut === "termine" && audioUrl && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <audio controls src={audioUrl} style={{ width: "100%", height: 36 }} />
+          <div style={{ display: "flex", gap: 8 }}>
+            <button className="btn-app" onClick={() => onEnregistrementPret(audioUrl)} style={{ flex: 1, padding: "10px 0", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, var(--gold-light), var(--gold))", color: TEAL_950, border: "none", fontWeight: 700, fontSize: 12, cursor: "pointer" }}>Envoyer</button>
+            <button className="btn-app" onClick={recommencer} style={{ padding: "10px 14px", borderRadius: 8, backgroundColor: "transparent", color: "var(--text-secondary)", border: `1px solid ${TEAL_600}`, fontWeight: 600, fontSize: 12, cursor: "pointer" }}>Recommencer</button>
+          </div>
+        </div>
+      )}
+      <button onClick={onAnnuler} style={{ background: "none", border: "none", color: "var(--text-secondary)", fontSize: 11, cursor: "pointer", textAlign: "center" }}>Annuler</button>
+    </div>
+  );
+}
+
 function CarrouselImages({ evenements }) {
   const [index, setIndex] = useState(0);
   const debutGlissement = useRef(null);
@@ -479,6 +571,14 @@ function IconeFusion({ size = 16, color = "currentColor" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <path d="M18 7c0-1.1-.9-2-2-2h-2a2 2 0 0 0-2 2v10a2 2 0 0 0 2 2h2c1.1 0 2-.9 2-2" /><path d="M6 7c0-1.1.9-2 2-2h2a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H8c-1.1 0-2-.9-2-2" /><path d="M12 12h6" /><path d="M6 12h6" />
+    </svg>
+  );
+}
+
+function IconeMicro({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" /><path d="M19 10v1a7 7 0 0 1-14 0v-1" /><line x1="12" y1="19" x2="12" y2="22" /><line x1="8" y1="22" x2="16" y2="22" />
     </svg>
   );
 }
@@ -10197,6 +10297,7 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
   const [destinataireChoisi, setDestinataireChoisi] = useState(null);
   const [rechercheDestinataire, setRechercheDestinataire] = useState("");
   const [textePrive, setTextePrive] = useState("");
+  const [enregistreurOuvert, setEnregistreurOuvert] = useState(false);
 
   useEffect(() => {
     chargerTout();
@@ -10224,6 +10325,13 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
     if (!textePrive.trim() || !destinataireChoisi) return;
     const { error } = await supabase.from("messages_directs").insert({ texte: textePrive.trim(), de_compte_id: compte.id, destinataire_id: destinataireChoisi.id });
     if (!error) { setTextePrive(""); chargerMessagesPrives(); }
+  }
+
+  async function envoyerMessageVocal(audioUrl) {
+    setEnregistreurOuvert(false);
+    const { error } = await supabase.from("messages_directs").insert({ texte: "", audio: audioUrl, de_compte_id: compte.id, destinataire_id: destinataireChoisi.id });
+    if (!error) chargerMessagesPrives();
+    else toast("Erreur d'envoi du message vocal : " + error.message, "erreur");
   }
 
   async function chargerTout() {
@@ -10441,28 +10549,47 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
                     .filter(m => (m.de_compte_id === compte.id && m.destinataire_id === destinataireChoisi.id) || (m.de_compte_id === destinataireChoisi.id && m.destinataire_id === compte.id))
                     .map(m => (
                       <div key={m.id} style={{ alignSelf: m.de_compte_id === compte.id ? "flex-end" : "flex-start", maxWidth: "80%", backgroundColor: m.de_compte_id === compte.id ? "rgba(214,165,76,0.15)" : TEAL_900, border: `1px solid ${m.de_compte_id === compte.id ? "rgba(214,165,76,0.4)" : TEAL_700}`, borderRadius: 12, padding: "10px 14px" }}>
-                        <p style={{ whiteSpace: "pre-wrap", fontSize: 13, margin: 0 }}>{m.texte}</p>
+                        {m.audio ? (
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <IconeMicro size={14} color={GOLD_LIGHT} />
+                            <audio controls src={m.audio} style={{ height: 32, maxWidth: 220 }} />
+                          </div>
+                        ) : (
+                          <p style={{ whiteSpace: "pre-wrap", fontSize: 13, margin: 0 }}>{m.texte}</p>
+                        )}
                         <p style={{ fontSize: 10, color: "var(--text-secondary)", marginTop: 4, marginBottom: 0 }}>{formaterDate(m.date)}</p>
                       </div>
                     ))
                 )}
               </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input
-                  value={textePrive}
-                  onChange={e => setTextePrive(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter") envoyerMessagePrive(); }}
-                  placeholder="Écris ton message..."
-                  style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}
-                />
-                <button
-                  className="btn-app"
-                  onClick={envoyerMessagePrive}
-                  style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, var(--gold-light), var(--gold))", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer" }}
-                >
-                  Envoyer
-                </button>
-              </div>
+              {enregistreurOuvert ? (
+                <EnregistreurVocal onEnregistrementPret={envoyerMessageVocal} onAnnuler={() => setEnregistreurOuvert(false)} />
+              ) : (
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input
+                    value={textePrive}
+                    onChange={e => setTextePrive(e.target.value)}
+                    onKeyDown={e => { if (e.key === "Enter") envoyerMessagePrive(); }}
+                    placeholder="Écris ton message..."
+                    style={{ flex: 1, padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}
+                  />
+                  <button
+                    className="btn-app"
+                    onClick={() => setEnregistreurOuvert(true)}
+                    title="Message vocal"
+                    style={{ padding: "10px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, cursor: "pointer" }}
+                  >
+                    <IconeMicro size={16} />
+                  </button>
+                  <button
+                    className="btn-app"
+                    onClick={envoyerMessagePrive}
+                    style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, var(--gold-light), var(--gold))", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer" }}
+                  >
+                    Envoyer
+                  </button>
+                </div>
+              )}
             </>
           )}
         </div>
