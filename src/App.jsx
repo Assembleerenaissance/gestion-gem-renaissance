@@ -3878,28 +3878,28 @@ function genererAfficheImage({ titre, sousTitre, corps, piedDePage, nomFichier }
 
   // Fond dégradé teal
   const degrade = ctx.createLinearGradient(0, 0, 0, hauteur);
-  degrade.addColorStop(0, "var(--bg-base)");
-  degrade.addColorStop(1, "var(--bg-surface)");
+  degrade.addColorStop(0, "#0B4038");
+  degrade.addColorStop(1, "#124D43");
   ctx.fillStyle = degrade;
   ctx.fillRect(0, 0, largeur, hauteur);
 
   // Bande dorée en haut
-  ctx.fillStyle = "var(--gold)";
+  ctx.fillStyle = "#D6A54C";
   ctx.fillRect(0, 0, largeur, 14);
 
   function dessinerLogoEtTexte() {
     ctx.textAlign = "center";
 
     // Nom de l'église
-    ctx.fillStyle = "var(--gold-light)";
+    ctx.fillStyle = "#EFCB77";
     ctx.font = "bold 34px Arial";
     ctx.fillText("ASSEMBLÉE RENAISSANCE", largeur / 2, 130);
     ctx.font = "24px Arial";
-    ctx.fillStyle = "var(--text-secondary-2)";
+    ctx.fillStyle = "#D8E8E1";
     ctx.fillText("Bouaflé", largeur / 2, 168);
 
     // Ligne de séparation
-    ctx.strokeStyle = "var(--gold)";
+    ctx.strokeStyle = "#D6A54C";
     ctx.lineWidth = 3;
     ctx.beginPath();
     ctx.moveTo(largeur / 2 - 80, 200);
@@ -3907,7 +3907,7 @@ function genererAfficheImage({ titre, sousTitre, corps, piedDePage, nomFichier }
     ctx.stroke();
 
     // Titre principal (retour à la ligne automatique)
-    ctx.fillStyle = "var(--text-primary)";
+    ctx.fillStyle = "#F6F1E4";
     ctx.font = "bold 56px Arial";
     let y = 300;
     const lignesTitre = decouperTexte(ctx, titre, largeur - 160);
@@ -3917,7 +3917,7 @@ function genererAfficheImage({ titre, sousTitre, corps, piedDePage, nomFichier }
     if (sousTitre) {
       y += 20;
       ctx.font = "32px Arial";
-      ctx.fillStyle = "var(--gold)";
+      ctx.fillStyle = "#D6A54C";
       const lignesSousTitre = decouperTexte(ctx, sousTitre, largeur - 160);
       lignesSousTitre.forEach(ligne => { ctx.fillText(ligne, largeur / 2, y); y += 42; });
     }
@@ -3926,18 +3926,18 @@ function genererAfficheImage({ titre, sousTitre, corps, piedDePage, nomFichier }
     if (corps) {
       y += 50;
       ctx.font = "30px Arial";
-      ctx.fillStyle = "var(--text-primary)";
+      ctx.fillStyle = "#F6F1E4";
       const lignesCorps = decouperTexte(ctx, corps, largeur - 200);
       lignesCorps.slice(0, 12).forEach(ligne => { ctx.fillText(ligne, largeur / 2, y); y += 42; });
     }
 
     // Pied de page
     ctx.font = "italic 26px Arial";
-    ctx.fillStyle = "var(--text-secondary)";
+    ctx.fillStyle = "#B9D3CB";
     ctx.fillText(piedDePage || "Pasteur Dimitri Koffi", largeur / 2, hauteur - 60);
 
     // Bande dorée en bas
-    ctx.fillStyle = "var(--gold)";
+    ctx.fillStyle = "#D6A54C";
     ctx.fillRect(0, hauteur - 14, largeur, 14);
 
     // Déclenche le téléchargement
