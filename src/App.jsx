@@ -4288,6 +4288,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
   const [apercuImport, setApercuImport] = useState(null);
   const [importEnCours, setImportEnCours] = useState(false);
   const [nouveauConverti, setNouveauConverti] = useState(false);
+  const [formulaireAjoutOuvert, setFormulaireAjoutOuvert] = useState(false);
   const [erreur, setErreur] = useState("");
   const [dimancheId, setDimancheId] = useState(null);
   const [presences, setPresences] = useState({}); // { membre_id: true/false }
@@ -4480,7 +4481,10 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
     setDoublonDetecte(null);
     const { error } = await supabase.from("membres").insert({ gem_id: gem.id, nom: nom.trim(), telephone: telephone.trim(), nouveau_converti: nouveauConverti, etape_conversion: "accueil", photo: photo || null, date_naissance: dateNaissance || null, quartier: quartier.trim() || null });
     if (error) { setErreur(error.message); return; }
+    const nomAjoute = nom.trim();
     setNom(""); setTelephone("+225 "); setNouveauConverti(false); setPhoto(null); setDateNaissance(""); setQuartier("");
+    setFormulaireAjoutOuvert(false);
+    toast(`✓ ${nomAjoute} a été ajouté(e) au GEM.`, "succes");
     onMembreAjoute();
   }
 
@@ -4581,13 +4585,24 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
       ) : (
         <>
       <div style={{ ...cardStyle, marginBottom: 20 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
-          <p style={{ fontWeight: 600, fontSize: 14, margin: 0 }}>Ajouter un membre</p>
-          <label style={{ fontSize: 11, fontWeight: 700, color: GOLD_LIGHT, cursor: "pointer", border: `1px solid ${GOLD_LIGHT}`, borderRadius: 8, padding: "6px 10px", whiteSpace: "nowrap" }}>
-            📂 Importer depuis un fichier (CSV)
-            <input type="file" accept=".csv,text/csv" onChange={surChoisirFichierImport} style={{ display: "none" }} />
-          </label>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, marginBottom: formulaireAjoutOuvert ? 10 : 0 }}>
+          <button
+            className="btn-app"
+            onClick={() => setFormulaireAjoutOuvert(v => !v)}
+            style={{ padding: 0, background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 8, fontWeight: 600, fontSize: 14, color: CREAM }}
+          >
+            <span style={{ display: "inline-block", transition: "transform 0.25s cubic-bezier(0.22,1,0.36,1)", transform: formulaireAjoutOuvert ? "rotate(45deg)" : "rotate(0deg)", fontSize: 18, color: GOLD_LIGHT, lineHeight: 1 }}>+</span>
+            Ajouter un membre
+          </button>
+          {formulaireAjoutOuvert && (
+            <label style={{ fontSize: 11, fontWeight: 700, color: GOLD_LIGHT, cursor: "pointer", border: `1px solid ${GOLD_LIGHT}`, borderRadius: 8, padding: "6px 10px", whiteSpace: "nowrap" }}>
+              📂 Importer depuis un fichier (CSV)
+              <input type="file" accept=".csv,text/csv" onChange={surChoisirFichierImport} style={{ display: "none" }} />
+            </label>
+          )}
         </div>
+        {formulaireAjoutOuvert && (
+          <div className="fade-in">
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           {photo && <img src={photo} alt="" style={{ width: 40, height: 40, borderRadius: 999, objectFit: "cover", border: `1px solid ${GOLD}`, flexShrink: 0 }} />}
           <label style={{ fontSize: 11, color: GOLD_LIGHT, cursor: "pointer", border: `1px solid ${TEAL_600}`, borderRadius: 8, padding: "8px 10px", whiteSpace: "nowrap" }}>
@@ -4607,6 +4622,8 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
           Nouveau converti — suivre son parcours d'intégration
         </label>
         {erreur && <p style={{ color: RED_LIGHT, fontSize: 12, marginTop: 8 }}>{erreur}</p>}
+          </div>
+        )}
       </div>
 
       <div style={{ ...cardStyle, marginBottom: 20 }}>
