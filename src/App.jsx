@@ -6809,13 +6809,12 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
           {courbeHebdo.length >= 2 && (
             <div style={{ ...cardStyle, marginBottom: 20 }}>
               <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>📈 Évolution du taux d'absence — semaine après semaine</p>
-              <GraphiqueBarres
+              <GraphiqueCourbe
+                couleur="var(--red)"
                 donnees={courbeHebdo.map(c => ({
                   libelle: new Date(c.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }),
                   valeur: c.taux,
                   texteAffiche: `${c.taux}%`,
-                  couleur: c.taux >= 40 ? RED_LIGHT : GOLD_LIGHT,
-                  infoBulle: `${new Date(c.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })} : ${c.taux}% d'absence`,
                 }))}
               />
             </div>
@@ -6903,15 +6902,14 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
             {courbeMensuelle.length >= 2 ? (
               <div style={{ ...cardStyle, marginBottom: 20 }}>
                 <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>📈 Évolution du taux d'absence — mois après mois</p>
-                <GraphiqueBarres
+                <GraphiqueCourbe
+                  couleur="var(--red)"
                   donnees={courbeMensuelle.map(c => {
                     const [annee, mois] = c.mois.split("-");
                     return {
                       libelle: new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "short" }),
                       valeur: c.taux,
                       texteAffiche: `${c.taux}%`,
-                      couleur: c.taux >= 40 ? RED_LIGHT : GOLD_LIGHT,
-                      infoBulle: `${new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })} : ${c.taux}% d'absence`,
                     };
                   })}
                 />
@@ -6936,13 +6934,12 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
             {courbeAnnuelle.length >= 2 ? (
               <div style={{ ...cardStyle, marginBottom: 20 }}>
                 <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>📈 Évolution du taux d'absence — année après année</p>
-                <GraphiqueBarres
+                <GraphiqueCourbe
+                  couleur="var(--red)"
                   donnees={courbeAnnuelle.map(c => ({
                     libelle: c.annee,
                     valeur: c.taux,
                     texteAffiche: `${c.taux}%`,
-                    couleur: c.taux >= 40 ? RED_LIGHT : GOLD_LIGHT,
-                    infoBulle: `${c.annee} : ${c.taux}% d'absence`,
                   }))}
                 />
               </div>
@@ -10548,12 +10545,12 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                 <p style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: 24 }}>Aucun dimanche pointé pour ce mois.</p>
               ) : (
                 <div style={{ ...cardStyle, marginBottom: 28 }}>
-                  <GraphiqueBarres
+                  <GraphiqueCourbe
+                    couleur="var(--green)"
                     donnees={evolutionHebdoDuMois.map(d => ({
                       libelle: new Date(d.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }),
                       valeur: d.taux,
                       texteAffiche: `${d.taux}%`,
-                      infoBulle: `${new Date(d.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })} : ${d.taux}% de présence`,
                     }))}
                     hauteur={130}
                   />
@@ -11311,6 +11308,110 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
           </span>
         ))}
       </div>
+    </div>
+  );
+}
+
+// Graphique en courbe — tracé lisse (courbe de Bézier), animation de dessin
+// progressif, et un effet "verni" (dégradé brillant sous la courbe) pour un
+// rendu plus riche que de simples barres.
+function GraphiqueCourbe({ donnees, hauteur = 160, couleur = "var(--gold)" }) {
+  const [dessine, setDessine] = useState(false);
+  const cheminRef = useRef(null);
+  const [longueurChemin, setLongueurChemin] = useState(0);
+  const idDegrade = useRef(`degrade-courbe-${Math.random().toString(36).slice(2)}`).current;
+
+  useEffect(() => {
+    if (cheminRef.current) setLongueurChemin(cheminRef.current.getTotalLength());
+    const id = requestAnimationFrame(() => setDessine(true));
+    return () => cancelAnimationFrame(id);
+  }, [donnees]);
+
+  if (!donnees || donnees.length === 0) return null;
+
+  const largeurVue = 600, hauteurVue = hauteur;
+  const marge = 24;
+  const max = Math.max(1, ...donnees.map(d => d.valeur));
+  const min = Math.min(0, ...donnees.map(d => d.valeur));
+  const etendue = Math.max(1, max - min);
+  const pas = donnees.length > 1 ? (largeurVue - marge * 2) / (donnees.length - 1) : 0;
+
+  const points = donnees.map((d, i) => ({
+    x: marge + i * pas,
+    y: marge + (hauteurVue - marge * 2) * (1 - (d.valeur - min) / etendue),
+    ...d,
+  }));
+
+  // Construit une courbe lisse (Catmull-Rom → Bézier) passant par tous les points
+  function cheminLisse(pts) {
+    if (pts.length < 2) return "";
+    let d = `M ${pts[0].x} ${pts[0].y}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const p0 = pts[i - 1] || pts[i];
+      const p1 = pts[i];
+      const p2 = pts[i + 1];
+      const p3 = pts[i + 2] || p2;
+      const c1x = p1.x + (p2.x - p0.x) / 6, c1y = p1.y + (p2.y - p0.y) / 6;
+      const c2x = p2.x - (p3.x - p1.x) / 6, c2y = p2.y - (p3.y - p1.y) / 6;
+      d += ` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2.x} ${p2.y}`;
+    }
+    return d;
+  }
+
+  const chemin = cheminLisse(points);
+  const cheminZone = `${chemin} L ${points[points.length - 1].x} ${hauteurVue - marge} L ${points[0].x} ${hauteurVue - marge} Z`;
+
+  return (
+    <div style={{ width: "100%", overflowX: "auto" }}>
+      <svg viewBox={`0 0 ${largeurVue} ${hauteurVue}`} style={{ width: "100%", minWidth: 320, height: hauteurVue, display: "block" }}>
+        <defs>
+          <linearGradient id={idDegrade} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={couleur} stopOpacity="0.35" />
+            <stop offset="100%" stopColor={couleur} stopOpacity="0" />
+          </linearGradient>
+          <linearGradient id={`${idDegrade}-verni`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#ffffff" stopOpacity="0.28" />
+            <stop offset="35%" stopColor="#ffffff" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+
+        {[0.25, 0.5, 0.75].map(l => (
+          <line key={l} x1={marge} x2={largeurVue - marge} y1={marge + (hauteurVue - marge * 2) * l} y2={marge + (hauteurVue - marge * 2) * l} stroke="rgba(239,203,119,0.1)" strokeWidth="1" />
+        ))}
+
+        {/* Zone sous la courbe, remplie en fondu */}
+        <path d={cheminZone} fill={`url(#${idDegrade})`} style={{ opacity: dessine ? 1 : 0, transition: "opacity 0.8s ease 0.4s" }} />
+
+        {/* La courbe elle-même — se dessine progressivement de gauche à droite */}
+        <path
+          ref={cheminRef}
+          d={chemin} fill="none" stroke={couleur} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+          style={{
+            strokeDasharray: longueurChemin, strokeDashoffset: dessine ? 0 : longueurChemin,
+            transition: "stroke-dashoffset 1.1s cubic-bezier(0.22,1,0.36,1)",
+            filter: `drop-shadow(0 3px 6px ${couleur}55)`,
+          }}
+        />
+
+        {/* Effet "verni" — un reflet brillant qui glisse sous la courbe */}
+        <path d={cheminZone} fill={`url(#${idDegrade}-verni)`} style={{ opacity: dessine ? 1 : 0, transition: "opacity 1s ease 0.6s" }} />
+
+        {/* Points, avec un léger effet "pop" en cascade */}
+        {points.map((p, i) => (
+          <g key={i} style={{ opacity: dessine ? 1 : 0, transform: dessine ? "scale(1)" : "scale(0)", transformOrigin: `${p.x}px ${p.y}px`, transition: `opacity 0.3s ease ${0.3 + i * 0.06}s, transform 0.4s cubic-bezier(0.34,1.56,0.64,1) ${0.3 + i * 0.06}s` }}>
+            <circle cx={p.x} cy={p.y} r="8" fill={couleur} opacity="0.18" />
+            <circle cx={p.x} cy={p.y} r="4" fill={couleur} stroke="var(--bg-surface)" strokeWidth="1.5" />
+            <title>{`${p.libelle} : ${p.texteAffiche ?? p.valeur}`}</title>
+          </g>
+        ))}
+
+        {/* Étiquettes */}
+        {points.map((p, i) => (
+          (i === 0 || i === points.length - 1 || i % Math.ceil(points.length / 6) === 0) && (
+            <text key={i} x={p.x} y={hauteurVue - 6} textAnchor="middle" fontSize="9" fill="var(--text-secondary)">{p.libelle}</text>
+          )
+        ))}
+      </svg>
     </div>
   );
 }
