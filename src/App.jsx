@@ -626,6 +626,14 @@ function IconeAlerte({ size = 16, color = "currentColor" }) {
     </svg>
   );
 }
+function IconeCouronne({ size = 16, color = "currentColor" }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill={color} stroke="none">
+      <path d="M2 18h20l-1.5-9-4.5 4-4-6-4 6-4.5-4L2 18Z" />
+    </svg>
+  );
+}
+
 function IconeTrophee({ size = 16, color = "currentColor" }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -11228,8 +11236,8 @@ function GraphiqueCroissance({ donnees, hauteur = 160 }) {
 function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
   const [index, setIndex] = useState(0);
   const debutGlissement = useRef(null);
-  const medailles = ["🥇", "🥈", "🥉"];
-  const hauteursPodium = [64, 84, 48]; // 2e, 1er, 3e — ordre visuel du podium
+  const hauteursPodium = [58, 78, 42]; // 2e, 1er, 3e — ordre visuel du podium
+  const couleursMedaille = ["#E8C15A", "#C9CDD6", "#D69A5C"]; // or, argent, bronze — 1er/2e/3e
 
   const onglets = [
     { cle: "gem", label: "GEM", items: gemDuMois, cles: [["tauxRapport", "📋"], ["tauxPresence", "📅"], ["nombreActivites", "🙏"]] },
@@ -11244,6 +11252,10 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
   function afficherValeur(cle, valeur) {
     if (valeur === null || valeur === undefined) return null;
     return cle === "nombreActivites" ? `${valeur}` : `${valeur}%`;
+  }
+
+  function initiales(nom) {
+    return (nom || "?").split(" ").filter(Boolean).slice(0, 2).map(p => p[0]).join("").toUpperCase();
   }
 
   function surDebutGlissement(e) { debutGlissement.current = e.touches[0].clientX; }
@@ -11265,43 +11277,81 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
     <div
       onTouchStart={surDebutGlissement}
       onTouchEnd={surFinGlissement}
-      style={{ position: "relative", overflow: "hidden", backgroundColor: "rgba(23,89,78,0.55)", backdropFilter: "blur(8px)", border: `1px solid ${GOLD}`, borderRadius: 16, padding: "16px 14px", marginBottom: 20, boxShadow: "0 10px 26px rgba(0,0,0,0.22)" }}
+      style={{ position: "relative", overflow: "hidden", background: "linear-gradient(160deg, rgba(23,89,78,0.7), rgba(11,64,56,0.75))", backdropFilter: "blur(10px)", border: `1px solid ${GOLD}66`, borderRadius: 18, padding: "20px 16px 16px", marginBottom: 20, boxShadow: "0 16px 36px rgba(0,0,0,0.3)" }}
     >
-      <div style={{ position: "absolute", bottom: -6, right: 4, pointerEvents: "none" }}><EpiDeBle size={44} opacity={0.1} /></div>
+      {/* Halo doré derrière le 1er de classe — donne de la profondeur */}
+      <div style={{ position: "absolute", top: "18%", left: "50%", transform: "translateX(-50%)", width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(214,165,76,0.28), transparent 70%)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", bottom: -8, right: 6, pointerEvents: "none" }}><EpiDeBle size={40} opacity={0.1} /></div>
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-        <p style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, textTransform: "uppercase", letterSpacing: 0.5, margin: 0, display: "flex", alignItems: "center", gap: 6 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, position: "relative" }}>
+        <p style={{ fontSize: 11.5, fontWeight: 700, color: GOLD_LIGHT, textTransform: "uppercase", letterSpacing: 1, margin: 0, display: "flex", alignItems: "center", gap: 6 }}>
           <IconeTrophee size={14} /> Top 3 {actif.label} — ce mois
         </p>
         {disponibles.length > 1 && (
           <div style={{ display: "flex", gap: 5 }}>
             {disponibles.map((o, i) => (
-              <button key={o.cle} onClick={() => setIndex(i)} style={{ width: actif.cle === o.cle ? 16 : 6, height: 6, borderRadius: 999, border: "none", cursor: "pointer", backgroundColor: actif.cle === o.cle ? GOLD : "rgba(255,255,255,0.3)", padding: 0, transition: "width 0.3s ease" }} />
+              <button key={o.cle} onClick={() => setIndex(i)} style={{ width: actif.cle === o.cle ? 18 : 6, height: 6, borderRadius: 999, border: "none", cursor: "pointer", backgroundColor: actif.cle === o.cle ? GOLD : "rgba(255,255,255,0.28)", padding: 0, transition: "width 0.3s ease" }} />
             ))}
           </div>
         )}
       </div>
 
       {/* ---------- Podium visuel ---------- */}
-      <div key={actif.cle} className="fade-in" style={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 8, marginBottom: 16 }}>
+      <div key={actif.cle} className="fade-in" style={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 10, marginBottom: 18, position: "relative" }}>
         {ordrePodium.map((item, position) => {
           if (!item) return <div key={position} style={{ flex: 1 }} />;
           const iReel = indicesReels[position];
+          const estPremier = iReel === 0;
+          const couleurMedaille = couleursMedaille[iReel];
           return (
-            <div key={item.gemId || item.id || iReel} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", maxWidth: 110 }}>
-              <span style={{ fontSize: iReel === 0 ? 26 : 20, marginBottom: 4 }}>{medailles[iReel]}</span>
-              <p style={{ fontSize: iReel === 0 ? 12.5 : 11, fontWeight: 700, color: CREAM, textAlign: "center", margin: "0 0 6px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>{item.nom}</p>
+            <div
+              key={item.gemId || item.id || iReel}
+              style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", maxWidth: 118, opacity: 0, animation: `entreeCascade 0.5s cubic-bezier(0.22,1,0.36,1) ${0.15 + position * 0.12}s forwards` }}
+            >
+              {estPremier && (
+                <span style={{ marginBottom: 2, filter: "drop-shadow(0 2px 4px rgba(232,193,90,0.5))" }}>
+                  <IconeCouronne size={20} color="#E8C15A" />
+                </span>
+              )}
+
+              {/* Avatar en initiales, avec bordure médaille */}
+              <div style={{ position: "relative", marginBottom: 6 }}>
+                <div
+                  style={{
+                    width: estPremier ? 58 : 46, height: estPremier ? 58 : 46, borderRadius: "50%",
+                    background: `linear-gradient(145deg, ${couleurMedaille}, ${couleurMedaille}99)`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    border: `3px solid ${estPremier ? "#F6F1E4" : "rgba(255,255,255,0.5)"}`,
+                    boxShadow: estPremier ? `0 6px 16px ${couleurMedaille}80` : "0 3px 8px rgba(0,0,0,0.25)",
+                  }}
+                >
+                  <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: estPremier ? 20 : 16, color: "#1A2E2A" }}>{initiales(item.nom)}</span>
+                </div>
+                <div style={{ position: "absolute", bottom: -4, right: -4, width: 22, height: 22, borderRadius: "50%", backgroundColor: couleurMedaille, border: "2px solid var(--bg-surface)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "#1A2E2A" }}>
+                  {iReel + 1}
+                </div>
+              </div>
+
+              <p className="titre-moisson" style={{ fontSize: estPremier ? 13.5 : 11.5, fontWeight: 600, color: CREAM, textAlign: "center", margin: "0 0 4px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>{item.nom}</p>
+
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 3, justifyContent: "center", marginBottom: 8, minHeight: 14 }}>
+                {actif.cles.map(([cle, icone]) => {
+                  const v = afficherValeur(cle, item[cle]);
+                  return v !== null ? <span key={cle} style={{ fontSize: 9, color: "var(--text-secondary-2)", whiteSpace: "nowrap" }}>{icone}{v}</span> : null;
+                })}
+              </div>
+
+              {/* Marche du podium — dégradé + reflet brillant en haut */}
               <div
                 style={{
-                  width: "100%", height: hauteursPodium[position], borderRadius: "10px 10px 0 0",
-                  background: iReel === 0 ? "linear-gradient(180deg, var(--gold-light), var(--gold))" : "linear-gradient(180deg, rgba(214,165,76,0.35), rgba(214,165,76,0.12))",
-                  display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: 6,
-                  boxShadow: iReel === 0 ? "0 6px 18px rgba(214,165,76,0.35)" : "none",
+                  position: "relative", width: "100%", height: hauteursPodium[position], borderRadius: "12px 12px 4px 4px", overflow: "hidden",
+                  background: estPremier
+                    ? "linear-gradient(180deg, #F0C669, #D6A54C 60%, #B8863A)"
+                    : "linear-gradient(180deg, rgba(214,165,76,0.4), rgba(214,165,76,0.15))",
+                  boxShadow: estPremier ? "0 8px 20px rgba(214,165,76,0.4)" : "inset 0 1px 0 rgba(255,255,255,0.08)",
                 }}
               >
-                <span style={{ fontSize: 11, fontWeight: 700, color: iReel === 0 ? TEAL_950 : GOLD_LIGHT }}>
-                  {afficherValeur(actif.cles[0][0], item[actif.cles[0][0]])}
-                </span>
+                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "45%", background: "linear-gradient(180deg, rgba(255,255,255,0.35), transparent)" }} />
               </div>
             </div>
           );
@@ -11314,7 +11364,7 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
         </p>
       )}
 
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", paddingTop: 10, borderTop: `1px solid ${TEAL_800}` }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
         {actif.cles.map(([, icone]) => (
           <span key={icone} style={{ fontSize: 10, color: "var(--text-secondary)" }}>
             {icone} {{ "📋": "Rapports remplis", "📅": "Présence au culte", "🌱": "Suivi des nouveaux", "🙏": "Activités effectuées" }[icone]}
