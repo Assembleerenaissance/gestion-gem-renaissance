@@ -335,6 +335,59 @@ function ParcoursBienvenue({ compte, onTermine }) {
   );
 }
 
+function PageIdentite({ cardStyle }) {
+  const sections = [
+    {
+      numero: "1.1", titre: "Notre RÊVE", couleur: "#3F9C93",
+      citation: "LE RÈGNE ET LA GLOIRE DE DIEU SUR TOUTE LA TERRE",
+      texte: "Ce verset le traduit bien : « Il ne se fera ni tort ni dommage, sur toute ma montagne sainte ; car la terre sera remplie de la connaissance de l'Éternel, comme le fond de la mer par les eaux qui le couvrent. »",
+      reference: "Ésaïe 11:9",
+    },
+    {
+      numero: "1.2", titre: "Notre VISION", couleur: GOLD,
+      citation: "Par Christ, nous faisons des nations des Vases d'Honneur (des intimes de Dieu) pour la manifestation de son règne.",
+      texte: "Tout au long de cette décennie, nous marcherons dans cette vision.",
+      reference: "Matthieu 28:19, 2 Timothée 2:20",
+    },
+    {
+      numero: "1.3", titre: "Notre MISSION", couleur: "#C1585C",
+      citation: "Faire rentrer la Dîme (10%) des âmes de toute famille dans la maison de Dieu ; Moissonner les 10% des âmes de votre territoire.",
+      texte: "Dans cette décennie de grande moisson, voici notre mission.",
+      reference: "Lévitique 27:30, 32 · Exode 34:19",
+    },
+  ];
+
+  return (
+    <div>
+      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4, display: "flex", alignItems: "center", gap: 10 }}>
+        <IconeGoutte size={20} color={GOLD} /> Notre identité
+      </h2>
+      <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 24 }}>Le Rêve, la Vision et la Mission des Églises Vases d'Honneur — la décennie 2020-2030, celle de la Grande Moisson.</p>
+
+      <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        {sections.map(s => (
+          <div key={s.numero} style={{ ...cardStyle, borderLeft: `4px solid ${s.couleur}`, position: "relative", overflow: "hidden" }}>
+            <div style={{ position: "absolute", top: -14, left: -14, pointerEvents: "none" }}><IconeGoutte size={80} color={s.couleur} opacity={0.08} /></div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10 }}>
+              <span className="titre-moisson" style={{ fontSize: 26, fontWeight: 700, color: s.couleur }}>{s.numero}</span>
+              <span style={{ fontSize: 13, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: 0.5 }}>{s.titre}</span>
+            </div>
+            <p className="titre-moisson" style={{ fontSize: 16, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.5, marginBottom: 10 }}>« {s.citation} »</p>
+            <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6, marginBottom: 10 }}>{s.texte}</p>
+            <p style={{ fontSize: 12, fontWeight: 700, color: s.couleur }}>{s.reference}</p>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ ...cardStyle, marginTop: 20, textAlign: "center" }}>
+        <p style={{ fontSize: 13, color: "var(--text-secondary)", lineHeight: 1.6, fontStyle: "italic" }}>
+          « Nous entrons dans une saison où Dieu va travailler et agir de façon extraordinaire et particulière — c'est la décennie de la GRANDE MOISSON. »
+        </p>
+      </div>
+    </div>
+  );
+}
+
 function PageJournalAudit({ cardStyle }) {
   const [journal, setJournal] = useState([]);
   const [chargement, setChargement] = useState(true);
@@ -475,6 +528,14 @@ function EtatVide({ icone: Icone, titre, description, illustration }) {
       <p style={{ fontWeight: 700, fontSize: 14.5, margin: 0, color: "var(--text-primary)" }}>{titre}</p>
       {description && <p style={{ fontSize: 12.5, color: "var(--text-secondary)", maxWidth: 280, margin: "6px auto 0", lineHeight: 1.5 }}>{description}</p>}
     </div>
+  );
+}
+
+function IconeGoutte({ size = 22, color = GOLD, opacity = 1 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 30" fill="none" style={{ opacity, flexShrink: 0 }}>
+      <path d="M12 2C12 2 3 14 3 20a9 9 0 0 0 18 0c0-6-9-18-9-18Z" stroke={color} strokeWidth="2" fill="none" />
+    </svg>
   );
 }
 
@@ -2165,6 +2226,9 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
  onClick={() => { setPage("mon_compte"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "mon_compte" ? TEAL_700 : "transparent", color: page === "mon_compte" ? GOLD_LIGHT : "var(--text-secondary-2)" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><IconePersonne size={15} /> Mon compte</span></button>
           <button
  className="btn-app"
+ onClick={() => { setPage("identite"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "identite" ? TEAL_700 : "transparent", color: page === "identite" ? GOLD_LIGHT : "var(--text-secondary-2)" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><IconeGoutte size={15} /> Notre identité</span></button>
+          <button
+ className="btn-app"
  onClick={() => { setPage("aide"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "aide" ? TEAL_700 : "transparent", color: page === "aide" ? GOLD_LIGHT : "var(--text-secondary-2)" }}><span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}><IconeAide size={15} /> Aide</span></button>
           <button
  className="btn-app"
@@ -2259,6 +2323,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
                     ]} />
                     <GroupeMenu titre="Compte" items={[
                       { label: "Mon compte", cible: "mon_compte", icone: IconePersonne },
+                      { label: "Notre identité", cible: "identite", icone: IconeGoutte },
                       { label: "Aide", cible: "aide", icone: IconeAide },
                       { label: "Déconnexion", cible: "deconnexion", action: seDeconnecter, icone: IconeDeconnexion },
                     ]} />
@@ -2278,7 +2343,8 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
                   ]} />
                   <GroupeMenu titre="Compte" items={[
                     { label: "Mon compte", cible: "mon_compte", icone: IconePersonne },
-                    { label: "Aide", cible: "aide", icone: IconeAide },
+                    { label: "Notre identité", cible: "identite", icone: IconeGoutte },
+                      { label: "Aide", cible: "aide", icone: IconeAide },
                     { label: "Déconnexion", cible: "deconnexion", action: seDeconnecter, icone: IconeDeconnexion },
                   ]} />
                 </>
@@ -2291,6 +2357,8 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
       <div key={page} className="transition-page" style={{ padding: 24 }}>
         {chargement ? (
           <p style={{ color: "var(--text-secondary-2)" }}>Chargement des données…</p>
+        ) : page === "identite" ? (
+          <PageIdentite cardStyle={cardStyle} />
         ) : page === "aide" ? (
           <PageAide estPasteur={estPasteur} cardStyle={cardStyle} />
         ) : page === "mon_compte" ? (
