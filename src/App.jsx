@@ -2905,9 +2905,19 @@ function AnniversairesAVenir({ membres, gems, tribus, departements, cardStyle })
               <p style={{ fontWeight: 700, marginBottom: 2 }}>{membre.nom}</p>
               <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>{nomGem(membre.gem_id)}{provenance(membre.gem_id) ? ` — ${provenance(membre.gem_id)}` : ""}</p>
             </div>
-            <span style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, backgroundColor: "var(--gold-light)", borderRadius: 999, padding: "6px 12px" }}>
-              {diffJours === 0 ? "🎉 Aujourd'hui !" : diffJours === 1 ? "Demain" : `Dans ${diffJours} jours`} — {date.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, backgroundColor: "var(--gold-light)", borderRadius: 999, padding: "6px 12px" }}>
+                {diffJours === 0 ? "🎉 Aujourd'hui !" : diffJours === 1 ? "Demain" : `Dans ${diffJours} jours`} — {date.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+              </span>
+              <button
+                className="btn-app"
+                title="Générer une affiche"
+                onClick={() => genererAfficheAnniversaire({ nom: membre.nom, photo: membre.photo, nomFichier: `anniversaire-${membre.nom.replace(/\s+/g, "-")}` })}
+                style={{ width: 32, height: 32, borderRadius: 999, border: "none", backgroundColor: TEAL_900, color: GOLD_LIGHT, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+              >
+                <IconeImprimante size={13} />
+              </button>
+            </div>
           </div>
         ))}
       </div>
@@ -3869,6 +3879,138 @@ async function calculerTribuDeptDuMoisGlobal(gems, membres, tribus, departements
 // Génère une image (affiche) téléchargeable à partir d'un titre, d'un sous-titre
 // et d'un corps de texte — utilisée pour exporter un événement du calendrier ou
 // un message du pasteur en image partageable (WhatsApp, Facebook...).
+// Génère une affiche d'anniversaire riche — photo (ou initiales), compliments
+// avec puces colorées, et bénédiction — inspirée du modèle officiel Vases d'Honneur.
+const COMPLIMENTS_ANNIVERSAIRE = [
+  { texte: "Ton engagement pour Dieu inspire toute une génération.", couleur: "#C1585C" },
+  { texte: "Ta constance dans les petites comme dans les grandes choses est admirable.", couleur: "#D6A54C" },
+  { texte: "Ton cœur donné, ton temps offert, ton énergie pour l'œuvre de Dieu.", couleur: "#3F9C93" },
+  { texte: "Toujours présent(e), toujours disponible, toujours fiable.", couleur: "#8FCBA8" },
+];
+
+function genererAfficheAnniversaire({ nom, photo, nomFichier }) {
+  const largeur = 1080, hauteur = 1350;
+  const canvas = document.createElement("canvas");
+  canvas.width = largeur; canvas.height = hauteur;
+  const ctx = canvas.getContext("2d");
+
+  function dessinerTexteMultiligne(texte, x, y, largeurMax, interligne) {
+    const mots = texte.split(" ");
+    let ligne = "", py = y;
+    mots.forEach((mot, i) => {
+      const test = ligne + mot + " ";
+      if (ctx.measureText(test).width > largeurMax && i > 0) {
+        ctx.fillText(ligne, x, py);
+        ligne = mot + " ";
+        py += interligne;
+      } else ligne = test;
+    });
+    ctx.fillText(ligne, x, py);
+    return py + interligne;
+  }
+
+  function finaliser() {
+    // Fond chaleureux (dégradé bordeaux/or, distinct du teal habituel — pour
+    // marquer une occasion festive)
+    const degrade = ctx.createLinearGradient(0, 0, largeur, hauteur);
+    degrade.addColorStop(0, "#3A1218");
+    degrade.addColorStop(1, "#1E0C10");
+    ctx.fillStyle = degrade;
+    ctx.fillRect(0, 0, largeur, hauteur);
+
+    ctx.fillStyle = "#D6A54C";
+    ctx.fillRect(0, 0, largeur, 14);
+    ctx.fillRect(0, hauteur - 14, largeur, 14);
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#EFCB77";
+    ctx.font = "bold 30px Arial";
+    ctx.fillText("ASSEMBLÉE RENAISSANCE", largeur / 2, 100);
+    ctx.font = "22px Arial";
+    ctx.fillStyle = "#F6F1E4";
+    ctx.fillText("Bouaflé", largeur / 2, 132);
+
+    ctx.font = "bold 46px Georgia";
+    ctx.fillStyle = "#F6F1E4";
+    ctx.fillText("Joyeux Anniversaire", largeur / 2, 220);
+
+    // Photo (cercle) ou initiales
+    const cx = largeur / 2, cy = 350, rayon = 130;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(cx, cy, rayon, 0, Math.PI * 2);
+    ctx.closePath();
+    ctx.lineWidth = 6;
+    ctx.strokeStyle = "#D6A54C";
+    ctx.stroke();
+    ctx.clip();
+    if (photo) {
+      const img = new Image();
+      img.onload = () => {
+        const ratio = Math.max((rayon * 2) / img.width, (rayon * 2) / img.height);
+        const w = img.width * ratio, h = img.height * ratio;
+        ctx.drawImage(img, cx - w / 2, cy - h / 2, w, h);
+        ctx.restore();
+        suite();
+      };
+      img.src = photo;
+      return;
+    } else {
+      ctx.fillStyle = "#4E1F26";
+      ctx.fillRect(cx - rayon, cy - rayon, rayon * 2, rayon * 2);
+      ctx.fillStyle = "#EFCB77";
+      ctx.font = "bold 90px Georgia";
+      ctx.textBaseline = "middle";
+      const initiales = nom.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]).join("").toUpperCase();
+      ctx.fillText(initiales, cx, cy + 8);
+      ctx.textBaseline = "alphabetic";
+      ctx.restore();
+    }
+    suite();
+
+    function suite() {
+      ctx.font = "bold 44px Georgia";
+      ctx.fillStyle = "#EFCB77";
+      ctx.fillText(nom, largeur / 2, 540);
+
+      let y = 610;
+      ctx.textAlign = "left";
+      ctx.font = "24px Arial";
+      COMPLIMENTS_ANNIVERSAIRE.forEach(c => {
+        ctx.fillStyle = c.couleur;
+        ctx.beginPath();
+        ctx.arc(110, y - 8, 8, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = "#F6F1E4";
+        y = dessinerTexteMultiligne(c.texte, 140, y, largeur - 250, 34) + 20;
+      });
+
+      ctx.textAlign = "center";
+      ctx.font = "italic 26px Georgia";
+      ctx.fillStyle = "#D8E8E1";
+      y += 20;
+      y = dessinerTexteMultiligne("« Que le Seigneur te bénisse, te garde, et t'accorde une nouvelle dimension de sa grâce, de sa sagesse et de sa présence dans cette nouvelle année ! »", largeur / 2 - (largeur - 300) / 2, y, largeur - 300, 36);
+
+      ctx.font = "22px Arial";
+      ctx.fillStyle = "#B9D3CB";
+      ctx.fillText("— Pasteur Dimitri Koffi", largeur / 2, hauteur - 60);
+
+      canvas.toBlob(blob => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `${nomFichier || "anniversaire"}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, "image/png");
+    }
+  }
+
+  finaliser();
+}
+
 function genererAfficheImage({ titre, sousTitre, corps, piedDePage, nomFichier }) {
   const largeur = 1080, hauteur = 1350;
   const canvas = document.createElement("canvas");
