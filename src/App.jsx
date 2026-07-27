@@ -163,26 +163,52 @@ function EnregistreurVocal({ onEnregistrementPret, onAnnuler }) {
 // animation de révélation douce. Donne une vraie raison spirituelle de se
 // connecter chaque matin, sans tomber dans la mécanique de "streak" forcée.
 const PAROLES_DU_JOUR = [
-  { verset: "Car je connais les projets que j'ai formés sur vous, dit l'Éternel, projets de paix et non de malheur, afin de vous donner un avenir et de l'espérance.", reference: "Jérémie 29:11" },
-  { verset: "Fortifie-toi et prends courage, ne t'effraie point et ne t'épouvante point ; car l'Éternel, ton Dieu, est avec toi dans tout ce que tu entreprendras.", reference: "Josué 1:9" },
-  { verset: "Je puis tout par celui qui me fortifie.", reference: "Philippiens 4:13" },
-  { verset: "L'Éternel est mon berger : je ne manquerai de rien.", reference: "Psaume 23:1" },
-  { verset: "C'est par la grâce que vous êtes sauvés, par le moyen de la foi.", reference: "Éphésiens 2:8" },
-  { verset: "Ne t'ai-je pas donné cet ordre : Fortifie-toi et prends courage ? Ne te laisse point effrayer, et ne t'épouvante point.", reference: "Josué 1:9" },
-  { verset: "Approchez-vous de Dieu, et il s'approchera de vous.", reference: "Jacques 4:8" },
-  { verset: "Confie-toi en l'Éternel de tout ton cœur, et ne t'appuie pas sur ta sagesse.", reference: "Proverbes 3:5" },
-  { verset: "Le Seigneur lui-même marchera devant toi, il sera lui-même avec toi, il ne te délaissera point.", reference: "Deutéronome 31:8" },
-  { verset: "Ne crains rien, car je suis avec toi ; ne prends pas d'inquiétude, car je suis ton Dieu.", reference: "Ésaïe 41:10" },
-  { verset: "Tout ce que vous faites, faites-le de bon cœur, comme pour le Seigneur et non pour des hommes.", reference: "Colossiens 3:23" },
-  { verset: "Heureux ceux qui sèment dans les larmes ! Ils moissonneront avec chants d'allégresse.", reference: "Psaume 126:5" },
-  { verset: "Un seul est votre Maître, et vous êtes tous frères.", reference: "Matthieu 23:8" },
+  // --- Zèle pour le service de Dieu ---
+  { verset: "Ayez du zèle, et non de la paresse. Soyez fervents d'esprit. Servez le Seigneur.", reference: "Romains 12:11" },
+  { verset: "Il est beau d'avoir du zèle pour ce qui est bien et en tout temps, et non pas seulement quand je suis présent parmi vous.", reference: "Galates 4:18" },
+  // --- Récompense des serviteurs de Dieu ---
+  { verset: "C'est bien, bon et fidèle serviteur ; tu as été fidèle en peu de chose, je te confierai beaucoup ; entre dans la joie de ton maître.", reference: "Matthieu 25:21" },
+  { verset: "Sachant que vous recevrez du Seigneur l'héritage pour récompense. Servez Christ, le Seigneur.", reference: "Colossiens 3:24" },
+  { verset: "Voici, je viens bientôt, et ma rétribution est avec moi, pour rendre à chacun selon ce qu'est son œuvre.", reference: "Apocalypse 22:12" },
+  // --- Encouragement à servir Dieu ---
+  { verset: "Choisissez aujourd'hui qui vous voulez servir... Moi et ma maison, nous servirons l'Éternel.", reference: "Josué 24:15" },
+  { verset: "Servez l'Éternel avec crainte, et réjouissez-vous avec tremblement.", reference: "Psaume 2:11" },
+  // --- Prendre soin des brebis du Seigneur ---
+  { verset: "Paissez le troupeau de Dieu qui est sous votre garde, non par contrainte, mais volontairement, selon Dieu ; non pour un gain sordide, mais avec dévouement.", reference: "1 Pierre 5:2" },
+  { verset: "Le bon berger donne sa vie pour ses brebis.", reference: "Jean 10:11" },
+  // --- Paître les brebis, les enseigner ---
+  { verset: "Pais mes brebis.", reference: "Jean 21:17" },
+  { verset: "Prenez donc garde à vous-mêmes, et à tout le troupeau sur lequel le Saint-Esprit vous a établis évêques, pour paître l'Église du Seigneur.", reference: "Actes 20:28" },
+  { verset: "Enseignez-leur à observer tout ce que je vous ai prescrit. Et voici, je suis avec vous tous les jours, jusqu'à la fin du monde.", reference: "Matthieu 28:20" },
+  // --- Visiter les âmes ---
+  { verset: "La religion pure et sans tache, devant Dieu notre Père, consiste à visiter les orphelins et les veuves dans leurs afflictions.", reference: "Jacques 1:27" },
+  { verset: "J'étais malade, et vous m'avez visité.", reference: "Matthieu 25:36" },
+  // --- La joie de servir Dieu ---
+  { verset: "Servez l'Éternel, avec joie, venez avec allégresse en sa présence.", reference: "Psaume 100:2" },
   { verset: "La joie de l'Éternel sera votre force.", reference: "Néhémie 8:10" },
-  { verset: "Que celui qui sème abondamment moissonne aussi abondamment.", reference: "2 Corinthiens 9:6" },
-  { verset: "Prends garde à toi-même et à ton enseignement ; persévère dans ces choses.", reference: "1 Timothée 4:16" },
-  { verset: "Ceux qui sèment avec larmes moissonneront avec chants d'allégresse.", reference: "Psaume 126:5" },
-  { verset: "Servez-vous les uns les autres, chacun selon le don qu'il a reçu.", reference: "1 Pierre 4:10" },
-  { verset: "Or, sans la foi il est impossible de lui être agréable.", reference: "Hébreux 11:6" },
-  { verset: "Là où deux ou trois sont assemblés en mon nom, je suis au milieu d'eux.", reference: "Matthieu 18:20" },
+  // --- L'héritage des serviteurs de Dieu ---
+  { verset: "Les richesses de la gloire de son héritage qu'il réserve aux saints.", reference: "Éphésiens 1:18" },
+  // --- Amour pour Dieu ---
+  { verset: "Tu aimeras le Seigneur, ton Dieu, de tout ton cœur, de toute ton âme, et de toute ta pensée.", reference: "Matthieu 22:37" },
+  { verset: "Nous l'aimons parce qu'il nous a aimés le premier.", reference: "1 Jean 4:19" },
+  // --- La persévérance ---
+  { verset: "Ne nous lassons pas de faire le bien ; car nous moissonnerons au temps convenable, si nous ne relâchons pas.", reference: "Galates 6:9" },
+  { verset: "Courons avec persévérance dans la carrière qui nous est ouverte.", reference: "Hébreux 12:1" },
+  // --- La foi ---
+  { verset: "Or la foi est une ferme assurance des choses qu'on espère, une démonstration de celles qu'on ne voit pas.", reference: "Hébreux 11:1" },
+  { verset: "Sans la foi, il est impossible de lui être agréable.", reference: "Hébreux 11:6" },
+  // --- La sanctification ---
+  { verset: "Ce que Dieu veut, c'est votre sanctification.", reference: "1 Thessaloniciens 4:3" },
+  { verset: "Recherchez la paix avec tous, et la sanctification, sans laquelle personne ne verra le Seigneur.", reference: "Hébreux 12:14" },
+  // --- L'évangélisation ---
+  { verset: "Allez par tout le monde, et prêchez la bonne nouvelle à toute la création.", reference: "Marc 16:15" },
+  { verset: "Allez, faites de toutes les nations des disciples, les baptisant au nom du Père, du Fils et du Saint-Esprit.", reference: "Matthieu 28:19" },
+  // --- Le salut des âmes ---
+  { verset: "Quiconque invoquera le nom du Seigneur sera sauvé.", reference: "Romains 10:13" },
+  { verset: "Le Fils de l'homme est venu chercher et sauver ce qui était perdu.", reference: "Luc 19:10" },
+  // --- La bénédiction des serviteurs de Dieu ---
+  { verset: "Heureux ce serviteur, que son maître, à son arrivée, trouvera faisant ainsi !", reference: "Matthieu 24:46" },
+  { verset: "Que l'Éternel te bénisse, et qu'il te garde !", reference: "Nombres 6:24" },
 ];
 
 function ParoleDuJour() {
