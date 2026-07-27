@@ -2953,9 +2953,19 @@ function AnniversairesResponsables({ comptes, cardStyle }) {
               <p style={{ fontWeight: 700, marginBottom: 2 }}>{compte.nom}</p>
               <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>{compte.role === "pasteur" ? "Pasteur" : compte.assistant ? "Assistant" : "Responsable"} · {compte.quartier || "Quartier non renseigné"}</p>
             </div>
-            <span style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, backgroundColor: "var(--gold-light)", borderRadius: 999, padding: "6px 12px" }}>
-              {diffJours === 0 ? "🎉 Aujourd'hui !" : diffJours === 1 ? "Demain" : `Dans ${diffJours} jours`} — {date.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
-            </span>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: TEAL_950, backgroundColor: "var(--gold-light)", borderRadius: 999, padding: "6px 12px" }}>
+                {diffJours === 0 ? "🎉 Aujourd'hui !" : diffJours === 1 ? "Demain" : `Dans ${diffJours} jours`} — {date.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}
+              </span>
+              <button
+                className="btn-app"
+                title="Générer une affiche"
+                onClick={() => genererAfficheAnniversaire({ nom: compte.nom, photo: null, nomFichier: `anniversaire-${compte.nom.replace(/\s+/g, "-")}` })}
+                style={{ width: 32, height: 32, borderRadius: 999, border: "none", backgroundColor: TEAL_900, color: GOLD_LIGHT, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+              >
+                <IconeImprimante size={13} />
+              </button>
+            </div>
           </div>
         ))}
       </div>
