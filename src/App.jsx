@@ -10938,8 +10938,10 @@ function GraphiqueCroissance({ donnees, hauteur = 160 }) {
 // Classements du mois — un seul encart compact avec onglets (GEM / Tribu / Département),
 // chaque ligne affichant le rang, le nom, et les statistiques clés en petites puces.
 function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
-  const [ongletActif, setOngletActif] = useState("gem");
+  const [index, setIndex] = useState(0);
+  const debutGlissement = useRef(null);
   const medailles = ["🥇", "🥈", "🥉"];
+  const hauteursPodium = [64, 84, 48]; // 2e, 1er, 3e — ordre visuel du podium
 
   const onglets = [
     { cle: "gem", label: "GEM", items: gemDuMois, cles: [["tauxRapport", "📋"], ["tauxPresence", "📅"], ["nombreActivites", "🙏"]] },
@@ -10949,56 +10951,86 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
 
   const disponibles = onglets.filter(o => o.items && o.items.length > 0);
   if (disponibles.length === 0) return null;
-  const actif = onglets.find(o => o.cle === ongletActif) && disponibles.some(o => o.cle === ongletActif) ? onglets.find(o => o.cle === ongletActif) : disponibles[0];
+  const actif = disponibles[Math.min(index, disponibles.length - 1)];
 
   function afficherValeur(cle, valeur) {
     if (valeur === null || valeur === undefined) return null;
     return cle === "nombreActivites" ? `${valeur}` : `${valeur}%`;
   }
 
-  const LEGENDES = {
-    "📋": "Rapports remplis", "📅": "Présence au culte", "🌱": "Suivi des nouveaux", "🙏": "Activités effectuées",
-  };
-  const iconesUtilisees = [...new Set(actif.cles.map(([, icone]) => icone))];
+  function surDebutGlissement(e) { debutGlissement.current = e.touches[0].clientX; }
+  function surFinGlissement(e) {
+    if (debutGlissement.current === null || disponibles.length <= 1) return;
+    const diff = debutGlissement.current - e.changedTouches[0].clientX;
+    if (diff > 50) setIndex(i => (i + 1) % disponibles.length);
+    else if (diff < -50) setIndex(i => (i - 1 + disponibles.length) % disponibles.length);
+    debutGlissement.current = null;
+  }
+
+  // Réordonne les 3 premiers pour l'affichage "podium" : 2e à gauche, 1er au
+  // centre (plus grand), 3e à droite — comme une vraie estrade de victoire.
+  const top3 = actif.items.slice(0, 3);
+  const ordrePodium = top3.length === 3 ? [top3[1], top3[0], top3[2]] : top3;
+  const indicesReels = top3.length === 3 ? [1, 0, 2] : top3.map((_, i) => i);
 
   return (
-    <div style={{ position: "relative", overflow: "hidden", backgroundColor: "rgba(23,89,78,0.55)", backdropFilter: "blur(8px)", border: `1px solid ${GOLD}`, borderRadius: 14, padding: 14, marginBottom: 20, boxShadow: "0 10px 26px rgba(0,0,0,0.22)" }}>
+    <div
+      onTouchStart={surDebutGlissement}
+      onTouchEnd={surFinGlissement}
+      style={{ position: "relative", overflow: "hidden", backgroundColor: "rgba(23,89,78,0.55)", backdropFilter: "blur(8px)", border: `1px solid ${GOLD}`, borderRadius: 16, padding: "16px 14px", marginBottom: 20, boxShadow: "0 10px 26px rgba(0,0,0,0.22)" }}
+    >
       <div style={{ position: "absolute", bottom: -6, right: 4, pointerEvents: "none" }}><EpiDeBle size={44} opacity={0.1} /></div>
-      <p style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>🏆 Classement — Top 3 du mois</p>
-      <div style={{ display: "flex", gap: 6, marginBottom: 10 }}>
-        {disponibles.map(o => (
-          <button
-            key={o.cle}
-            className="btn-app"
-            onClick={() => setOngletActif(o.cle)}
-            style={{ flex: 1, padding: "6px 8px", borderRadius: 8, fontSize: 12, fontWeight: 700, border: "none", cursor: "pointer", backgroundColor: actif.cle === o.cle ? GOLD : TEAL_850, color: actif.cle === o.cle ? TEAL_950 : "var(--text-secondary-2)" }}
-          >
-            {o.label}
-          </button>
-        ))}
+
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+        <p style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, textTransform: "uppercase", letterSpacing: 0.5, margin: 0, display: "flex", alignItems: "center", gap: 6 }}>
+          <IconeTrophee size={14} /> Top 3 {actif.label} — ce mois
+        </p>
+        {disponibles.length > 1 && (
+          <div style={{ display: "flex", gap: 5 }}>
+            {disponibles.map((o, i) => (
+              <button key={o.cle} onClick={() => setIndex(i)} style={{ width: actif.cle === o.cle ? 16 : 6, height: 6, borderRadius: 999, border: "none", cursor: "pointer", backgroundColor: actif.cle === o.cle ? GOLD : "rgba(255,255,255,0.3)", padding: 0, transition: "width 0.3s ease" }} />
+            ))}
+          </div>
+        )}
       </div>
-      <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {actif.items.slice(0, 3).map((item, i) => (
-          <div key={item.gemId || item.id} style={{ borderBottom: i < 2 ? `1px solid ${TEAL_800}` : "none", paddingBottom: i < 2 ? 6 : 0 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 12 }}>
-              <span style={{ color: CREAM, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 130 }}>{medailles[i]} {item.nom}</span>
-              <div style={{ display: "flex", gap: 6, flexWrap: "nowrap" }}>
-                {actif.cles.map(([cle, icone]) => afficherValeur(cle, item[cle]) !== null && (
-                  <span key={cle} style={{ color: GOLD_LIGHT, fontWeight: 700, fontSize: 11, whiteSpace: "nowrap" }}>{icone}{afficherValeur(cle, item[cle])}</span>
-                ))}
+
+      {/* ---------- Podium visuel ---------- */}
+      <div key={actif.cle} className="fade-in" style={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 8, marginBottom: 16 }}>
+        {ordrePodium.map((item, position) => {
+          if (!item) return <div key={position} style={{ flex: 1 }} />;
+          const iReel = indicesReels[position];
+          return (
+            <div key={item.gemId || item.id || iReel} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", maxWidth: 110 }}>
+              <span style={{ fontSize: iReel === 0 ? 26 : 20, marginBottom: 4 }}>{medailles[iReel]}</span>
+              <p style={{ fontSize: iReel === 0 ? 12.5 : 11, fontWeight: 700, color: CREAM, textAlign: "center", margin: "0 0 6px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>{item.nom}</p>
+              <div
+                style={{
+                  width: "100%", height: hauteursPodium[position], borderRadius: "10px 10px 0 0",
+                  background: iReel === 0 ? "linear-gradient(180deg, var(--gold-light), var(--gold))" : "linear-gradient(180deg, rgba(214,165,76,0.35), rgba(214,165,76,0.12))",
+                  display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: 6,
+                  boxShadow: iReel === 0 ? "0 6px 18px rgba(214,165,76,0.35)" : "none",
+                }}
+              >
+                <span style={{ fontSize: 11, fontWeight: 700, color: iReel === 0 ? TEAL_950 : GOLD_LIGHT }}>
+                  {afficherValeur(actif.cles[0][0], item[actif.cles[0][0]])}
+                </span>
               </div>
             </div>
-            {actif.cle === "gem" && (item.nomResponsable || item.rattachement) && (
-              <p style={{ fontSize: 10, color: "var(--text-secondary)", margin: "2px 0 0 18px" }}>
-                {item.nomResponsable ? <span style={{display:"inline-flex",alignItems:"center",gap:4}}><IconePersonne size={11}/> {item.nomResponsable}</span> : "Aucun responsable"}{item.rattachement ? ` — ${item.rattachement}` : ""}
-              </p>
-            )}
-          </div>
-        ))}
+          );
+        })}
       </div>
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginTop: 10, paddingTop: 8, borderTop: `1px solid ${TEAL_800}` }}>
-        {iconesUtilisees.map(icone => (
-          <span key={icone} style={{ fontSize: 10, color: "var(--text-secondary)" }}>{icone} {LEGENDES[icone]}</span>
+
+      {actif.cle === "gem" && top3[0] && (top3[0].nomResponsable || top3[0].rattachement) && (
+        <p style={{ fontSize: 11, color: "var(--text-secondary)", textAlign: "center", marginBottom: 10 }}>
+          {top3[0].nomResponsable ? <span style={{display:"inline-flex",alignItems:"center",gap:4}}><IconePersonne size={11}/> {top3[0].nomResponsable}</span> : "Aucun responsable"}{top3[0].rattachement ? ` — ${top3[0].rattachement}` : ""}
+        </p>
+      )}
+
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", paddingTop: 10, borderTop: `1px solid ${TEAL_800}` }}>
+        {actif.cles.map(([, icone]) => (
+          <span key={icone} style={{ fontSize: 10, color: "var(--text-secondary)" }}>
+            {icone} {{ "📋": "Rapports remplis", "📅": "Présence au culte", "🌱": "Suivi des nouveaux", "🙏": "Activités effectuées" }[icone]}
+          </span>
         ))}
       </div>
     </div>
