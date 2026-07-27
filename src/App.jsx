@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { supabase } from "./supabaseClient";
 import { BERGER_IMG } from "./bergerImage";
 import { LOGO_VH } from "./logoVH";
+import { SANOGO_IMG } from "./sanogoImage";
 
 /* ============================================================================
    GESTION DES GEM — Étape 2 : Tribus, Départements, GEM, Membres
@@ -384,6 +385,18 @@ function PageIdentite({ cardStyle }) {
           « Nous entrons dans une saison où Dieu va travailler et agir de façon extraordinaire et particulière — c'est la décennie de la GRANDE MOISSON. »
         </p>
       </div>
+
+      <div style={{ ...cardStyle, marginTop: 20, textAlign: "center", position: "relative", overflow: "hidden" }}>
+        <div style={{ position: "absolute", top: -14, right: -14, pointerEvents: "none" }}><IconeGoutte size={70} color={GOLD} opacity={0.08} /></div>
+        <img
+          src={SANOGO_IMG}
+          alt="Apôtre Mohammed Sanogo"
+          style={{ width: 108, height: 108, borderRadius: "50%", objectFit: "cover", border: `3px solid ${GOLD}`, boxShadow: "0 8px 20px rgba(0,0,0,0.25)", marginBottom: 14 }}
+        />
+        <p style={{ fontSize: 12, color: "var(--text-secondary)", fontStyle: "italic", marginBottom: 2 }}>Apôtre</p>
+        <p className="titre-moisson" style={{ fontSize: 20, fontWeight: 700, color: "var(--text-primary)", marginBottom: 6 }}>Mohammed Sanogo</p>
+        <p style={{ fontSize: 13, color: GOLD_LIGHT, fontWeight: 600 }}>Président des Églises Vases d'Honneur et Ministère Messages de Vie</p>
+      </div>
     </div>
   );
 }
@@ -525,8 +538,8 @@ function EtatVide({ icone: Icone, titre, description, illustration }) {
           {Icone ? <Icone size={24} color="var(--gold)" /> : <EpiDeBle size={24} />}
         </div>
       )}
-      <p style={{ fontWeight: 700, fontSize: 14.5, margin: 0, color: "var(--text-primary)" }}>{titre}</p>
-      {description && <p style={{ fontSize: 12.5, color: "var(--text-secondary)", maxWidth: 280, margin: "6px auto 0", lineHeight: 1.5 }}>{description}</p>}
+      <p style={{ fontWeight: 700, fontSize: 14, margin: 0, color: "var(--text-primary)" }}>{titre}</p>
+      {description && <p style={{ fontSize: 13, color: "var(--text-secondary)", maxWidth: 280, margin: "6px auto 0", lineHeight: 1.5 }}>{description}</p>}
     </div>
   );
 }
@@ -936,7 +949,7 @@ function StylesGlobaux() {
 // Indicateur de chargement animé, réutilisé partout dans l'application.
 function Chargement({ texte = "Chargement…" }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "28px 0", color: "var(--text-secondary)", fontSize: 13.5 }}>
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, padding: "28px 0", color: "var(--text-secondary)", fontSize: 14 }}>
       <span className="spinner-app" />
       {texte}
     </div>
@@ -11433,14 +11446,14 @@ function GraphiqueBarres({ donnees, hauteur = 140 }) {
           const couleurBarre = d.couleur || "var(--gold)";
           return (
             <div key={i} title={d.infoBulle || `${d.libelle} : ${d.texteAffiche}`} className="barre-graphique" style={{ display: "flex", flexDirection: "column", alignItems: "center", minWidth: 30, cursor: "default" }}>
-              <span style={{ fontSize: 10.5, color: couleurBarre, fontWeight: 700, marginBottom: 4 }}>{d.texteAffiche}</span>
+              <span style={{ fontSize: 11, color: couleurBarre, fontWeight: 700, marginBottom: 4 }}>{d.texteAffiche}</span>
               <div style={{
                 width: 22, height: Math.max(5, (d.valeur / max) * (hauteur - 50)),
                 background: `linear-gradient(180deg, ${couleurBarre}, ${couleurBarre}cc)`,
                 borderRadius: "7px 7px 3px 3px", transition: "height 0.5s cubic-bezier(0.22,1,0.36,1)",
                 boxShadow: `0 3px 10px ${couleurBarre}40`,
               }} />
-              <span style={{ fontSize: 9.5, color: "var(--text-secondary)", marginTop: 5, whiteSpace: "nowrap" }}>{d.libelle}</span>
+              <span style={{ fontSize: 10, color: "var(--text-secondary)", marginTop: 5, whiteSpace: "nowrap" }}>{d.libelle}</span>
             </div>
           );
         })}
