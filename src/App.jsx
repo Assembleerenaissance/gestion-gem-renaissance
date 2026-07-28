@@ -9201,13 +9201,12 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
   return (
     <div>
       {selecteurRole}
+      <ParoleDuJour />
+      <CarrouselImages evenements={evenementsAvecImage || []} />
       <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4 }}>
         {estDept ? "Mon département" : "Ma tribu"} — {parent?.nom || "…"}
       </h2>
       <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 16 }}>{gemsDuPerimetre.length} GEM sous ta responsabilité</p>
-
-      <ClassementsDuMois gemDuMois={gemDuMois} tribuDeptDuMois={tribuDeptDuMois} />
-      <ResumePerimetre gems={gemsDuPerimetre} membres={membresDuPerimetre} onVoirAbsences={() => setSousOnglet("absences")} cardStyle={cardStyle} />
 
       <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
         <button
@@ -9257,8 +9256,8 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
         <PagePrediction membres={membres} gems={gems} tribus={tribus} departements={departements} gemsAutorises={gemsDuPerimetre.map(g => g.id)} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
       ) : (
         <>
-          <ParoleDuJour />
-          <CarrouselImages evenements={evenementsAvecImage || []} />
+          <ClassementsDuMois gemDuMois={gemDuMois} tribuDeptDuMois={tribuDeptDuMois} />
+          <ResumePerimetre gems={gemsDuPerimetre} membres={membresDuPerimetre} onVoirAbsences={() => setSousOnglet("absences")} cardStyle={cardStyle} />
           <AnniversairesAVenir membres={membresDuPerimetre} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
           <div style={{ ...cardStyle, marginBottom: 20 }}>
             {creationOuverte ? (
