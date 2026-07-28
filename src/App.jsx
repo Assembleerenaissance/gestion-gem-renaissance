@@ -2634,7 +2634,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
         ) : page === "nouveaux" ? (
           <PageNouveaux membres={membres} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
         ) : page === "membres" ? (
-          <PageMembres membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} estPasteur={true} cardStyle={cardStyle} />
+          <PageMembres compte={compte} membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} estPasteur={true} cardStyle={cardStyle} />
         ) : page === "absences" ? (
           <PageAbsences membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
         ) : page === "prediction" ? (
@@ -7024,7 +7024,7 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
 }
 
 
-function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regulariteParMembre, estPasteur, cardStyle }) {
+function PageMembres({ compte, membres, gems, tribus, departements, gemsAutorises, regulariteParMembre, estPasteur, cardStyle }) {
   const [chargement, setChargement] = useState(true);
   const [tousLesComptes, setTousLesComptes] = useState([]);
   const [assignationsActives, setAssignationsActives] = useState([]);
@@ -7039,6 +7039,35 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
   const [vueBoss, setVueBoss] = useState(false);
   const [filtreBossIrreguliers, setFiltreBossIrreguliers] = useState(false);
   const [bossOuvert, setBossOuvert] = useState(null);
+  const [membreASupprimer, setMembreASupprimer] = useState(null);
+  const [motifSuppression, setMotifSuppression] = useState("");
+  const [suppressionEnCours, setSuppressionEnCours] = useState(false);
+
+  async function confirmerSuppressionMembre() {
+    setSuppressionEnCours(true);
+    if (estPasteur) {
+      const { error } = await supabase.from("membres").delete().eq("id", membreASupprimer.membreId);
+      setSuppressionEnCours(false);
+      setMembreASupprimer(null);
+      if (error) { toast("Suppression impossible : " + error.message, "erreur"); return; }
+      toast(`${membreASupprimer.nom} a été supprimé.`, "succes");
+      journaliser(compte, "suppression_membre", membreASupprimer.nom);
+    } else {
+      const { error } = await supabase.from("demandes_suppression_membre").insert({
+        membre_id: membreASupprimer.membreId,
+        membre_nom: membreASupprimer.nom,
+        demande_par: compte?.id || null,
+        motif: motifSuppression.trim() || "Aucun motif renseigné",
+        statut: "attente",
+      });
+      setSuppressionEnCours(false);
+      setMembreASupprimer(null);
+      setMotifSuppression("");
+      if (error) { toast("Erreur : " + error.message, "erreur"); return; }
+      toast(`✓ Demande de suppression de ${membreASupprimer.nom} envoyée au pasteur pour validation.`, "succes");
+    }
+  }
+
   const [pageResultats, setPageResultats] = useState(1);
   const PAR_PAGE_MEMBRES = 25;
 
@@ -7126,14 +7155,16 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
   }));
 
   const assignationsFiltrees = assignationsActives
-    .filter(a => ["gem", "departement_resp", "tribu_resp"].includes(a.role_demande))
+    .filter(a => {
+      // Un responsable de département ou de tribu ne doit voir QUE les
+      // responsables GEM sous lui — jamais un autre responsable de département
+      // ou de tribu, qui n'a structurellement rien à faire dans sa liste.
+      if (idsGemsAutorises) return a.role_demande === "gem";
+      return ["gem", "departement_resp", "tribu_resp"].includes(a.role_demande); // pasteur/assistant : vue complète
+    })
     .filter(a => {
       if (!idsGemsAutorises) return true; // pasteur/assistant : tout le monde
-      if (a.role_demande === "gem") return idsGemsAutorises.has(a.gem_id);
-      const gemsCorrespondants = gems.filter(g => idsGemsAutorises.has(g.id));
-      if (a.role_demande === "departement_resp") return gemsCorrespondants.some(g => g.departement_id === a.departement_id);
-      if (a.role_demande === "tribu_resp") return gemsCorrespondants.some(g => g.tribu_id === a.tribu_id);
-      return false;
+      return idsGemsAutorises.has(a.gem_id);
     });
 
   const parCompte = {};
@@ -7482,6 +7513,15 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
                   {p.types.includes("membre") && (absencesRecentes[p.membreId]?.absences || 0) >= 2 && (
                     <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "3px 9px" }}><IconeAlerte size={10} style={{verticalAlign:"-1px",marginRight:2}} /> {absencesRecentes[p.membreId].absences}/{absencesRecentes[p.membreId].total} absences</span>
                   )}
+                  {p.types.includes("membre") && (
+                    <span
+                      title={estPasteur ? "Supprimer ce membre" : "Demander la suppression de ce membre"}
+                      onClick={e => { e.stopPropagation(); setMembreASupprimer(p); }}
+                      style={{ width: 28, height: 28, borderRadius: 999, backgroundColor: "rgba(226,119,123,0.15)", color: RED_LIGHT, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}
+                    >
+                      <IconePoubelle size={12} />
+                    </span>
+                  )}
                 </div>
               </button>
             );
@@ -7495,6 +7535,41 @@ function PageMembres({ membres, gems, tribus, departements, gemsAutorises, regul
           </div>
         )}
         </>
+      )}
+
+      {membreASupprimer && !estPasteur && (
+        <div className="fade-in" style={{ position: "fixed", inset: 0, backgroundColor: "var(--overlay)", backdropFilter: "blur(2px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
+          <div style={{ backgroundColor: TEAL_950, border: "1px solid rgba(226,119,123,0.4)", borderRadius: 16, padding: 24, maxWidth: 420, width: "100%", boxShadow: "0 24px 60px rgba(0,0,0,0.45)" }}>
+            <p className="titre-moisson" style={{ fontWeight: 600, fontSize: 18, marginBottom: 10, color: CREAM }}>Demander la suppression de {membreASupprimer.nom}</p>
+            <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 14, lineHeight: 1.55 }}>
+              Cette demande sera envoyée au pasteur pour validation — le membre ne sera pas retiré immédiatement.
+            </p>
+            <textarea
+              value={motifSuppression}
+              onChange={e => setMotifSuppression(e.target.value)}
+              rows={3}
+              placeholder="Motif de la suppression (recommandé)..."
+              style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, resize: "vertical", fontSize: 13 }}
+            />
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap", marginTop: 16 }}>
+              <button className="btn-app" onClick={() => { setMembreASupprimer(null); setMotifSuppression(""); }} style={{ padding: "10px 18px", borderRadius: 9, backgroundColor: "transparent", color: "var(--text-secondary)", border: `1px solid ${TEAL_600}`, fontWeight: 600, cursor: "pointer" }}>Annuler</button>
+              <button className="btn-app" disabled={suppressionEnCours} onClick={confirmerSuppressionMembre} style={{ padding: "10px 18px", borderRadius: 9, backgroundColor: "#E2777B", backgroundImage: "linear-gradient(135deg, #ea9a9d, #E2777B)", color: "#fff", border: "none", fontWeight: 700, cursor: "pointer", boxShadow: "0 4px 14px rgba(226,119,123,0.3)" }}>
+                {suppressionEnCours ? "…" : "Envoyer la demande"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {membreASupprimer && estPasteur && (
+        <BoiteConfirmation
+          titre="Supprimer ce membre ?"
+          message={`Es-tu sûr de vouloir supprimer définitivement "${membreASupprimer.nom}" ? Cette action est irréversible.`}
+          texteConfirmer={suppressionEnCours ? "…" : "Supprimer définitivement"}
+          dangereux
+          onConfirmer={confirmerSuppressionMembre}
+          onAnnuler={() => setMembreASupprimer(null)}
+        />
       )}
     </div>
   );
@@ -9247,7 +9322,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
       ) : sousOnglet === "nouveaux" ? (
         <PageNouveaux membres={membresDuPerimetre} gems={gemsDuPerimetre} tribus={tribus} departements={departements} gemsAutorises={gemsDuPerimetre.map(g => g.id)} cardStyle={cardStyle} />
       ) : sousOnglet === "membres" ? (
-        <PageMembres membres={membres} gems={gems} tribus={tribus} departements={departements} gemsAutorises={gemsDuPerimetre.map(g => g.id)} regulariteParMembre={regulariteParMembre} estPasteur={compte.role === "pasteur" || compte.assistant === true} cardStyle={cardStyle} />
+        <PageMembres compte={compte} membres={membres} gems={gems} tribus={tribus} departements={departements} gemsAutorises={gemsDuPerimetre.map(g => g.id)} regulariteParMembre={regulariteParMembre} estPasteur={compte.role === "pasteur" || compte.assistant === true} cardStyle={cardStyle} />
       ) : sousOnglet === "absences" ? (
         <PageAbsences membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} gemsAutorises={gemsDuPerimetre.map(g => g.id)} cardStyle={cardStyle} />
       ) : sousOnglet === "historique" ? (
