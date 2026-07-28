@@ -2462,6 +2462,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
             onMembreCibleConsomme={() => setMembreCible(null)}
             gemDuMois={gemDuMois}
             tribuDeptDuMois={tribuDeptDuMois}
+            evenementsAvecImage={evenementsAvecImage}
             cardStyle={cardStyle}
           />
         ) : !estPasteur ? (
@@ -2481,6 +2482,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
             onMembreCibleConsomme={() => setMembreCible(null)}
             gemDuMois={gemDuMois}
             tribuDeptDuMois={tribuDeptDuMois}
+            evenementsAvecImage={evenementsAvecImage}
             cardStyle={cardStyle}
           />
         ) : gemOuvert ? (
@@ -9042,7 +9044,7 @@ function EvolutionPerimetre({ membres, cardStyle }) {
 
 /* ------------------------------- Mon espace (responsable) ------------------------------- */
 
-function MonEspace({ compte, assignationsActives, gems, membres, tribus, departements, gemOuvert, setGemOuvert, onMembreAjoute, onCreerGem, regulariteParMembre, membreCible, onMembreCibleConsomme, gemDuMois, tribuDeptDuMois, cardStyle }) {
+function MonEspace({ compte, assignationsActives, gems, membres, tribus, departements, gemOuvert, setGemOuvert, onMembreAjoute, onCreerGem, regulariteParMembre, membreCible, onMembreCibleConsomme, gemDuMois, tribuDeptDuMois, evenementsAvecImage, cardStyle }) {
   const [nomNouveauGem, setNomNouveauGem] = useState("");
   const [nomResponsableGem, setNomResponsableGem] = useState("");
   const [telResponsableGem, setTelResponsableGem] = useState("");
@@ -9255,6 +9257,8 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
         <PagePrediction membres={membres} gems={gems} tribus={tribus} departements={departements} gemsAutorises={gemsDuPerimetre.map(g => g.id)} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
       ) : (
         <>
+          <ParoleDuJour />
+          <CarrouselImages evenements={evenementsAvecImage || []} />
           <AnniversairesAVenir membres={membresDuPerimetre} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
           <div style={{ ...cardStyle, marginBottom: 20 }}>
             {creationOuverte ? (
@@ -10826,11 +10830,13 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
  onClick={() => setOnglet("direct")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "direct" ? GOLD : TEAL_900, color: onglet === "direct" ? TEAL_950 : "var(--text-secondary-2)" }}>
           {estPasteur ? "Boîte de réception" : "Écrire au pasteur"}{estPasteur && nonLus > 0 ? ` (${nonLus})` : ""}
         </button>
-        <button
+        {estPasteur && (
+          <button
  className="btn-app"
  onClick={() => setOnglet("prive")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "prive" ? GOLD : TEAL_900, color: onglet === "prive" ? TEAL_950 : "var(--text-secondary-2)" }}>
-          <span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeCadenas size={13}/> Message privé</span>
-        </button>
+            <span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeCadenas size={13}/> Message privé</span>
+          </button>
+        )}
         <button
  className="btn-app"
  onClick={() => setOnglet("rappels")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "rappels" ? GOLD : TEAL_900, color: onglet === "rappels" ? TEAL_950 : "var(--text-secondary-2)" }}>
@@ -10928,7 +10934,7 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
             </div>
           )}
         </div>
-      ) : onglet === "prive" ? (
+      ) : onglet === "prive" && estPasteur ? (
         <div>
           {!destinataireChoisi ? (
             <>
