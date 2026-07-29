@@ -4374,12 +4374,14 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
       responsable_telephone: telResponsableProvisoire.trim(),
     }).eq("id", gem.id);
     setEditionResponsableProvisoire(false);
-    if (!error) toast("✓ Responsable indiqué pour ce GEM.", "succes");
+    if (!error) { toast("✓ Responsable indiqué pour ce GEM.", "succes"); gem.responsable_nom = nomResponsableProvisoire.trim(); gem.responsable_telephone = telResponsableProvisoire.trim(); if (onMembreAjoute) onMembreAjoute(); }
+    else toast("Erreur : " + error.message, "erreur");
   }
 
   async function retirerResponsableProvisoire() {
     const { error } = await supabase.from("gems").update({ responsable_nom: null, responsable_telephone: null }).eq("id", gem.id);
-    if (!error) { setNomResponsableProvisoire(""); setTelResponsableProvisoire("+225 "); toast("Responsable retiré.", "succes"); }
+    if (!error) { setNomResponsableProvisoire(""); setTelResponsableProvisoire("+225 "); toast("Responsable retiré.", "succes"); gem.responsable_nom = null; gem.responsable_telephone = null; if (onMembreAjoute) onMembreAjoute(); }
+    else toast("Erreur : " + error.message, "erreur");
   }
 
 
