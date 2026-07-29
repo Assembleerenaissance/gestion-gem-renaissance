@@ -2585,7 +2585,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
                 );
               })()}
             </div>
-            <PrioritesPastorales membres={membres} gems={gems} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
+            <PrioritesPastorales compte={compte} membres={membres} gems={gems} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
             <div style={{ marginTop: 24 }}>
               <button
  className="btn-app"
@@ -2640,9 +2640,9 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
         ) : page === "membres" ? (
           <PageMembres compte={compte} membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} estPasteur={true} cardStyle={cardStyle} />
         ) : page === "absences" ? (
-          <PageAbsences membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
+          <PageAbsences compte={compte} membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
         ) : page === "prediction" ? (
-          <PagePrediction membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
+          <PagePrediction compte={compte} membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
         ) : page === "audit" ? (
           <PageJournalAudit cardStyle={cardStyle} />
         ) : (
@@ -3052,7 +3052,7 @@ function Pagination({ page, setPage, totalPages }) {
   );
 }
 
-function PrioritesPastorales({ membres, gems, regulariteParMembre, cardStyle }) {
+function PrioritesPastorales({ compte, membres, gems, regulariteParMembre, cardStyle }) {
   const [page, setPage] = useState(1);
   const PAR_PAGE = 10;
 
@@ -3091,7 +3091,7 @@ function PrioritesPastorales({ membres, gems, regulariteParMembre, cardStyle }) 
                     <a
                       href={`https://wa.me/${numeroPourWhatsApp(membre.telephone)}?text=${encodeURIComponent(`Bonjour ${membre.nom}, tu nous manques beaucoup ces derniers temps. Est-ce que tout va bien ? Nous t'aimons et espérons te revoir bientôt au culte. 🙏
 
-— Pasteur Dimitri Koffi`)}`}
+${signatureMessage(compte)}`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}
@@ -3687,7 +3687,7 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
             const numeroWhatsApp = numeroPourWhatsApp(m.telephone);
             const messageWhatsApp = encodeURIComponent(`Bonjour ${m.nom}, comment vas-tu ? 🙏
 
-— Pasteur Dimitri Koffi`);
+${signatureMessage(compte)}`);
             return (
               <div key={m.id} className="card-app" style={cardStyle}>
                 {membreEnEdition === m.id ? (
@@ -4246,6 +4246,13 @@ function numeroTelephoneValide(tel) {
   const chiffres = tel.replace(/[^\d]/g, "");
   const sansIndicatif = chiffres.startsWith("225") ? chiffres.slice(3) : chiffres;
   return sansIndicatif.length >= 8 && sansIndicatif.length <= 10;
+}
+
+// Signature à ajouter en bas d'un message WhatsApp — seul le pasteur signe
+// de son nom, tous les autres (assistants, responsables) signent au nom de
+// l'église.
+function signatureMessage(compte) {
+  return compte?.role === "pasteur" ? "— Pasteur Dimitri Koffi" : "— VASES D'HONNEUR BOUAFLÉ";
 }
 
 function numeroPourWhatsApp(tel) {
@@ -5421,7 +5428,7 @@ function calculerRisqueMembre({ membre, dimanchesReels, presencesMembre, histori
   return { score, niveau, raisons, tendancePresence };
 }
 
-function PagePrediction({ membres, gems, tribus, departements, gemsAutorises, regulariteParMembre, cardStyle }) {
+function PagePrediction({ compte, membres, gems, tribus, departements, gemsAutorises, regulariteParMembre, cardStyle }) {
   const [chargement, setChargement] = useState(true);
   const [risques, setRisques] = useState([]);
   const [filtreNiveau, setFiltreNiveau] = useState("");
@@ -5516,7 +5523,7 @@ function PagePrediction({ membres, gems, tribus, departements, gemsAutorises, re
                         <a title="Appeler" href={`tel:${membre.telephone}`} style={{ fontSize: 15, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, borderRadius: 999, width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center" }}><IconeTelephone size={14} /></a>
                         <a
                           title="WhatsApp"
-                          href={`https://wa.me/${numeroPourWhatsApp(membre.telephone)}?text=${encodeURIComponent(`Bonjour ${membre.nom}, comment vas-tu ? On pense à toi et on aimerait prendre de tes nouvelles. 🙏\n\n— Pasteur Dimitri Koffi`)}`}
+                          href={`https://wa.me/${numeroPourWhatsApp(membre.telephone)}?text=${encodeURIComponent(`Bonjour ${membre.nom}, comment vas-tu ? On pense à toi et on aimerait prendre de tes nouvelles. 🙏\n\n${signatureMessage(compte)}`)}`}
                           target="_blank" rel="noopener noreferrer"
                           style={{ fontSize: 15, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", borderRadius: 999, width: 34, height: 34, display: "flex", alignItems: "center", justifyContent: "center" }}
                         ><IconeMessage size={14} /></a>
@@ -6670,7 +6677,7 @@ const LIBELLES_ETAPES_SUIVI = { accueil: "Accueil", classe: "Classe de baptême"
 
 /* --------------------------- Page Absences (détail du dimanche) --------------------------- */
 
-function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre, gemsAutorises, cardStyle }) {
+function PageAbsences({ compte, membres, gems, tribus, departements, regulariteParMembre, gemsAutorises, cardStyle }) {
   const [vueAbsences, setVueAbsences] = useState("hebdomadaire"); // hebdomadaire | mensuelle | annuelle
   const [chargement, setChargement] = useState(true);
   const [dimancheRecent, setDimancheRecent] = useState(null);
@@ -6984,7 +6991,7 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
                             title="WhatsApp"
                             href={`https://wa.me/${numeroPourWhatsApp(membre.telephone)}?text=${encodeURIComponent(`Bonjour ${membre.nom}, tu nous as manqué au culte. Est-ce que tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏
 
-— Pasteur Dimitri Koffi`)}`}
+${signatureMessage(compte)}`)}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}
@@ -7024,7 +7031,7 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
                             title="WhatsApp"
                             href={`https://wa.me/${numeroPourWhatsApp(c.telephone)}?text=${encodeURIComponent(`Bonjour ${c.nom}, tu nous as manqué au culte. Est-ce que tout va bien ? 🙏
 
-— Pasteur Dimitri Koffi`)}`}
+${signatureMessage(compte)}`)}`}
                             target="_blank"
                             rel="noopener noreferrer"
                             style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}
@@ -8681,7 +8688,7 @@ function PageMotsDePasse({ cardStyle, onTraite }) {
 
 /* ------------------- Rapports & Évolution scopés (responsable dépt/tribu) ------------------- */
 
-function RapportPerimetre({ gems, membres, cardStyle }) {
+function RapportPerimetre({ compte, gems, membres, cardStyle }) {
   const [vue, setVue] = useState("hebdomadaire");
   const [dimanches, setDimanches] = useState([]);
   const [dimancheChoisi, setDimancheChoisi] = useState(null);
@@ -8890,7 +8897,7 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
                     const numeroWhatsApp = numeroPourWhatsApp(m.telephone);
                     const messageWhatsApp = encodeURIComponent(`Bonjour ${m.nom}, tu nous as manqué au culte de ce dimanche. Tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏
 
-— Pasteur Dimitri Koffi`);
+${signatureMessage(compte)}`);
                     return (
                       <div key={m.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
                         <div>
@@ -8946,7 +8953,7 @@ function RapportPerimetre({ gems, membres, cardStyle }) {
                     const numeroWhatsApp = numeroPourWhatsApp(m.telephone);
                     const messageWhatsApp = encodeURIComponent(`Bonjour ${m.nom}, nous ne t'avons pas vu ce mois-ci au culte. Tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏
 
-— Pasteur Dimitri Koffi`);
+${signatureMessage(compte)}`);
                     return (
                       <div key={m.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
                         <div>
@@ -9447,7 +9454,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
       </div>
 
       {sousOnglet === "rapports" ? (
-        <RapportPerimetre gems={gemsDuPerimetre} membres={membresDuPerimetre} cardStyle={cardStyle} />
+        <RapportPerimetre compte={compte} gems={gemsDuPerimetre} membres={membresDuPerimetre} cardStyle={cardStyle} />
       ) : sousOnglet === "evolution" ? (
         <EvolutionPerimetre membres={membresDuPerimetre} cardStyle={cardStyle} />
       ) : sousOnglet === "activites" ? (
@@ -9457,11 +9464,11 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
       ) : sousOnglet === "membres" ? (
         <PageMembres compte={compte} membres={membres} gems={gems} tribus={tribus} departements={departements} gemsAutorises={gemsDuPerimetre.map(g => g.id)} regulariteParMembre={regulariteParMembre} estPasteur={compte.role === "pasteur" || compte.assistant === true} cardStyle={cardStyle} />
       ) : sousOnglet === "absences" ? (
-        <PageAbsences membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} gemsAutorises={gemsDuPerimetre.map(g => g.id)} cardStyle={cardStyle} />
+        <PageAbsences compte={compte} membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} gemsAutorises={gemsDuPerimetre.map(g => g.id)} cardStyle={cardStyle} />
       ) : sousOnglet === "historique" ? (
         <HistoriquePerimetre gems={gemsDuPerimetre} membres={membresDuPerimetre} cardStyle={cardStyle} />
       ) : sousOnglet === "prediction" ? (
-        <PagePrediction membres={membres} gems={gems} tribus={tribus} departements={departements} gemsAutorises={gemsDuPerimetre.map(g => g.id)} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
+        <PagePrediction compte={compte} membres={membres} gems={gems} tribus={tribus} departements={departements} gemsAutorises={gemsDuPerimetre.map(g => g.id)} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
       ) : (
         <>
           <ClassementsDuMois gemDuMois={gemDuMois} tribuDeptDuMois={tribuDeptDuMois} />
@@ -10749,7 +10756,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                     const numeroWhatsApp = numeroPourWhatsApp(m.telephone);
                     const messageWhatsApp = encodeURIComponent(`Bonjour ${m.nom}, tu nous as manqué au culte de ce dimanche. Tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏
 
-— Pasteur Dimitri Koffi`);
+${signatureMessage(compte)}`);
                     return (
                       <div key={m.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
                         <div>
@@ -10999,7 +11006,7 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
 
   async function envoyerDiffusion() {
     if (!texte.trim() && !imageMessage) return;
-    const texteFinal = compte.role === "pasteur" ? `${texte.trim()}\n\n— Pasteur Dimitri Koffi` : texte.trim();
+    const texteFinal = `${texte.trim()}\n\n${signatureMessage(compte)}`;
     const { error } = await supabase.from("messages").insert({ texte: texteFinal, image: imageMessage || null, de_compte_id: compte.id });
     if (!error) { setTexte(""); setImageMessage(null); chargerTout(); }
   }
