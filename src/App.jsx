@@ -3116,10 +3116,10 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
   const [creationPour, setCreationPour] = useState(null);
   const [nomNouveauGem, setNomNouveauGem] = useState("");
   const [nomRespNouveauGem, setNomRespNouveauGem] = useState("");
-  const [telRespNouveauGem, setTelRespNouveauGem] = useState("");
+  const [telRespNouveauGem, setTelRespNouveauGem] = useState("+225 ");
   const [respGemEnEdition, setRespGemEnEdition] = useState(null);
   const [nomRespGemEdition, setNomRespGemEdition] = useState("");
-  const [telRespGemEdition, setTelRespGemEdition] = useState("");
+  const [telRespGemEdition, setTelRespGemEdition] = useState("+225 ");
   const [responsablesParParent, setResponsablesParParent] = useState({}); // { parentId: { compte, assignationId } }
   const [responsablesParGem, setResponsablesParGem] = useState({}); // { gemId: { nom, telephone } }
 
@@ -3154,20 +3154,24 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
   const filtres = items.filter(it => it.nom.toLowerCase().includes(recherche.toLowerCase()));
 
   async function creerGem(parentId) {
-    if (!nomNouveauGem.trim()) return;
+    if (!nomNouveauGem.trim()) { toast("Le nom du GEM est obligatoire.", "erreur"); return; }
+    if (!nomRespNouveauGem.trim()) { toast("Le nom du responsable est obligatoire.", "erreur"); return; }
+    if (!numeroTelephoneValide(telRespNouveauGem)) { toast("Le numéro du responsable ne semble pas valide.", "erreur"); return; }
     const payload = {
       nom: nomNouveauGem.trim(), type, [type === "tribu" ? "tribu_id" : "departement_id"]: parentId,
-      responsable_nom: nomRespNouveauGem.trim() || null,
-      responsable_telephone: telRespNouveauGem.trim() || null,
+      responsable_nom: nomRespNouveauGem.trim(),
+      responsable_telephone: telRespNouveauGem.trim(),
     };
     const { error } = await supabase.from("gems").insert(payload);
-    if (!error) { setNomNouveauGem(""); setNomRespNouveauGem(""); setTelRespNouveauGem(""); setCreationPour(null); onCreerGem(); }
+    if (!error) { setNomNouveauGem(""); setNomRespNouveauGem(""); setTelRespNouveauGem("+225 "); setCreationPour(null); onCreerGem(); }
   }
 
   async function enregistrerRespGem(gemId) {
+    if (!nomRespGemEdition.trim()) { toast("Le nom du responsable est obligatoire.", "erreur"); return; }
+    if (!numeroTelephoneValide(telRespGemEdition)) { toast("Le numéro du responsable ne semble pas valide.", "erreur"); return; }
     const { error } = await supabase.from("gems").update({
-      responsable_nom: nomRespGemEdition.trim() || null,
-      responsable_telephone: telRespGemEdition.trim() || null,
+      responsable_nom: nomRespGemEdition.trim(),
+      responsable_telephone: telRespGemEdition.trim(),
     }).eq("id", gemId);
     setRespGemEnEdition(null);
     if (!error) { toast("✓ Responsable enregistré.", "succes"); onCreerGem(); }
@@ -3222,15 +3226,15 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
                         {estPasteur && !respGem && (
                           respGemEnEdition === g.id ? (
                             <div style={{ display: "flex", flexDirection: "column", gap: 5, backgroundColor: TEAL_850, padding: 8, borderRadius: "0 0 8px 8px" }}>
-                              <input value={nomRespGemEdition} onChange={e => setNomRespGemEdition(e.target.value)} placeholder="Nom du responsable" style={{ padding: 6, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
-                              <input value={telRespGemEdition} onChange={e => setTelRespGemEdition(e.target.value)} placeholder="Téléphone (optionnel)" style={{ padding: 6, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
+                              <input value={nomRespGemEdition} onChange={e => setNomRespGemEdition(e.target.value)} placeholder="Nom du responsable *" style={{ padding: 6, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
+                              <input value={telRespGemEdition} onChange={e => setTelRespGemEdition(e.target.value)} placeholder="Téléphone *" style={{ padding: 6, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
                               <div style={{ display: "flex", gap: 6 }}>
                                 <button className="btn-app" onClick={() => enregistrerRespGem(g.id)} style={{ padding: "5px 10px", borderRadius: 6, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, fontSize: 11, cursor: "pointer" }}>OK</button>
                                 <button className="btn-app" onClick={() => setRespGemEnEdition(null)} style={{ padding: "5px 10px", borderRadius: 6, backgroundColor: "transparent", color: "var(--text-secondary)", border: `1px solid ${TEAL_600}`, fontWeight: 600, fontSize: 11, cursor: "pointer" }}>✕</button>
                               </div>
                             </div>
                           ) : (
-                            <button className="btn-app" onClick={() => { setRespGemEnEdition(g.id); setNomRespGemEdition(g.responsable_nom || ""); setTelRespGemEdition(g.responsable_telephone || ""); }} style={{ fontSize: 10.5, color: GOLD_LIGHT, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "3px 10px" }}>
+                            <button className="btn-app" onClick={() => { setRespGemEnEdition(g.id); setNomRespGemEdition(g.responsable_nom || ""); setTelRespGemEdition(g.responsable_telephone || "+225 "); }} style={{ fontSize: 10.5, color: GOLD_LIGHT, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "3px 10px" }}>
                               <IconeCrayon size={9} style={{verticalAlign:"-1px",marginRight:3}} />{g.responsable_nom ? "Modifier le responsable" : "+ Ajouter un responsable"}
                             </button>
                           )
@@ -3244,8 +3248,8 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
                 creationPour === it.id ? (
                   <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
                     <input value={nomNouveauGem} onChange={e => setNomNouveauGem(e.target.value)} placeholder="Nom du GEM" style={{ padding: 6, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
-                    <input value={nomRespNouveauGem} onChange={e => setNomRespNouveauGem(e.target.value)} placeholder="Nom du responsable GEM (optionnel)" style={{ padding: 6, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
-                    <input value={telRespNouveauGem} onChange={e => setTelRespNouveauGem(e.target.value)} placeholder="Téléphone du responsable (optionnel)" style={{ padding: 6, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
+                    <input value={nomRespNouveauGem} onChange={e => setNomRespNouveauGem(e.target.value)} placeholder="Nom du responsable GEM *" style={{ padding: 6, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
+                    <input value={telRespNouveauGem} onChange={e => setTelRespNouveauGem(e.target.value)} placeholder="Téléphone du responsable *" style={{ padding: 6, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
                     <div style={{ display: "flex", gap: 6 }}>
                       <button
  className="btn-app"
@@ -3282,7 +3286,7 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
   const [nomEdite, setNomEdite] = useState("");
   const [respEnEdition, setRespEnEdition] = useState(null); // id du GEM dont on édite le responsable
   const [nomRespEdite, setNomRespEdite] = useState("");
-  const [telRespEdite, setTelRespEdite] = useState("");
+  const [telRespEdite, setTelRespEdite] = useState("+225 ");
   const [membreEnEdition, setMembreEnEdition] = useState(null); // membre en cours de modification
   const [infosMembreEditees, setInfosMembreEditees] = useState({ nom: "", telephone: "", quartier: "" });
   const [gemAConfirmerSuppression, setGemAConfirmerSuppression] = useState(null);
@@ -3341,9 +3345,11 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
   }
 
   async function enregistrerResponsableGemListe(gemId) {
+    if (!nomRespEdite.trim()) { toast("Le nom du responsable est obligatoire.", "erreur"); return; }
+    if (!numeroTelephoneValide(telRespEdite)) { toast("Le numéro du responsable ne semble pas valide.", "erreur"); return; }
     const { error } = await supabase.from("gems").update({
-      responsable_nom: nomRespEdite.trim() || null,
-      responsable_telephone: telRespEdite.trim() || null,
+      responsable_nom: nomRespEdite.trim(),
+      responsable_telephone: telRespEdite.trim(),
     }).eq("id", gemId);
     if (error) { toast("Erreur : " + error.message, "erreur"); return; }
     toast("✓ Responsable mis à jour.", "succes");
@@ -3637,8 +3643,8 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
                 {estPasteur && !enEdition && (
                   respEnEdition === g.id ? (
                     <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 10, borderTop: `1px solid ${TEAL_800}`, paddingTop: 10 }}>
-                      <input value={nomRespEdite} onChange={e => setNomRespEdite(e.target.value)} placeholder="Nom du responsable" style={{ padding: 7, borderRadius: 7, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
-                      <input value={telRespEdite} onChange={e => setTelRespEdite(e.target.value)} placeholder="Téléphone (optionnel)" style={{ padding: 7, borderRadius: 7, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
+                      <input value={nomRespEdite} onChange={e => setNomRespEdite(e.target.value)} placeholder="Nom du responsable *" style={{ padding: 7, borderRadius: 7, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
+                      <input value={telRespEdite} onChange={e => setTelRespEdite(e.target.value)} placeholder="Téléphone *" style={{ padding: 7, borderRadius: 7, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
                       <div style={{ display: "flex", gap: 6 }}>
                         <button className="btn-app" onClick={() => enregistrerResponsableGemListe(g.id)} style={{ padding: "6px 12px", borderRadius: 7, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, fontSize: 11, cursor: "pointer" }}>Enregistrer</button>
                         <button className="btn-app" onClick={() => setRespEnEdition(null)} style={{ padding: "6px 12px", borderRadius: 7, backgroundColor: "transparent", color: "var(--text-secondary)", border: `1px solid ${TEAL_600}`, fontWeight: 600, fontSize: 11, cursor: "pointer" }}>Annuler</button>
@@ -3647,7 +3653,7 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
                   ) : (
                     <button
                       className="btn-app"
-                      onClick={() => { setRespEnEdition(g.id); setNomRespEdite(g.responsable_nom || ""); setTelRespEdite(g.responsable_telephone || ""); }}
+                      onClick={() => { setRespEnEdition(g.id); setNomRespEdite(g.responsable_nom || ""); setTelRespEdite(g.responsable_telephone || "+225 "); }}
                       style={{ marginTop: 8, background: "none", border: "none", color: GOLD_LIGHT, fontSize: 11, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4 }}
                     >
                       <IconeCrayon size={11} /> {g.responsable_nom || nomResponsable ? "Modifier le responsable" : "Indiquer un responsable"}
@@ -4356,14 +4362,16 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
   const [presenceResponsable, setPresenceResponsable] = useState(false);
   const [editionResponsableProvisoire, setEditionResponsableProvisoire] = useState(false);
   const [nomResponsableProvisoire, setNomResponsableProvisoire] = useState(gem.responsable_nom || "");
-  const [telResponsableProvisoire, setTelResponsableProvisoire] = useState(gem.responsable_telephone || "");
+  const [telResponsableProvisoire, setTelResponsableProvisoire] = useState(gem.responsable_telephone || "+225 ");
 
   const estAdmin = compte.role === "pasteur" || compte.assistant === true;
 
   async function enregistrerResponsableProvisoire() {
+    if (!nomResponsableProvisoire.trim()) { toast("Le nom du responsable est obligatoire.", "erreur"); return; }
+    if (!numeroTelephoneValide(telResponsableProvisoire)) { toast("Le numéro du responsable ne semble pas valide.", "erreur"); return; }
     const { error } = await supabase.from("gems").update({
-      responsable_nom: nomResponsableProvisoire.trim() || null,
-      responsable_telephone: telResponsableProvisoire.trim() || null,
+      responsable_nom: nomResponsableProvisoire.trim(),
+      responsable_telephone: telResponsableProvisoire.trim(),
     }).eq("id", gem.id);
     setEditionResponsableProvisoire(false);
     if (!error) toast("✓ Responsable indiqué pour ce GEM.", "succes");
@@ -4371,7 +4379,7 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
 
   async function retirerResponsableProvisoire() {
     const { error } = await supabase.from("gems").update({ responsable_nom: null, responsable_telephone: null }).eq("id", gem.id);
-    if (!error) { setNomResponsableProvisoire(""); setTelResponsableProvisoire(""); toast("Responsable retiré.", "succes"); }
+    if (!error) { setNomResponsableProvisoire(""); setTelResponsableProvisoire("+225 "); toast("Responsable retiré.", "succes"); }
   }
 
 
@@ -4724,8 +4732,8 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
             {editionResponsableProvisoire ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                 <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: 0 }}>Ce GEM n'a pas encore de responsable avec un compte de connexion — tu peux au moins indiquer son nom.</p>
-                <input value={nomResponsableProvisoire} onChange={e => setNomResponsableProvisoire(e.target.value)} placeholder="Nom du responsable GEM" style={{ padding: 7, borderRadius: 7, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
-                <input value={telResponsableProvisoire} onChange={e => setTelResponsableProvisoire(e.target.value)} placeholder="Téléphone (optionnel)" style={{ padding: 7, borderRadius: 7, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
+                <input value={nomResponsableProvisoire} onChange={e => setNomResponsableProvisoire(e.target.value)} placeholder="Nom du responsable GEM *" style={{ padding: 7, borderRadius: 7, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
+                <input value={telResponsableProvisoire} onChange={e => setTelResponsableProvisoire(e.target.value)} placeholder="Téléphone *" style={{ padding: 7, borderRadius: 7, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
                 <div style={{ display: "flex", gap: 6 }}>
                   <button className="btn-app" onClick={enregistrerResponsableProvisoire} style={{ padding: "6px 12px", borderRadius: 7, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, fontSize: 11, cursor: "pointer" }}>Enregistrer</button>
                   <button className="btn-app" onClick={() => setEditionResponsableProvisoire(false)} style={{ padding: "6px 12px", borderRadius: 7, backgroundColor: "transparent", color: "var(--text-secondary)", border: `1px solid ${TEAL_600}`, fontWeight: 600, fontSize: 11, cursor: "pointer" }}>Annuler</button>
@@ -5533,17 +5541,23 @@ function calculerListeBoss(membres, gems, tribus, departements, regulariteParMem
     groupesTelephone[cle].push(m);
   });
 
-  // Responsables de département (rôle "departement_resp") — servent aussi
-  // l'église au niveau département, même sans être eux-mêmes suivis comme
-  // membre dans un GEM. On les fusionne par numéro s'ils y sont déjà, sinon
-  // on crée une entrée BOSS dédiée pour eux.
+  // Responsables de département ("departement_resp") ET responsables GEM d'un
+  // GEM de type département ("gem") — tous servent l'église au niveau
+  // département, même sans être eux-mêmes suivis comme membre dans ce GEM.
+  // On les fusionne par numéro s'ils y sont déjà, sinon on crée une entrée
+  // BOSS dédiée pour eux.
   const responsablesDept = (assignationsActives || [])
-    .filter(a => a.role_demande === "departement_resp")
+    .filter(a => a.role_demande === "departement_resp" || (a.role_demande === "gem" && gems.find(g => g.id === a.gem_id)?.type === "departement"))
     .map(a => {
       const c = (tousLesComptes || []).find(cc => cc.id === a.compte_id);
       if (!c) return null;
-      const nomDept = departements.find(d => d.id === a.departement_id)?.nom || "Département inconnu";
-      return { compte: c, nomDept };
+      if (a.role_demande === "departement_resp") {
+        const nomDept = departements.find(d => d.id === a.departement_id)?.nom || "Département inconnu";
+        return { compte: c, nomDept, libelleRole: "Responsable du département" };
+      }
+      const g = gems.find(gg => gg.id === a.gem_id);
+      const nomDept = departements.find(d => d.id === g?.departement_id)?.nom || "Département inconnu";
+      return { compte: c, nomDept, libelleRole: `Responsable GEM (${g?.nom || "?"})` };
     })
     .filter(Boolean);
 
@@ -5567,7 +5581,7 @@ function calculerListeBoss(membres, gems, tribus, departements, regulariteParMem
       });
       if (respDeptCorrespondant && !nomsDejaVus.has(respDeptCorrespondant.nomDept)) {
         nomsDejaVus.add(respDeptCorrespondant.nomDept);
-        servicesUniques.push({ nom: respDeptCorrespondant.nomDept, gemNom: "Responsable du département" });
+        servicesUniques.push({ nom: respDeptCorrespondant.nomDept, gemNom: respDeptCorrespondant.libelleRole });
       }
 
       const regularites = fiches.map(m => regulariteParMembre?.[m.id]).filter(r => r && r.tauxRegularite !== null && r.tauxRegularite !== undefined);
@@ -5606,7 +5620,7 @@ function calculerListeBoss(membres, gems, tribus, departements, regulariteParMem
       dateNaissance: r.compte.date_naissance,
       photo: null,
       nomTribu: null,
-      services: [{ nom: r.nomDept, gemNom: "Responsable du département" }],
+      services: [{ nom: r.nomDept, gemNom: r.libelleRole }],
       tauxMoyen: null,
       absencesConsecutives: 0,
       fiches: [],
@@ -6660,6 +6674,8 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
   const [dimancheRecent, setDimancheRecent] = useState(null);
   const [motifsParMembre, setMotifsParMembre] = useState({});
   const [presentsIds, setPresentsIds] = useState(new Set());
+  const [pageAbsents, setPageAbsents] = useState(1);
+  const PAR_PAGE_ABSENTS = 20;
   const [courbeHebdo, setCourbeHebdo] = useState([]); // 12 derniers dimanches réellement pointés
   const [chargementMois, setChargementMois] = useState(true);
   const [presencesMoisCourant, setPresencesMoisCourant] = useState([]);
@@ -6835,6 +6851,11 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
     .map(m => ({ membre: m, absencesConsecutives: regulariteParMembre[m.id]?.absencesConsecutives || 0, motif: motifsParMembre[m.id] || "" }))
     .sort((a, b) => b.absencesConsecutives - a.absencesConsecutives);
 
+  const totalPagesAbsents = Math.max(1, Math.ceil(absents.length / PAR_PAGE_ABSENTS));
+  const absentsAffiches = absents.slice((pageAbsents - 1) * PAR_PAGE_ABSENTS, pageAbsents * PAR_PAGE_ABSENTS);
+
+  useEffect(() => { setPageAbsents(1); }, [vueAbsences, dimancheRecent]);
+
   // --- GEM / département / tribu avec le plus grand taux d'absence (semaine en cours) ---
   function pireGemCalc() {
     const groupes = {};
@@ -6938,8 +6959,9 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
           {absents.length === 0 ? (
             <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>Aucun absent pour l'instant — tout le monde est pointé présent. 🙏</p>
           ) : (
+            <>
             <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {absents.map(({ membre, absencesConsecutives, motif }) => (
+              {absentsAffiches.map(({ membre, absencesConsecutives, motif }) => (
                 <div key={membre.id} style={{ ...cardStyle, borderColor: absencesConsecutives >= 2 ? RED_LIGHT : TEAL_700 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
                     <div>
@@ -6972,6 +6994,14 @@ function PageAbsences({ membres, gems, tribus, departements, regulariteParMembre
                 </div>
               ))}
             </div>
+            {totalPagesAbsents > 1 && (
+              <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 14, marginTop: 16 }}>
+                <button className="btn-app" disabled={pageAbsents === 1} onClick={() => setPageAbsents(p => p - 1)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, cursor: pageAbsents === 1 ? "not-allowed" : "pointer", opacity: pageAbsents === 1 ? 0.5 : 1 }}>← Précédent</button>
+                <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>Page {pageAbsents} / {totalPagesAbsents}</span>
+                <button className="btn-app" disabled={pageAbsents === totalPagesAbsents} onClick={() => setPageAbsents(p => p + 1)} style={{ padding: "8px 14px", borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, cursor: pageAbsents === totalPagesAbsents ? "not-allowed" : "pointer", opacity: pageAbsents === totalPagesAbsents ? 0.5 : 1 }}>Suivant →</button>
+              </div>
+            )}
+            </>
           )}
 
           {responsablesAbsents.length > 0 && (
@@ -9219,13 +9249,13 @@ function EvolutionPerimetre({ membres, cardStyle }) {
 function MonEspace({ compte, assignationsActives, gems, membres, tribus, departements, gemOuvert, setGemOuvert, onMembreAjoute, onCreerGem, regulariteParMembre, membreCible, onMembreCibleConsomme, gemDuMois, tribuDeptDuMois, evenementsAvecImage, cardStyle }) {
   const [nomNouveauGem, setNomNouveauGem] = useState("");
   const [nomResponsableGem, setNomResponsableGem] = useState("");
-  const [telResponsableGem, setTelResponsableGem] = useState("");
+  const [telResponsableGem, setTelResponsableGem] = useState("+225 ");
   const [creationOuverte, setCreationOuverte] = useState(false);
   const [gemResponsableEnEdition, setGemResponsableEnEdition] = useState(null);
   const [gemNomEnEdition, setGemNomEnEdition] = useState(null);
   const [nouveauNomGem, setNouveauNomGem] = useState("");
   const [nomResponsableEnEdition, setNomResponsableEnEdition] = useState("");
-  const [telResponsableEnEdition, setTelResponsableEnEdition] = useState("");
+  const [telResponsableEnEdition, setTelResponsableEnEdition] = useState("+225 ");
   const [sousOnglet, setSousOnglet] = useState("gems");
   const [indexRoleSelectionne, setIndexRoleSelectionne] = useState(0);
   const [responsablesGemPerimetre, setResponsablesGemPerimetre] = useState({}); // { gemId: nom }
@@ -9344,23 +9374,27 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
   }
 
   async function creerGem() {
-    if (!nomNouveauGem.trim()) return;
+    if (!nomNouveauGem.trim()) { toast("Le nom du GEM est obligatoire.", "erreur"); return; }
+    if (!nomResponsableGem.trim()) { toast("Le nom du responsable est obligatoire.", "erreur"); return; }
+    if (!numeroTelephoneValide(telResponsableGem)) { toast("Le numéro du responsable ne semble pas valide.", "erreur"); return; }
     const payload = {
       nom: nomNouveauGem.trim(),
       type: estDept ? "departement" : "tribu",
       departement_id: estDept ? assignation.departement_id : null,
       tribu_id: estDept ? null : assignation.tribu_id,
-      responsable_nom: nomResponsableGem.trim() || null,
-      responsable_telephone: telResponsableGem.trim() || null,
+      responsable_nom: nomResponsableGem.trim(),
+      responsable_telephone: telResponsableGem.trim(),
     };
     const { error } = await supabase.from("gems").insert(payload);
-    if (!error) { setNomNouveauGem(""); setNomResponsableGem(""); setTelResponsableGem(""); setCreationOuverte(false); onCreerGem(); }
+    if (!error) { setNomNouveauGem(""); setNomResponsableGem(""); setTelResponsableGem("+225 "); setCreationOuverte(false); onCreerGem(); }
   }
 
   async function enregistrerResponsableGem(gemId) {
+    if (!nomResponsableEnEdition.trim()) { toast("Le nom du responsable est obligatoire.", "erreur"); return; }
+    if (!numeroTelephoneValide(telResponsableEnEdition)) { toast("Le numéro du responsable ne semble pas valide.", "erreur"); return; }
     const { error } = await supabase.from("gems").update({
-      responsable_nom: nomResponsableEnEdition.trim() || null,
-      responsable_telephone: telResponsableEnEdition.trim() || null,
+      responsable_nom: nomResponsableEnEdition.trim(),
+      responsable_telephone: telResponsableEnEdition.trim(),
     }).eq("id", gemId);
     if (!error) { setGemResponsableEnEdition(null); onCreerGem(); }
   }
@@ -9435,8 +9469,8 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
             {creationOuverte ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <input value={nomNouveauGem} onChange={e => setNomNouveauGem(e.target.value)} placeholder="Nom du nouveau GEM" style={{ padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
-                <input value={nomResponsableGem} onChange={e => setNomResponsableGem(e.target.value)} placeholder="Nom du responsable GEM (optionnel)" style={{ padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
-                <input value={telResponsableGem} onChange={e => setTelResponsableGem(e.target.value)} placeholder="Téléphone du responsable (optionnel)" style={{ padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+                <input value={nomResponsableGem} onChange={e => setNomResponsableGem(e.target.value)} placeholder="Nom du responsable GEM *" style={{ padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+                <input value={telResponsableGem} onChange={e => setTelResponsableGem(e.target.value)} placeholder="Téléphone du responsable *" style={{ padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
                 <div style={{ display: "flex", gap: 8 }}>
                   <button
  className="btn-app"
@@ -9487,8 +9521,8 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
                   {!responsablesGemPerimetre[g.id] && (
                     gemResponsableEnEdition === g.id ? (
                       <div style={{ display: "flex", flexDirection: "column", gap: 6, borderTop: `1px solid ${TEAL_800}`, paddingTop: 8 }}>
-                        <input value={nomResponsableEnEdition} onChange={e => setNomResponsableEnEdition(e.target.value)} placeholder="Nom du responsable GEM" style={{ padding: 7, borderRadius: 7, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
-                        <input value={telResponsableEnEdition} onChange={e => setTelResponsableEnEdition(e.target.value)} placeholder="Téléphone (optionnel)" style={{ padding: 7, borderRadius: 7, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
+                        <input value={nomResponsableEnEdition} onChange={e => setNomResponsableEnEdition(e.target.value)} placeholder="Nom du responsable GEM *" style={{ padding: 7, borderRadius: 7, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
+                        <input value={telResponsableEnEdition} onChange={e => setTelResponsableEnEdition(e.target.value)} placeholder="Téléphone *" style={{ padding: 7, borderRadius: 7, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
                         <div style={{ display: "flex", gap: 6 }}>
                           <button className="btn-app" onClick={() => enregistrerResponsableGem(g.id)} style={{ padding: "6px 12px", borderRadius: 7, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, fontSize: 11, cursor: "pointer" }}>Enregistrer</button>
                           <button className="btn-app" onClick={() => setGemResponsableEnEdition(null)} style={{ padding: "6px 12px", borderRadius: 7, backgroundColor: "transparent", color: "var(--text-secondary)", border: `1px solid ${TEAL_600}`, fontWeight: 600, fontSize: 11, cursor: "pointer" }}>Annuler</button>
@@ -9496,7 +9530,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
                       </div>
                     ) : (
                       <div style={{ display: "flex", gap: 12, borderTop: `1px solid ${TEAL_800}`, paddingTop: 8 }}>
-                        <button className="btn-app" onClick={() => { setGemResponsableEnEdition(g.id); setNomResponsableEnEdition(g.responsable_nom || ""); setTelResponsableEnEdition(g.responsable_telephone || ""); }} style={{ background: "none", border: "none", color: GOLD_LIGHT, fontSize: 11, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        <button className="btn-app" onClick={() => { setGemResponsableEnEdition(g.id); setNomResponsableEnEdition(g.responsable_nom || ""); setTelResponsableEnEdition(g.responsable_telephone || "+225 "); }} style={{ background: "none", border: "none", color: GOLD_LIGHT, fontSize: 11, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 4 }}>
                           <IconeCrayon size={11} /> {g.responsable_nom ? "Modifier" : "Indiquer un responsable"}
                         </button>
                         {g.responsable_nom && (
