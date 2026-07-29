@@ -1827,6 +1827,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
   const [nbMessagesNonLus, setNbMessagesNonLus] = useState(0);
   const [membres, setMembres] = useState([]);
   const [tousLesComptes, setTousLesComptes] = useState([]);
+  const [assignationsActivesGlobal, setAssignationsActivesGlobal] = useState([]);
   const [responsablesParGem, setResponsablesParGem] = useState({});
   const [gemDuMois, setGemDuMois] = useState(null);
   const [tribuDeptDuMois, setTribuDeptDuMois] = useState({ tribu: null, departement: null });
@@ -1900,6 +1901,9 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
         if (as.gem_id && c) map[as.gem_id] = c.nom;
       });
       setResponsablesParGem(map);
+
+      const { data: toutesAssignationsActives } = await supabase.from("assignations").select("*").eq("statut", "actif");
+      setAssignationsActivesGlobal(toutesAssignationsActives || []);
 
       const { data: dernierDimanche } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(1).maybeSingle();
       if (dernierDimanche && g && g.length > 0) {
@@ -2566,7 +2570,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
                 <p style={{ fontSize: 11, color: "var(--text-secondary)" }}>Clique pour voir le détail</p>
               </button>
               {(() => {
-                const listeBossDashboard = calculerListeBoss(membres, gems, tribus, departements, regulariteParMembre, [], tousLesComptes);
+                const listeBossDashboard = calculerListeBoss(membres, gems, tribus, departements, regulariteParMembre, assignationsActivesGlobal, tousLesComptes);
                 const bossIrreguliersDashboard = listeBossDashboard.filter(b => b.absencesConsecutives >= 2);
                 return (
                   <button className="btn-app card-app" onClick={() => { setPage("membres"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...cardStyle, cursor: "pointer", textAlign: "left", borderColor: bossIrreguliersDashboard.length > 0 ? RED_LIGHT : GOLD }}>
@@ -3111,6 +3115,11 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
   const [recherche, setRecherche] = useState("");
   const [creationPour, setCreationPour] = useState(null);
   const [nomNouveauGem, setNomNouveauGem] = useState("");
+  const [nomRespNouveauGem, setNomRespNouveauGem] = useState("");
+  const [telRespNouveauGem, setTelRespNouveauGem] = useState("");
+  const [respGemEnEdition, setRespGemEnEdition] = useState(null);
+  const [nomRespGemEdition, setNomRespGemEdition] = useState("");
+  const [telRespGemEdition, setTelRespGemEdition] = useState("");
   const [responsablesParParent, setResponsablesParParent] = useState({}); // { parentId: { compte, assignationId } }
   const [responsablesParGem, setResponsablesParGem] = useState({}); // { gemId: { nom, telephone } }
 
@@ -3146,9 +3155,23 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
 
   async function creerGem(parentId) {
     if (!nomNouveauGem.trim()) return;
-    const payload = { nom: nomNouveauGem.trim(), type, [type === "tribu" ? "tribu_id" : "departement_id"]: parentId };
+    const payload = {
+      nom: nomNouveauGem.trim(), type, [type === "tribu" ? "tribu_id" : "departement_id"]: parentId,
+      responsable_nom: nomRespNouveauGem.trim() || null,
+      responsable_telephone: telRespNouveauGem.trim() || null,
+    };
     const { error } = await supabase.from("gems").insert(payload);
-    if (!error) { setNomNouveauGem(""); setCreationPour(null); onCreerGem(); }
+    if (!error) { setNomNouveauGem(""); setNomRespNouveauGem(""); setTelRespNouveauGem(""); setCreationPour(null); onCreerGem(); }
+  }
+
+  async function enregistrerRespGem(gemId) {
+    const { error } = await supabase.from("gems").update({
+      responsable_nom: nomRespGemEdition.trim() || null,
+      responsable_telephone: telRespGemEdition.trim() || null,
+    }).eq("id", gemId);
+    setRespGemEnEdition(null);
+    if (!error) { toast("✓ Responsable enregistré.", "succes"); onCreerGem(); }
+    else toast("Erreur : " + error.message, "erreur");
   }
 
   return (
@@ -3187,24 +3210,50 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
                 <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                   {gemsDuParent.map(g => {
                     const respGem = responsablesParGem[g.id];
+                    const nomAAfficher = respGem ? respGem.nom : g.responsable_nom;
                     return (
-                      <button key={g.id} onClick={() => onOpenGem(g)} style={{ textAlign: "left", padding: "8px 10px", borderRadius: 8, backgroundColor: TEAL_700, color: GOLD_LIGHT, border: "none", fontSize: 13, cursor: "pointer", display: "flex", flexDirection: "column", gap: 2 }}>
-                        <span>{g.nom}</span>
-                        <span style={{ fontSize: 11, fontWeight: 400, color: respGem ? "var(--text-secondary-2)" : "var(--text-secondary)" }}>
-                          {respGem ? respGem.nom : "Sans responsable"}
-                        </span>
-                      </button>
+                      <div key={g.id} style={{ display: "flex", flexDirection: "column" }}>
+                        <button onClick={() => onOpenGem(g)} style={{ textAlign: "left", padding: "8px 10px", borderRadius: respGemEnEdition === g.id ? "8px 8px 0 0" : 8, backgroundColor: TEAL_700, color: GOLD_LIGHT, border: "none", fontSize: 13, cursor: "pointer", display: "flex", flexDirection: "column", gap: 2 }}>
+                          <span>{g.nom}</span>
+                          <span style={{ fontSize: 11, fontWeight: 400, color: nomAAfficher ? "var(--text-secondary-2)" : "var(--text-secondary)" }}>
+                            {nomAAfficher || "Sans responsable"}
+                          </span>
+                        </button>
+                        {estPasteur && !respGem && (
+                          respGemEnEdition === g.id ? (
+                            <div style={{ display: "flex", flexDirection: "column", gap: 5, backgroundColor: TEAL_850, padding: 8, borderRadius: "0 0 8px 8px" }}>
+                              <input value={nomRespGemEdition} onChange={e => setNomRespGemEdition(e.target.value)} placeholder="Nom du responsable" style={{ padding: 6, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
+                              <input value={telRespGemEdition} onChange={e => setTelRespGemEdition(e.target.value)} placeholder="Téléphone (optionnel)" style={{ padding: 6, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
+                              <div style={{ display: "flex", gap: 6 }}>
+                                <button className="btn-app" onClick={() => enregistrerRespGem(g.id)} style={{ padding: "5px 10px", borderRadius: 6, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, fontSize: 11, cursor: "pointer" }}>OK</button>
+                                <button className="btn-app" onClick={() => setRespGemEnEdition(null)} style={{ padding: "5px 10px", borderRadius: 6, backgroundColor: "transparent", color: "var(--text-secondary)", border: `1px solid ${TEAL_600}`, fontWeight: 600, fontSize: 11, cursor: "pointer" }}>✕</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <button className="btn-app" onClick={() => { setRespGemEnEdition(g.id); setNomRespGemEdition(g.responsable_nom || ""); setTelRespGemEdition(g.responsable_telephone || ""); }} style={{ fontSize: 10.5, color: GOLD_LIGHT, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "3px 10px" }}>
+                              <IconeCrayon size={9} style={{verticalAlign:"-1px",marginRight:3}} />{g.responsable_nom ? "Modifier le responsable" : "+ Ajouter un responsable"}
+                            </button>
+                          )
+                        )}
+                      </div>
                     );
                   })}
                 </div>
               )}
               {estPasteur && (
                 creationPour === it.id ? (
-                  <div style={{ marginTop: 10, display: "flex", gap: 6 }}>
-                    <input value={nomNouveauGem} onChange={e => setNomNouveauGem(e.target.value)} placeholder="Nom du GEM" style={{ flex: 1, padding: 6, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
-                    <button
+                  <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
+                    <input value={nomNouveauGem} onChange={e => setNomNouveauGem(e.target.value)} placeholder="Nom du GEM" style={{ padding: 6, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
+                    <input value={nomRespNouveauGem} onChange={e => setNomRespNouveauGem(e.target.value)} placeholder="Nom du responsable GEM (optionnel)" style={{ padding: 6, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
+                    <input value={telRespNouveauGem} onChange={e => setTelRespNouveauGem(e.target.value)} placeholder="Téléphone du responsable (optionnel)" style={{ padding: 6, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button
  className="btn-app"
  onClick={() => creerGem(it.id)} style={{ padding: "6px 10px", borderRadius: 6, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, var(--gold-light), var(--gold))", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontSize: 12, fontWeight: 700 }}>OK</button>
+                      <button
+ className="btn-app"
+ onClick={() => { setCreationPour(null); setNomNouveauGem(""); setNomRespNouveauGem(""); setTelRespNouveauGem(""); }} style={{ padding: "6px 10px", borderRadius: 6, backgroundColor: "transparent", color: "var(--text-secondary)", border: `1px solid ${TEAL_600}`, fontSize: 12, fontWeight: 600 }}>Annuler</button>
+                    </div>
                   </div>
                 ) : (
                   <button
@@ -7078,6 +7127,11 @@ function PageMembres({ compte, membres, gems, tribus, departements, gemsAutorise
 
   const membresDuPerimetre = gemsAutorises ? membres.filter(m => gemsAutorises.includes(m.gem_id)) : membres;
 
+  // BOSS n'a de sens qu'au niveau des départements — un responsable de tribu
+  // (dont le périmètre ne contient aucun GEM de type "département") ne doit
+  // jamais voir cette notion, uniquement le nombre de membres de sa tribu.
+  const perimetreEstTribuUniquement = gemsAutorises && gemsAutorises.length > 0 && gems.filter(g => gemsAutorises.includes(g.id)).every(g => g.type === "tribu");
+
   useEffect(() => { chargerTout(); }, [membresDuPerimetre.length]);
 
   async function chargerTout() {
@@ -7429,15 +7483,21 @@ function PageMembres({ compte, membres, gems, tribus, departements, gemsAutorise
       />
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
-        <button className="btn-app" onClick={() => { setVueBoss(v => !v); setFiltreBossIrreguliers(false); }} style={{ padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${GOLD}`, cursor: "pointer", backgroundColor: vueBoss ? GOLD : "transparent", color: vueBoss ? TEAL_950 : GOLD_LIGHT }}>
-          <span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeEtoile size={14}/> BOSS ({listeBoss.length})</span>
-        </button>
+        {perimetreEstTribuUniquement ? (
+          <span style={{ padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${GOLD}`, backgroundColor: "transparent", color: GOLD_LIGHT, display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <IconeGroupe size={14} /> Membres ({membresDuPerimetre.length})
+          </span>
+        ) : (
+          <button className="btn-app" onClick={() => { setVueBoss(v => !v); setFiltreBossIrreguliers(false); }} style={{ padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${GOLD}`, cursor: "pointer", backgroundColor: vueBoss ? GOLD : "transparent", color: vueBoss ? TEAL_950 : GOLD_LIGHT }}>
+            <span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeEtoile size={14}/> BOSS ({listeBoss.length})</span>
+          </button>
+        )}
         {!vueBoss && (
           <>
             <button className="btn-app" onClick={() => setFiltreIrreguliers(v => !v)} style={{ padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${RED_LIGHT}`, cursor: "pointer", backgroundColor: filtreIrreguliers ? RED_LIGHT : "transparent", color: filtreIrreguliers ? "#fff" : RED_LIGHT }}>
               ⚠️ Membres irréguliers (2+ absences / 4 dimanches)
             </button>
-            {["", "membre", "gem", "departement_resp", "tribu_resp"].map(r => (
+            {(estPasteur ? ["", "membre", "gem", "departement_resp", "tribu_resp"] : ["", "membre", "gem"]).map(r => (
               <button key={r} className="btn-app" onClick={() => setFiltreRole(r)} style={{ padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${TEAL_600}`, cursor: "pointer", backgroundColor: filtreRole === r ? GOLD : "transparent", color: filtreRole === r ? TEAL_950 : "var(--text-secondary-2)" }}>
                 {r === "" ? "Tous" : libelleRole(r)}
               </button>
