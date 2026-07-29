@@ -7088,6 +7088,21 @@ function PageMembres({ compte, membres, gems, tribus, departements, gemsAutorise
   const [vueBoss, setVueBoss] = useState(false);
   const [filtreBossIrreguliers, setFiltreBossIrreguliers] = useState(false);
   const [bossOuvert, setBossOuvert] = useState(null);
+  const [bossASupprimerDuStatut, setBossASupprimerDuStatut] = useState(null);
+  const [retraitBossEnCours, setRetraitBossEnCours] = useState(false);
+
+  async function confirmerRetraitBoss() {
+    setRetraitBossEnCours(true);
+    const idsAsupprimer = bossASupprimerDuStatut.fichesDept.map(m => m.id);
+    const { error } = await supabase.from("membres").delete().in("id", idsAsupprimer);
+    setRetraitBossEnCours(false);
+    if (error) { toast("Erreur : " + error.message, "erreur"); return; }
+    toast(`${bossASupprimerDuStatut.nom} a été retiré(e) du statut BOSS.`, "succes");
+    journaliser(compte, "retrait_boss", bossASupprimerDuStatut.nom);
+    setBossASupprimerDuStatut(null);
+    setBossOuvert(null);
+    chargerTout();
+  }
   const [membreASupprimer, setMembreASupprimer] = useState(null);
   const [motifSuppression, setMotifSuppression] = useState("");
   const [suppressionEnCours, setSuppressionEnCours] = useState(false);
@@ -7304,6 +7319,7 @@ function PageMembres({ compte, membres, gems, tribus, departements, gemsAutorise
     const numeroWhatsApp = numeroPourWhatsApp(b.telephone);
     const ficheIrreguliere = b.fiches.find(m => (regulariteParMembre?.[m.id]?.absencesConsecutives || 0) >= 2);
     const motifIrregularite = ficheIrreguliere ? (motifsRecents?.[ficheIrreguliere.id] || "") : "";
+    const fichesDept = b.fiches.filter(m => gems.find(g => g.id === m.gem_id)?.type === "departement");
     return (
       <div>
         <button className="btn-app" onClick={() => setBossOuvert(null)} style={{ background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", marginBottom: 16, fontSize: 13 }}>← Retour à la liste</button>
@@ -7348,10 +7364,20 @@ function PageMembres({ compte, membres, gems, tribus, departements, gemsAutorise
         </div>
 
         {b.telephone && (
-          <div style={{ display: "flex", gap: 10 }}>
+          <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
             <a href={`tel:${b.telephone}`} style={{ flex: 1, textAlign: "center", padding: "12px 0", borderRadius: 10, backgroundColor: GOLD_LIGHT, color: TEAL_950, fontWeight: 700, textDecoration: "none", fontSize: 14 }}><IconeTelephone size={15} /> Appeler</a>
             <a href={`https://wa.me/${numeroWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, textAlign: "center", padding: "12px 0", borderRadius: 10, backgroundColor: "#25D366", color: "#fff", fontWeight: 700, textDecoration: "none", fontSize: 14 }}><IconeMessage size={15} /> WhatsApp</a>
           </div>
+        )}
+
+        {fichesDept.length > 0 && estPasteur && (
+          <button
+            className="btn-app"
+            onClick={() => setBossASupprimerDuStatut({ ...b, fichesDept })}
+            style={{ width: "100%", padding: "10px 0", borderRadius: 9, backgroundColor: "transparent", border: `1px solid ${RED_LIGHT}`, color: RED_LIGHT, fontWeight: 700, fontSize: 12.5, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+          >
+            <IconePoubelle size={13} /> Retirer du statut BOSS
+          </button>
         )}
       </div>
     );
@@ -7629,6 +7655,17 @@ function PageMembres({ compte, membres, gems, tribus, departements, gemsAutorise
           dangereux
           onConfirmer={confirmerSuppressionMembre}
           onAnnuler={() => setMembreASupprimer(null)}
+        />
+      )}
+
+      {bossASupprimerDuStatut && (
+        <BoiteConfirmation
+          titre="Retirer du statut BOSS ?"
+          message={`"${bossASupprimerDuStatut.nom}" sera retiré(e) de ${bossASupprimerDuStatut.fichesDept.length > 1 ? "ces GEM de département" : "ce GEM de département"} : ${bossASupprimerDuStatut.fichesDept.map(m => gems.find(g => g.id === m.gem_id)?.nom).join(", ")}. Il/elle restera membre ailleurs si c'est le cas (ex : dans sa tribu). Cette action est irréversible.`}
+          texteConfirmer={retraitBossEnCours ? "…" : "Retirer du statut BOSS"}
+          dangereux
+          onConfirmer={confirmerRetraitBoss}
+          onAnnuler={() => setBossASupprimerDuStatut(null)}
         />
       )}
     </div>
