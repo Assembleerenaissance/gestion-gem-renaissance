@@ -463,6 +463,16 @@ function PageNouveauxMembres({ compte, tribus, cardStyle }) {
     const { data } = await supabase.from("nouveaux_membres").select("*").gte("date_arrivee", debut).lte("date_arrivee", finDate).order("date_arrivee", { ascending: false });
     setNouveaux(data || []);
 
+    // S'assure que le dimanche de cette semaine existe déjà dans la base — le
+    // rapport doit pouvoir se faire chaque dimanche, même si personne d'autre
+    // dans l'app n'a encore touché cette date.
+    const estMoisEnCours = mois === new Date().toISOString().slice(0, 7);
+    if (estMoisEnCours) {
+      const dateAuj = dimancheActuel();
+      const { data: dimExistant } = await supabase.from("dimanches").select("*").eq("date", dateAuj).maybeSingle();
+      if (!dimExistant) await supabase.from("dimanches").insert({ date: dateAuj });
+    }
+
     if ((data || []).length > 0) {
       const ids = data.map(n => n.id);
       const [{ data: dims }, { data: pres }] = await Promise.all([
