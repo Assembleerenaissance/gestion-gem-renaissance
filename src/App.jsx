@@ -3511,6 +3511,9 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
   const [nomRespGemEdition, setNomRespGemEdition] = useState("");
   const [telRespGemEdition, setTelRespGemEdition] = useState("+225 ");
   const [responsablesParParent, setResponsablesParParent] = useState({}); // { parentId: { compte, assignationId } }
+  const [respParentEnEdition, setRespParentEnEdition] = useState(null);
+  const [nomRespParentEdition, setNomRespParentEdition] = useState("");
+  const [telRespParentEdition, setTelRespParentEdition] = useState("+225 ");
   const [responsablesParGem, setResponsablesParGem] = useState({}); // { gemId: { nom, telephone } }
 
   useEffect(() => { chargerResponsables(); }, [type, gems.length]);
@@ -3568,6 +3571,19 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
     else toast("Erreur : " + error.message, "erreur");
   }
 
+  async function enregistrerRespParent(parentId) {
+    if (!nomRespParentEdition.trim()) { toast("Le nom du responsable est obligatoire.", "erreur"); return; }
+    if (!numeroTelephoneValide(telRespParentEdition)) { toast("Le numéro du responsable ne semble pas valide.", "erreur"); return; }
+    const table = type === "tribu" ? "tribus" : "departements";
+    const { error } = await supabase.from(table).update({
+      responsable_nom: nomRespParentEdition.trim(),
+      responsable_telephone: telRespParentEdition.trim(),
+    }).eq("id", parentId);
+    setRespParentEnEdition(null);
+    if (!error) { toast("✓ Responsable enregistré.", "succes"); onCreerGem(); }
+    else toast("Erreur : " + error.message, "erreur");
+  }
+
   return (
     <div>
       <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>{titre}</h2>
@@ -3595,6 +3611,32 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
                 <p style={{ fontSize: 11, color: GOLD_LIGHT, marginBottom: 10 }}>
                   {type === "tribu" ? "Patriarche/Matriarche" : "Responsable"} : {responsable.compte.nom}
                 </p>
+              ) : it.responsable_nom ? (
+                <div style={{ marginBottom: 10 }}>
+                  <p style={{ fontSize: 11, color: "var(--text-secondary-2)", margin: 0 }}>
+                    {type === "tribu" ? "Patriarche/Matriarche" : "Responsable"} : {it.responsable_nom}{it.responsable_telephone ? ` — ${it.responsable_telephone}` : ""}
+                  </p>
+                  {estPasteur && (
+                    <button className="btn-app" onClick={() => { setRespParentEnEdition(it.id); setNomRespParentEdition(it.responsable_nom || ""); setTelRespParentEdition(it.responsable_telephone || "+225 "); }} style={{ fontSize: 10.5, color: GOLD_LIGHT, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                      <IconeCrayon size={9} style={{verticalAlign:"-1px",marginRight:3}} />Modifier
+                    </button>
+                  )}
+                </div>
+              ) : estPasteur ? (
+                respParentEnEdition === it.id ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 10, backgroundColor: TEAL_850, padding: 8, borderRadius: 8 }}>
+                    <input value={nomRespParentEdition} onChange={e => setNomRespParentEdition(e.target.value)} placeholder="Nom du responsable *" style={{ padding: 6, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
+                    <input value={telRespParentEdition} onChange={e => setTelRespParentEdition(e.target.value)} placeholder="Téléphone *" style={{ padding: 6, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 12 }} />
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button className="btn-app" onClick={() => enregistrerRespParent(it.id)} style={{ padding: "5px 10px", borderRadius: 6, backgroundColor: GOLD, color: TEAL_950, border: "none", fontWeight: 700, fontSize: 11, cursor: "pointer" }}>OK</button>
+                      <button className="btn-app" onClick={() => setRespParentEnEdition(null)} style={{ padding: "5px 10px", borderRadius: 6, backgroundColor: "transparent", color: "var(--text-secondary)", border: `1px solid ${TEAL_600}`, fontWeight: 600, fontSize: 11, cursor: "pointer" }}>✕</button>
+                    </div>
+                  </div>
+                ) : (
+                  <button className="btn-app" onClick={() => { setRespParentEnEdition(it.id); setNomRespParentEdition(""); setTelRespParentEdition("+225 "); }} style={{ fontSize: 11, color: GOLD_LIGHT, background: "none", border: "none", cursor: "pointer", padding: 0, marginBottom: 10, display: "block" }}>
+                    + Ajouter un responsable
+                  </button>
+                )
               ) : (
                 <p style={{ fontSize: 11, color: "var(--text-secondary)", fontStyle: "italic", marginBottom: 10 }}>Aucun responsable désigné</p>
               )}
