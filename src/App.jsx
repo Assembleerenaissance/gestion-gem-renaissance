@@ -427,6 +427,366 @@ function PageIdentite({ cardStyle }) {
   );
 }
 
+/* ------------------------------- Nouveaux membres ------------------------------- */
+
+function PageNouveauxMembres({ compte, tribus, cardStyle }) {
+  const [mois, setMois] = useState(() => new Date().toISOString().slice(0, 7));
+  const [vue, setVue] = useState("liste"); // liste | rapport | courbes | historique
+  const [nouveaux, setNouveaux] = useState([]);
+  const [chargement, setChargement] = useState(true);
+  const [formulaireOuvert, setFormulaireOuvert] = useState(false);
+  const [nouveauOuvert, setNouveauOuvert] = useState(null);
+  const [dimanchesReels, setDimanchesReels] = useState([]);
+  const [presencesParNouveau, setPresencesParNouveau] = useState({}); // { nouveauId: { dimancheId: {present, motif} } }
+  const [dimancheChoisi, setDimancheChoisi] = useState(null);
+  const [historiqueMois, setHistoriqueMois] = useState([]);
+  const [nouveauASupprimer, setNouveauASupprimer] = useState(null);
+
+  const [form, setForm] = useState({
+    nom: "", telephone: "+225 ", quartier: "", photo: null, tribu_id: "", date_arrivee: new Date().toISOString().slice(0, 10),
+    baptise: false, eglise_origine: "", nouveau_converti: false,
+  });
+
+  const moisDisponibles = Array.from({ length: 24 }, (_, i) => {
+    const d = new Date(); d.setMonth(d.getMonth() - i);
+    return d.toISOString().slice(0, 7);
+  });
+
+  useEffect(() => { chargerNouveaux(); }, [mois]);
+  useEffect(() => { chargerHistorique(); }, []);
+
+  async function chargerNouveaux() {
+    setChargement(true);
+    const debut = `${mois}-01`;
+    const [annee, moisNum] = mois.split("-");
+    const finDate = new Date(annee, moisNum, 0).toISOString().slice(0, 10);
+    const { data } = await supabase.from("nouveaux_membres").select("*").gte("date_arrivee", debut).lte("date_arrivee", finDate).order("date_arrivee", { ascending: false });
+    setNouveaux(data || []);
+
+    if ((data || []).length > 0) {
+      const ids = data.map(n => n.id);
+      const [{ data: dims }, { data: pres }] = await Promise.all([
+        supabase.from("dimanches").select("*").order("date", { ascending: true }),
+        supabase.from("presences_nouveaux").select("*").in("nouveau_id", ids),
+      ]);
+      const idsAvecPresence = new Set((pres || []).map(p => p.dimanche_id));
+      const reels = (dims || []).filter(d => idsAvecPresence.has(d.id) || d.date >= debut);
+      setDimanchesReels(reels);
+      if (!dimancheChoisi && reels.length > 0) setDimancheChoisi(reels[reels.length - 1].id);
+
+      const map = {};
+      (pres || []).forEach(p => {
+        if (!map[p.nouveau_id]) map[p.nouveau_id] = {};
+        map[p.nouveau_id][p.dimanche_id] = { present: p.present, motif: p.motif };
+      });
+      setPresencesParNouveau(map);
+    } else {
+      setDimanchesReels([]);
+      setPresencesParNouveau({});
+    }
+    setChargement(false);
+  }
+
+  async function chargerHistorique() {
+    const { data } = await supabase.from("nouveaux_membres").select("date_arrivee");
+    const parMois = {};
+    (data || []).forEach(n => {
+      const m = n.date_arrivee.slice(0, 7);
+      parMois[m] = (parMois[m] || 0) + 1;
+    });
+    const liste = Object.entries(parMois).map(([m, nb]) => ({ mois: m, nb })).sort((a, b) => a.mois.localeCompare(b.mois));
+    setHistoriqueMois(liste);
+  }
+
+  function tauxRegularite(nouveau) {
+    const dimanchesDepuisArrivee = dimanchesReels.filter(d => d.date >= nouveau.date_arrivee);
+    if (dimanchesDepuisArrivee.length === 0) return null;
+    const presencesNouveau = presencesParNouveau[nouveau.id] || {};
+    const presents = dimanchesDepuisArrivee.filter(d => presencesNouveau[d.id]?.present).length;
+    return { taux: Math.round((presents / dimanchesDepuisArrivee.length) * 100), presents, total: dimanchesDepuisArrivee.length };
+  }
+
+  async function surChoisirPhoto(e) {
+    const fichier = e.target.files[0];
+    if (!fichier) return;
+    const url = await redimensionnerImageAttachee(fichier);
+    setForm(f => ({ ...f, photo: url }));
+  }
+
+  async function enregistrerNouveau() {
+    if (!form.nom.trim()) { toast("Le nom est obligatoire.", "erreur"); return; }
+    if (!numeroTelephoneValide(form.telephone)) { toast("Le numéro ne semble pas valide.", "erreur"); return; }
+    if (!form.tribu_id) { toast("Merci d'indiquer la tribu de service qui l'a reçu(e).", "erreur"); return; }
+    const { error } = await supabase.from("nouveaux_membres").insert({
+      nom: form.nom.trim(), telephone: form.telephone.trim(), quartier: form.quartier.trim() || null,
+      photo: form.photo, tribu_id: form.tribu_id, date_arrivee: form.date_arrivee,
+      baptise: form.baptise, eglise_origine: form.eglise_origine.trim() || null,
+      nouveau_converti: form.nouveau_converti, cree_par: compte.id,
+    });
+    if (error) { toast("Erreur : " + error.message, "erreur"); return; }
+    toast(`✓ ${form.nom.trim()} a été ajouté(e) aux nouveaux membres. 🙏`, "succes");
+    journaliser(compte, "ajout_nouveau_membre", form.nom.trim());
+    setForm({ nom: "", telephone: "+225 ", quartier: "", photo: null, tribu_id: "", date_arrivee: new Date().toISOString().slice(0, 10), baptise: false, eglise_origine: "", nouveau_converti: false });
+    setFormulaireOuvert(false);
+    chargerNouveaux(); chargerHistorique();
+  }
+
+  async function basculerPresence(nouveauId, dimancheId, present) {
+    setPresencesParNouveau(v => ({ ...v, [nouveauId]: { ...v[nouveauId], [dimancheId]: { ...(v[nouveauId]?.[dimancheId] || {}), present } } }));
+    await supabase.from("presences_nouveaux").upsert({ nouveau_id: nouveauId, dimanche_id: dimancheId, present }, { onConflict: "nouveau_id,dimanche_id" });
+  }
+
+  async function enregistrerMotif(nouveauId, dimancheId, motif) {
+    setPresencesParNouveau(v => ({ ...v, [nouveauId]: { ...v[nouveauId], [dimancheId]: { ...(v[nouveauId]?.[dimancheId] || {}), motif } } }));
+    await supabase.from("presences_nouveaux").upsert({ nouveau_id: nouveauId, dimanche_id: dimancheId, motif }, { onConflict: "nouveau_id,dimanche_id" });
+  }
+
+  async function confirmerSuppressionNouveau() {
+    const { error } = await supabase.from("nouveaux_membres").delete().eq("id", nouveauASupprimer.id);
+    if (error) { toast("Erreur : " + error.message, "erreur"); return; }
+    toast(`${nouveauASupprimer.nom} a été retiré(e) de la liste.`, "succes");
+    journaliser(compte, "retrait_nouveau_membre", nouveauASupprimer.nom);
+    setNouveauASupprimer(null);
+    setNouveauOuvert(null);
+    chargerNouveaux(); chargerHistorique();
+  }
+
+  function nomTribu(id) { return tribus.find(t => t.id === id)?.nom || "?"; }
+
+  // Courbe de croissance numérique (nouveaux par mois, 12 derniers mois)
+  const courbeCroissance = historiqueMois.slice(-12);
+  // Courbe de régularité moyenne du mois en cours, semaine par semaine
+  const courbeRegulariteHebdo = dimanchesReels.map(d => {
+    const concernes = nouveaux.filter(n => n.date_arrivee <= d.date);
+    if (concernes.length === 0) return null;
+    const presents = concernes.filter(n => presencesParNouveau[n.id]?.[d.id]?.present).length;
+    return { libelle: new Date(d.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }), valeur: Math.round((presents / concernes.length) * 100), texteAffiche: `${Math.round((presents / concernes.length) * 100)}%` };
+  }).filter(Boolean);
+
+  if (chargement) return <ChargementSquelette lignes={4} />;
+
+  if (nouveauOuvert) {
+    const n = nouveauOuvert;
+    const reg = tauxRegularite(n);
+    return (
+      <div>
+        <button className="btn-app" onClick={() => setNouveauOuvert(null)} style={{ background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", marginBottom: 16, fontSize: 13 }}>← Retour à la liste</button>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+          {n.photo ? <img src={n.photo} alt="" style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover", border: `2px solid ${GOLD}` }} /> : <AvatarInitiales nom={n.nom} taille={64} />}
+          <div>
+            <p style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{n.nom}</p>
+            <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: 0 }}>Arrivé(e) le {new Date(n.date_arrivee + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })} — {nomTribu(n.tribu_id)}</p>
+          </div>
+        </div>
+
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+          <span style={{ fontSize: 11, padding: "5px 10px", borderRadius: 999, backgroundColor: n.baptise ? "var(--green)" : TEAL_900, color: n.baptise ? TEAL_950 : "var(--text-secondary)", fontWeight: 700 }}>{n.baptise ? "✓ Baptisé(e)" : "Non baptisé(e)"}</span>
+          <span style={{ fontSize: 11, padding: "5px 10px", borderRadius: 999, backgroundColor: n.nouveau_converti ? GOLD_LIGHT : TEAL_900, color: n.nouveau_converti ? TEAL_950 : "var(--text-secondary)", fontWeight: 700 }}>{n.nouveau_converti ? "🌱 Nouveau converti" : "Membre transféré"}</span>
+          {n.quartier && <span style={{ fontSize: 11, padding: "5px 10px", borderRadius: 999, backgroundColor: TEAL_900, color: "var(--text-secondary-2)" }}>{n.quartier}</span>}
+          {n.eglise_origine && <span style={{ fontSize: 11, padding: "5px 10px", borderRadius: 999, backgroundColor: TEAL_900, color: "var(--text-secondary-2)" }}>Vient de : {n.eglise_origine}</span>}
+        </div>
+
+        {reg && (
+          <div style={{ ...cardStyle, marginBottom: 16, textAlign: "center" }}>
+            <p className="titre-moisson chiffre-app" style={{ fontSize: 32, fontWeight: 700, color: reg.taux >= 70 ? "var(--green)" : reg.taux >= 40 ? GOLD_LIGHT : RED_LIGHT, margin: 0 }}>{reg.taux}%</p>
+            <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "4px 0 0" }}>Taux de régularité — {reg.presents}/{reg.total} dimanches depuis son arrivée</p>
+          </div>
+        )}
+
+        {n.telephone && (
+          <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+            <a href={`tel:${n.telephone}`} style={{ flex: 1, textAlign: "center", padding: "12px 0", borderRadius: 10, backgroundColor: GOLD_LIGHT, color: TEAL_950, fontWeight: 700, textDecoration: "none", fontSize: 14 }}><IconeTelephone size={15} /> Appeler</a>
+            <a
+              href={`https://wa.me/${numeroPourWhatsApp(n.telephone)}?text=${encodeURIComponent(`Bonjour ${n.nom}, quel plaisir de t'avoir parmi nous à l'Assemblée RENAISSANCE ! On pense à toi. 🙏\n\n${signatureMessage(compte)}`)}`}
+              target="_blank" rel="noopener noreferrer"
+              style={{ flex: 1, textAlign: "center", padding: "12px 0", borderRadius: 10, backgroundColor: "#25D366", color: "#fff", fontWeight: 700, textDecoration: "none", fontSize: 14 }}
+            ><IconeMessage size={15} /> WhatsApp</a>
+          </div>
+        )}
+
+        <button className="btn-app" onClick={() => setNouveauASupprimer(n)} style={{ width: "100%", padding: "10px 0", borderRadius: 9, backgroundColor: "transparent", border: `1px solid ${RED_LIGHT}`, color: RED_LIGHT, fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>
+          <IconePoubelle size={13} style={{verticalAlign:"-2px",marginRight:5}} />Retirer de la liste
+        </button>
+
+        {nouveauASupprimer && (
+          <BoiteConfirmation
+            titre="Retirer ce nouveau membre ?"
+            message={`Es-tu sûr de vouloir retirer "${nouveauASupprimer.nom}" de la liste des nouveaux membres ? Son historique de présence sera aussi supprimé. Cette action est irréversible.`}
+            texteConfirmer="Retirer"
+            dangereux
+            onConfirmer={confirmerSuppressionNouveau}
+            onAnnuler={() => setNouveauASupprimer(null)}
+          />
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <h2 className="titre-moisson" style={{ fontSize: 22, fontWeight: 600, marginBottom: 4, display: "flex", alignItems: "center", gap: 10 }}>
+        <IconePousse size={22} /> Nouveaux membres
+      </h2>
+      <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 20 }}>Suivi mensuel des nouveaux arrivants — présence, santé spirituelle, et intégration.</p>
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+        {[["liste", "Liste"], ["rapport", "Rapport du dimanche"], ["courbes", "Courbes"], ["historique", "Historique"]].map(([cle, label]) => (
+          <button key={cle} className="btn-app" onClick={() => setVue(cle)} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === cle ? GOLD : TEAL_900, color: vue === cle ? TEAL_950 : "var(--text-secondary-2)" }}>{label}</button>
+        ))}
+      </div>
+
+      <select value={mois} onChange={e => setMois(e.target.value)} style={{ padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, marginBottom: 18 }}>
+        {moisDisponibles.map(m => {
+          const [annee, moisNum] = m.split("-");
+          return <option key={m} value={m}>{new Date(annee, moisNum - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}</option>;
+        })}
+      </select>
+
+      {vue === "liste" && (
+        <>
+          <div style={{ ...cardStyle, marginBottom: 20, textAlign: "center" }}>
+            <p className="titre-moisson chiffre-app" style={{ fontSize: 36, fontWeight: 700, color: GOLD_LIGHT, margin: 0 }}><NombreAnime valeur={nouveaux.length} /></p>
+            <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "4px 0 0" }}>nouveau(x) membre(s) intégré(s) ce mois-ci 🙏</p>
+          </div>
+
+          {formulaireOuvert ? (
+            <div className="fade-in" style={{ ...cardStyle, marginBottom: 20, display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                {form.photo && <img src={form.photo} alt="" style={{ width: 40, height: 40, borderRadius: 999, objectFit: "cover", border: `1px solid ${GOLD}` }} />}
+                <label style={{ fontSize: 11, color: GOLD_LIGHT, cursor: "pointer", border: `1px solid ${TEAL_600}`, borderRadius: 8, padding: "8px 10px" }}>
+                  📷 Photo
+                  <input type="file" accept="image/*" onChange={surChoisirPhoto} style={{ display: "none" }} />
+                </label>
+              </div>
+              <input value={form.nom} onChange={e => setForm(f => ({ ...f, nom: e.target.value }))} placeholder="Nom et prénoms *" style={{ padding: 9, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+              <input value={form.telephone} onChange={e => setForm(f => ({ ...f, telephone: e.target.value }))} placeholder="Téléphone *" style={{ padding: 9, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+              <input value={form.quartier} onChange={e => setForm(f => ({ ...f, quartier: e.target.value }))} placeholder="Quartier" style={{ padding: 9, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+              <select value={form.tribu_id} onChange={e => setForm(f => ({ ...f, tribu_id: e.target.value }))} style={{ padding: 9, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}>
+                <option value="">Tribu de service qui l'a reçu(e) *</option>
+                {tribus.map(t => <option key={t.id} value={t.id}>Tribu de {t.nom}</option>)}
+              </select>
+              <label style={{ fontSize: 12, color: "var(--text-secondary)" }}>Date d'arrivée
+                <input type="date" value={form.date_arrivee} onChange={e => setForm(f => ({ ...f, date_arrivee: e.target.value }))} style={{ display: "block", width: "100%", marginTop: 4, padding: 9, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+              </label>
+              <input value={form.eglise_origine} onChange={e => setForm(f => ({ ...f, eglise_origine: e.target.value }))} placeholder="Église d'origine (si transfert)" style={{ padding: 9, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }} />
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
+                <input type="checkbox" checked={form.baptise} onChange={e => setForm(f => ({ ...f, baptise: e.target.checked }))} /> Déjà baptisé(e)
+              </label>
+              <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, cursor: "pointer" }}>
+                <input type="checkbox" checked={form.nouveau_converti} onChange={e => setForm(f => ({ ...f, nouveau_converti: e.target.checked }))} /> Nouveau converti
+              </label>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="btn-app" onClick={enregistrerNouveau} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, var(--gold-light), var(--gold))", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer" }}>Enregistrer</button>
+                <button className="btn-app" onClick={() => setFormulaireOuvert(false)} style={{ padding: "10px 18px", borderRadius: 8, backgroundColor: "transparent", color: "var(--text-secondary)", border: `1px solid ${TEAL_600}`, fontWeight: 600, cursor: "pointer" }}>Annuler</button>
+              </div>
+            </div>
+          ) : (
+            <button className="btn-app" onClick={() => setFormulaireOuvert(true)} style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 14, color: CREAM }}>
+              <span style={{ fontSize: 18, color: GOLD_LIGHT }}>+</span> Ajouter un nouveau membre
+            </button>
+          )}
+
+          {nouveaux.length === 0 ? (
+            <EtatVide illustration="groupe" titre="Aucun nouveau membre ce mois-ci" description="Ajoute le premier nouveau membre arrivé ce mois avec le bouton ci-dessus." />
+          ) : (
+            <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {nouveaux.map(n => {
+                const reg = tauxRegularite(n);
+                return (
+                  <button key={n.id} onClick={() => setNouveauOuvert(n)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, border: "none" }}>
+                    {n.photo ? <img src={n.photo} alt="" style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} /> : <AvatarInitiales nom={n.nom} taille={44} />}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontWeight: 700, margin: 0 }}>{n.nom}</p>
+                      <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: 0 }}>{nomTribu(n.tribu_id)} — {new Date(n.date_arrivee + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</p>
+                    </div>
+                    {reg && <span style={{ fontSize: 12, fontWeight: 700, color: reg.taux >= 70 ? "var(--green)" : reg.taux >= 40 ? GOLD_LIGHT : RED_LIGHT }}>{reg.taux}%</span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+        </>
+      )}
+
+      {vue === "rapport" && (
+        dimanchesReels.length === 0 ? (
+          <EtatVide illustration="recherche" titre="Aucun dimanche pointé ce mois-ci" />
+        ) : (
+          <>
+            <select value={dimancheChoisi || ""} onChange={e => setDimancheChoisi(e.target.value)} style={{ padding: 8, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, marginBottom: 16 }}>
+              {dimanchesReels.map(d => <option key={d.id} value={d.id}>{new Date(d.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })}</option>)}
+            </select>
+            <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {nouveaux.filter(n => n.date_arrivee <= (dimanchesReels.find(d => d.id === dimancheChoisi)?.date || "")).map(n => {
+                const p = presencesParNouveau[n.id]?.[dimancheChoisi];
+                return (
+                  <div key={n.id} style={cardStyle}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+                      <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", flex: 1 }}>
+                        <input type="checkbox" checked={!!p?.present} onChange={e => basculerPresence(n.id, dimancheChoisi, e.target.checked)} style={{ width: 18, height: 18, accentColor: GOLD }} />
+                        <span style={{ fontWeight: 600 }}>{n.nom}</span>
+                      </label>
+                      {!p?.present && n.telephone && (
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <a title="Appeler" href={`tel:${n.telephone}`} style={{ fontSize: 14, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, borderRadius: 999, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center" }}><IconeTelephone size={14} /></a>
+                          <a title="WhatsApp" href={`https://wa.me/${numeroPourWhatsApp(n.telephone)}?text=${encodeURIComponent(`Bonjour ${n.nom}, tu nous as manqué ce dimanche. Tout va bien ? 🙏\n\n${signatureMessage(compte)}`)}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 14, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", borderRadius: 999, width: 32, height: 32, display: "flex", alignItems: "center", justifyContent: "center" }}><IconeMessage size={14} /></a>
+                        </div>
+                      )}
+                    </div>
+                    {!p?.present && (
+                      <input
+                        defaultValue={p?.motif || ""}
+                        onBlur={e => enregistrerMotif(n.id, dimancheChoisi, e.target.value)}
+                        placeholder="Motif de l'absence..."
+                        style={{ width: "100%", marginTop: 8, padding: 8, fontSize: 12, backgroundColor: TEAL_950, color: "var(--text-secondary-2)", border: `1px solid ${TEAL_700}`, borderRadius: 8 }}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )
+      )}
+
+      {vue === "courbes" && (
+        <>
+          <div style={{ ...cardStyle, marginBottom: 20 }}>
+            <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 14 }}>📈 Croissance numérique — 12 derniers mois</p>
+            {courbeCroissance.length >= 2 ? (
+              <GraphiqueCourbe couleur="var(--green)" donnees={courbeCroissance.map(c => { const [a, m] = c.mois.split("-"); return { libelle: new Date(a, m - 1, 1).toLocaleDateString("fr-FR", { month: "short" }), valeur: c.nb, texteAffiche: `${c.nb}` }; })} />
+            ) : <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>Pas encore assez de données pour tracer une courbe.</p>}
+          </div>
+          <div style={{ ...cardStyle, marginBottom: 20 }}>
+            <p style={{ fontWeight: 700, fontSize: 14, marginBottom: 14 }}>📊 Régularité des nouveaux — ce mois, dimanche après dimanche</p>
+            {courbeRegulariteHebdo.length >= 2 ? (
+              <GraphiqueCourbe couleur="var(--gold)" donnees={courbeRegulariteHebdo} />
+            ) : <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>Pas encore assez de données pour tracer une courbe.</p>}
+          </div>
+        </>
+      )}
+
+      {vue === "historique" && (
+        historiqueMois.length === 0 ? (
+          <EtatVide illustration="recherche" titre="Aucun historique pour l'instant" />
+        ) : (
+          <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            {[...historiqueMois].reverse().map(h => {
+              const [a, m] = h.mois.split("-");
+              return (
+                <button key={h.mois} onClick={() => { setMois(h.mois); setVue("liste"); }} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", border: "none" }}>
+                  <span style={{ fontWeight: 600, textTransform: "capitalize" }}>{new Date(a, m - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: GOLD_LIGHT }}>{h.nb} nouveau{h.nb > 1 ? "x" : ""}</span>
+                </button>
+              );
+            })}
+          </div>
+        )
+      )}
+    </div>
+  );
+}
+
 function PageJournalAudit({ cardStyle }) {
   const [journal, setJournal] = useState([]);
   const [chargement, setChargement] = useState(true);
@@ -1826,6 +2186,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
   const [nbDemandesSuppression, setNbDemandesSuppression] = useState(0);
   const [nbMessagesNonLus, setNbMessagesNonLus] = useState(0);
   const [membres, setMembres] = useState([]);
+  const [nbNouveauxCeMois, setNbNouveauxCeMois] = useState(0);
   const [tousLesComptes, setTousLesComptes] = useState([]);
   const [assignationsActivesGlobal, setAssignationsActivesGlobal] = useState([]);
   const [responsablesParGem, setResponsablesParGem] = useState({});
@@ -1904,6 +2265,10 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
 
       const { data: toutesAssignationsActives } = await supabase.from("assignations").select("*").eq("statut", "actif");
       setAssignationsActivesGlobal(toutesAssignationsActives || []);
+
+      const debutMois = new Date().toISOString().slice(0, 8) + "01";
+      const { count: nbNouveaux } = await supabase.from("nouveaux_membres").select("*", { count: "exact", head: true }).gte("date_arrivee", debutMois);
+      setNbNouveauxCeMois(nbNouveaux || 0);
 
       const { data: dernierDimanche } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(1).maybeSingle();
       if (dernierDimanche && g && g.length > 0) {
@@ -2221,6 +2586,11 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
               </button>
               <button
  className="btn-app"
+ onClick={() => { setPage("nouveaux"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "nouveaux" ? TEAL_700 : "transparent", color: page === "nouveaux" ? GOLD_LIGHT : "var(--text-secondary-2)", display: "flex", alignItems: "center", gap: 6 }}>
+                <IconePousse size={15} /> Nouveaux
+              </button>
+              <button
+ className="btn-app"
  onClick={() => { setPage("absences"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "absences" ? TEAL_700 : "transparent", color: page === "absences" ? GOLD_LIGHT : "var(--text-secondary-2)", display: "flex", alignItems: "center", gap: 6 }}>
                 <IconeInterdit size={15} /> Absences
               </button>
@@ -2352,6 +2722,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
                   { label: "Santé responsables", cible: "sante_responsables", icone: IconeThermometre },
                   { label: "Nouveaux", cible: "nouveaux", icone: IconePousse },
                   { label: "Membres", cible: "membres", icone: IconeGroupe },
+                  { label: "Nouveaux", cible: "nouveaux", icone: IconePousse },
                   { label: "Absences", cible: "absences", icone: IconeInterdit },
                   { label: "Prédiction", cible: "prediction", icone: IconeAnalyse },
                 ];
@@ -2529,6 +2900,13 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
                 <span style={{ fontSize: 28 }}>👥</span>
                 <div><p style={{ fontSize: 12, color: "var(--text-primary)", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}><NombreAnime valeur={membres.length} /></p></div>
               </div>
+              <button
+                onClick={() => { setPage("nouveaux"); setGemOuvert(null); setParentOuvert(null); }}
+                className="card-app" style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 14, cursor: "pointer", textAlign: "left", border: "none" }}
+              >
+                <IconePousse size={26} color="var(--gold)" />
+                <div><p style={{ fontSize: 12, color: "var(--text-primary)", textTransform: "uppercase" }}>Nouveaux ce mois</p><p style={{ fontSize: 28, fontWeight: 700 }}><NombreAnime valeur={nbNouveauxCeMois} /></p></div>
+              </button>
               <div className="card-app" style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 14 }}>
                 <span style={{ fontSize: 28 }}>🏠</span>
                 <div><p style={{ fontSize: 12, color: "var(--text-primary)", textTransform: "uppercase" }}>GEM actifs</p><p style={{ fontSize: 28, fontWeight: 700 }}><NombreAnime valeur={gems.length} /></p></div>
@@ -2639,6 +3017,8 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
           <PageNouveaux membres={membres} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
         ) : page === "membres" ? (
           <PageMembres compte={compte} membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} estPasteur={true} cardStyle={cardStyle} />
+        ) : page === "nouveaux" ? (
+          <PageNouveauxMembres compte={compte} tribus={tribus} cardStyle={cardStyle} />
         ) : page === "absences" ? (
           <PageAbsences compte={compte} membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
         ) : page === "prediction" ? (
