@@ -2586,8 +2586,8 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
               </button>
               <button
  className="btn-app"
- onClick={() => { setPage("nouveaux"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "nouveaux" ? TEAL_700 : "transparent", color: page === "nouveaux" ? GOLD_LIGHT : "var(--text-secondary-2)", display: "flex", alignItems: "center", gap: 6 }}>
-                <IconePousse size={15} /> Nouveaux
+ onClick={() => { setPage("nouveaux_membres"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...btnStyle, backgroundColor: page === "nouveaux_membres" ? TEAL_700 : "transparent", color: page === "nouveaux_membres" ? GOLD_LIGHT : "var(--text-secondary-2)", display: "flex", alignItems: "center", gap: 6 }}>
+                <IconePousse size={15} /> Intégrations
               </button>
               <button
  className="btn-app"
@@ -2722,7 +2722,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
                   { label: "Santé responsables", cible: "sante_responsables", icone: IconeThermometre },
                   { label: "Nouveaux", cible: "nouveaux", icone: IconePousse },
                   { label: "Membres", cible: "membres", icone: IconeGroupe },
-                  { label: "Nouveaux", cible: "nouveaux", icone: IconePousse },
+                  { label: "Intégrations", cible: "nouveaux_membres", icone: IconePousse },
                   { label: "Absences", cible: "absences", icone: IconeInterdit },
                   { label: "Prédiction", cible: "prediction", icone: IconeAnalyse },
                 ];
@@ -2901,7 +2901,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
                 <div><p style={{ fontSize: 12, color: "var(--text-primary)", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}><NombreAnime valeur={membres.length} /></p></div>
               </div>
               <button
-                onClick={() => { setPage("nouveaux"); setGemOuvert(null); setParentOuvert(null); }}
+                onClick={() => { setPage("nouveaux_membres"); setGemOuvert(null); setParentOuvert(null); }}
                 className="card-app" style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 14, cursor: "pointer", textAlign: "left", border: "none" }}
               >
                 <IconePousse size={26} color="var(--gold)" />
@@ -3017,7 +3017,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
           <PageNouveaux membres={membres} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
         ) : page === "membres" ? (
           <PageMembres compte={compte} membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} estPasteur={true} cardStyle={cardStyle} />
-        ) : page === "nouveaux" ? (
+        ) : page === "nouveaux_membres" ? (
           <PageNouveauxMembres compte={compte} tribus={tribus} cardStyle={cardStyle} />
         ) : page === "absences" ? (
           <PageAbsences compte={compte} membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
