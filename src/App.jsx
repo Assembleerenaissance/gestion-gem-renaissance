@@ -441,6 +441,9 @@ function PageNouveauxMembres({ compte, tribus, cardStyle }) {
   const [dimancheChoisi, setDimancheChoisi] = useState(null);
   const [historiqueMois, setHistoriqueMois] = useState([]);
   const [nouveauASupprimer, setNouveauASupprimer] = useState(null);
+  const [apercuImportNouveaux, setApercuImportNouveaux] = useState(null);
+  const [importNouveauxEnCours, setImportNouveauxEnCours] = useState(false);
+  const [dateArriveeParDefaut, setDateArriveeParDefaut] = useState(new Date().toISOString().slice(0, 10));
 
   const [form, setForm] = useState({
     nom: "", telephone: "+225 ", quartier: "", photo: null, tribu_id: "", date_arrivee: new Date().toISOString().slice(0, 10),
@@ -521,6 +524,85 @@ function PageNouveauxMembres({ compte, tribus, cardStyle }) {
     if (!fichier) return;
     const url = await redimensionnerImageAttachee(fichier);
     setForm(f => ({ ...f, photo: url }));
+  }
+
+  // Analyse d'un fichier CSV — seul le nom est obligatoire ; téléphone,
+  // quartier, date d'arrivée et tribu sont optionnels et complétés avec les
+  // valeurs par défaut si absents (utile pour un import massif de noms
+  // arrivés depuis le début de l'année, par exemple).
+  function analyserCSVNouveaux(texte) {
+    const lignes = texte.split(/\r?\n/).filter(l => l.trim());
+    if (lignes.length === 0) return [];
+    const entetes = lignes[0].split(",").map(e => e.trim().toLowerCase().replace(/"/g, ""));
+    const idxNom = entetes.findIndex(e => e.includes("nom"));
+    if (idxNom === -1) return null; // colonne obligatoire manquante
+    const idxTel = entetes.findIndex(e => e.includes("tel"));
+    const idxQuartier = entetes.findIndex(e => e.includes("quartier"));
+    const idxDate = entetes.findIndex(e => e.includes("date") || e.includes("arriv"));
+    const idxTribu = entetes.findIndex(e => e.includes("tribu"));
+    const idxBaptise = entetes.findIndex(e => e.includes("bapt"));
+    const idxConverti = entetes.findIndex(e => e.includes("converti"));
+    const idxEglise = entetes.findIndex(e => e.includes("eglise") || e.includes("église"));
+
+    function normaliserDate(v) {
+      if (!v) return null;
+      const m = v.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/); // jj/mm/aaaa
+      if (m) return `${m[3]}-${m[2].padStart(2, "0")}-${m[1].padStart(2, "0")}`;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return v;
+      return null;
+    }
+    function normaliserOuiNon(v) {
+      if (!v) return false;
+      return /^(oui|o|yes|y|1|true|vrai)$/i.test(v.trim());
+    }
+
+    return lignes.slice(1).map(ligne => {
+      const valeurs = ligne.split(",").map(v => v.trim().replace(/"/g, ""));
+      const nomTribuBrut = idxTribu !== -1 ? (valeurs[idxTribu] || "") : "";
+      const tribuTrouvee = nomTribuBrut ? tribus.find(t => t.nom.toLowerCase() === nomTribuBrut.toLowerCase().replace(/^tribu (de |d')?/, "")) : null;
+      return {
+        nom: valeurs[idxNom] || "",
+        telephone: idxTel !== -1 ? (valeurs[idxTel] || "") : "",
+        quartier: idxQuartier !== -1 ? (valeurs[idxQuartier] || "") : "",
+        date_arrivee: (idxDate !== -1 ? normaliserDate(valeurs[idxDate]) : null) || dateArriveeParDefaut,
+        tribu_id: tribuTrouvee?.id || "",
+        tribu_nom_brut: nomTribuBrut,
+        baptise: idxBaptise !== -1 ? normaliserOuiNon(valeurs[idxBaptise]) : false,
+        nouveau_converti: idxConverti !== -1 ? normaliserOuiNon(valeurs[idxConverti]) : false,
+        eglise_origine: idxEglise !== -1 ? (valeurs[idxEglise] || "") : "",
+      };
+    }).filter(l => l.nom);
+  }
+
+  function surChoisirFichierImportNouveaux(e) {
+    const fichier = e.target.files[0];
+    if (!fichier) return;
+    const lecteur = new FileReader();
+    lecteur.onload = evt => {
+      const lignes = analyserCSVNouveaux(evt.target.result);
+      if (lignes === null) { toast("Le fichier doit contenir au moins une colonne 'nom'.", "erreur"); return; }
+      if (lignes.length === 0) { toast("Aucune ligne valide trouvée dans le fichier.", "erreur"); return; }
+      setApercuImportNouveaux(lignes);
+    };
+    lecteur.readAsText(fichier);
+    e.target.value = "";
+  }
+
+  async function confirmerImportNouveaux() {
+    setImportNouveauxEnCours(true);
+    const lignes = apercuImportNouveaux.map(l => ({
+      nom: l.nom.trim(), telephone: l.telephone.trim() || null, quartier: l.quartier.trim() || null,
+      date_arrivee: l.date_arrivee, tribu_id: l.tribu_id || null,
+      baptise: l.baptise, nouveau_converti: l.nouveau_converti, eglise_origine: l.eglise_origine.trim() || null,
+      cree_par: compte.id,
+    }));
+    const { error } = await supabase.from("nouveaux_membres").insert(lignes);
+    setImportNouveauxEnCours(false);
+    setApercuImportNouveaux(null);
+    if (error) { toast("Erreur pendant l'import : " + error.message, "erreur"); return; }
+    toast(`✓ ${lignes.length} nouveau(x) membre(s) importé(s) avec succès.`, "succes");
+    journaliser(compte, "import_nouveaux_membres", `${lignes.length} personne(s)`);
+    chargerNouveaux(); chargerHistorique();
   }
 
   async function enregistrerNouveau() {
@@ -691,9 +773,19 @@ function PageNouveauxMembres({ compte, tribus, cardStyle }) {
               </div>
             </div>
           ) : (
-            <button className="btn-app" onClick={() => setFormulaireOuvert(true)} style={{ marginBottom: 20, display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 14, color: CREAM }}>
-              <span style={{ fontSize: 18, color: GOLD_LIGHT }}>+</span> Ajouter un nouveau membre
-            </button>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 16, alignItems: "center", marginBottom: 20 }}>
+              <button className="btn-app" onClick={() => setFormulaireOuvert(true)} style={{ display: "flex", alignItems: "center", gap: 8, background: "none", border: "none", cursor: "pointer", fontWeight: 600, fontSize: 14, color: CREAM }}>
+                <span style={{ fontSize: 18, color: GOLD_LIGHT }}>+</span> Ajouter un nouveau membre
+              </button>
+              <label style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, cursor: "pointer", border: `1px solid ${GOLD_LIGHT}`, borderRadius: 8, padding: "8px 12px" }}>
+                📂 Importer un fichier (CSV)
+                <input type="file" accept=".csv,text/csv" onChange={surChoisirFichierImportNouveaux} style={{ display: "none" }} />
+              </label>
+              <label style={{ fontSize: 11, color: "var(--text-secondary)" }}>
+                Date d'arrivée par défaut :
+                <input type="date" value={dateArriveeParDefaut} onChange={e => setDateArriveeParDefaut(e.target.value)} style={{ marginLeft: 6, padding: 5, borderRadius: 6, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}`, fontSize: 11 }} />
+              </label>
+            </div>
           )}
 
           {nouveaux.length === 0 ? (
@@ -792,6 +884,29 @@ function PageNouveauxMembres({ compte, tribus, cardStyle }) {
             })}
           </div>
         )
+      )}
+
+      {apercuImportNouveaux && (
+        <div className="fade-in" style={{ position: "fixed", inset: 0, backgroundColor: "var(--overlay)", backdropFilter: "blur(2px)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000, padding: 16 }}>
+          <div style={{ backgroundColor: TEAL_950, border: `1px solid ${GOLD}`, borderRadius: 16, padding: 24, maxWidth: 480, width: "100%", maxHeight: "80vh", overflowY: "auto", boxShadow: "0 24px 60px rgba(0,0,0,0.45)" }}>
+            <p className="titre-moisson" style={{ fontWeight: 600, fontSize: 18, marginBottom: 10, color: CREAM }}>Confirmer l'import — {apercuImportNouveaux.length} nouveau(x) membre(s)</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 16 }}>
+              {apercuImportNouveaux.slice(0, 15).map((l, i) => (
+                <p key={i} style={{ fontSize: 12, color: "var(--text-secondary)" }}>
+                  • {l.nom}{l.telephone ? ` — ${l.telephone}` : ""} — arrivé(e) le {new Date(l.date_arrivee + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short", year: "numeric" })}
+                  {l.tribu_nom_brut && !l.tribu_id && <span style={{ color: RED_LIGHT }}> (tribu "{l.tribu_nom_brut}" introuvable)</span>}
+                </p>
+              ))}
+              {apercuImportNouveaux.length > 15 && <p style={{ fontSize: 12, color: "var(--text-secondary-2)", fontStyle: "italic" }}>+ {apercuImportNouveaux.length - 15} autre(s)…</p>}
+            </div>
+            <div style={{ display: "flex", gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+              <button className="btn-app" onClick={() => setApercuImportNouveaux(null)} style={{ padding: "10px 18px", borderRadius: 9, backgroundColor: "transparent", color: "var(--text-secondary)", border: `1px solid ${TEAL_600}`, fontWeight: 600, cursor: "pointer" }}>Annuler</button>
+              <button className="btn-app" disabled={importNouveauxEnCours} onClick={confirmerImportNouveaux} style={{ padding: "10px 18px", borderRadius: 9, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, var(--gold-light), var(--gold))", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, cursor: "pointer" }}>
+                {importNouveauxEnCours ? "…" : `Importer ${apercuImportNouveaux.length} membre(s)`}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
@@ -2164,9 +2279,12 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
       dernierEtatConnu.current = etatActuel;
       return;
     }
-    pileNavigationInterne.current.push(dernierEtatConnu.current);
+    // On mémorise la position de défilement de l'écran qu'on quitte, pour
+    // pouvoir y revenir exactement au même endroit avec le bouton retour.
+    pileNavigationInterne.current.push({ ...dernierEtatConnu.current, scrollY: window.scrollY });
     dernierEtatConnu.current = etatActuel;
     try { window.history.pushState({ appInterne: true }, ""); } catch {}
+    window.scrollTo(0, 0);
   }, [page, gemOuvert, parentOuvert]);
 
   useEffect(() => {
@@ -2179,6 +2297,10 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
         setParentOuvert(precedent.parentOuvert);
         dernierEtatConnu.current = precedent;
         try { window.history.pushState({ appInterne: true }, ""); } catch {}
+        // Restaure la position de défilement une fois que le contenu de la
+        // page précédente a fini de se réafficher.
+        const scrollCible = precedent.scrollY || 0;
+        requestAnimationFrame(() => requestAnimationFrame(() => window.scrollTo(0, scrollCible)));
       }
       // Si la pile est vide, on laisse le comportement naturel du navigateur
       // (quitter l'application), puisqu'il n'y a plus rien à afficher avant.
