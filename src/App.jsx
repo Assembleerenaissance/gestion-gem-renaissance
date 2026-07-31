@@ -3096,6 +3096,9 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
               })()}
             </div>
             <PrioritesPastorales compte={compte} membres={membres} gems={gems} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
+            <div style={{ marginTop: 24, marginBottom: 24 }}>
+              <ResumePerimetre compte={compte} gems={gems} membres={membres} onVoirAbsences={() => { setPage("absences"); setGemOuvert(null); setParentOuvert(null); }} cardStyle={cardStyle} />
+            </div>
             <div style={{ marginTop: 24 }}>
               <button
  className="btn-app"
@@ -10066,7 +10069,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
       ) : (
         <>
           <ClassementsDuMois gemDuMois={gemDuMois} tribuDeptDuMois={tribuDeptDuMois} />
-          <ResumePerimetre gems={gemsDuPerimetre} membres={membresDuPerimetre} onVoirAbsences={() => setSousOnglet("absences")} cardStyle={cardStyle} />
+          <ResumePerimetre compte={compte} gems={gemsDuPerimetre} membres={membresDuPerimetre} onVoirAbsences={() => setSousOnglet("absences")} cardStyle={cardStyle} />
           <AnniversairesAVenir membres={membresDuPerimetre} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
           <div style={{ ...cardStyle, marginBottom: 20 }}>
             {creationOuverte ? (
