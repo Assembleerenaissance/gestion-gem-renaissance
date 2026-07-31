@@ -3335,7 +3335,7 @@ function HistoriquePerimetre({ gems, membres, cardStyle }) {
   );
 }
 
-function ResumePerimetre({ compte, gems, membres, onVoirAbsences, cardStyle }) {
+function ResumePerimetre({ compte, gems, membres, tribus, departements, onVoirAbsences, cardStyle }) {
   const [chargement, setChargement] = useState(true);
   const [rapportsValides, setRapportsValides] = useState(0);
   const [gemsEnRetard, setGemsEnRetard] = useState([]);
@@ -3366,6 +3366,7 @@ function ResumePerimetre({ compte, gems, membres, onVoirAbsences, cardStyle }) {
       ...g,
       respNom: respParGem[g.id]?.nom || g.responsable_nom || null,
       respTel: respParGem[g.id]?.telephone || g.responsable_telephone || null,
+      provenance: g.tribu_id ? `Tribu de ${(tribus || []).find(t => t.id === g.tribu_id)?.nom || "?"}` : g.departement_id ? `Département ${(departements || []).find(d => d.id === g.departement_id)?.nom || "?"}` : "",
     })));
 
     const slots = membres.length;
@@ -3419,7 +3420,7 @@ function ResumePerimetre({ compte, gems, membres, onVoirAbsences, cardStyle }) {
           <p style={{ fontWeight: 700, fontSize: 13, color: RED_LIGHT, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}><IconeAlerte size={14} /> GEM n'ayant pas encore soumis leur rapport ({gemsEnRetard.length})</p>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
             {gemsEnRetard.map(g => (
-              <span key={g.id} style={{ fontSize: 12, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "4px 10px" }}>{g.nom}</span>
+              <span key={g.id} style={{ fontSize: 12, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "4px 10px" }}>{g.nom}{g.provenance ? ` — ${g.provenance}` : ""}</span>
             ))}
           </div>
           <button
@@ -3438,12 +3439,12 @@ function ResumePerimetre({ compte, gems, membres, onVoirAbsences, cardStyle }) {
               {gemsEnRetard.map(g => (
                 <div key={g.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: TEAL_950, borderRadius: 8, padding: "8px 12px", gap: 8 }}>
                   <div style={{ minWidth: 0 }}>
-                    <p style={{ fontSize: 12.5, fontWeight: 700, margin: 0 }}>{g.nom}</p>
+                    <p style={{ fontSize: 12.5, fontWeight: 700, margin: 0 }}>{g.nom}{g.provenance ? <span style={{ fontWeight: 400, color: "var(--text-secondary)" }}> — {g.provenance}</span> : ""}</p>
                     <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.respNom || "Sans responsable identifié"}</p>
                   </div>
                   {g.respTel ? (
                     <a
-                      href={`https://wa.me/${numeroPourWhatsApp(g.respTel)}?text=${encodeURIComponent(`Bonjour ${g.respNom || ""}, le rapport de présence de "${g.nom}" n'a pas encore été soumis. Merci de le faire dans les plus brefs délais — comptons sur ta diligence et ta responsabilité. 🙏\n\n${signatureMessage(compte)}`)}`}
+                      href={`https://wa.me/${numeroPourWhatsApp(g.respTel)}?text=${encodeURIComponent(`Bonjour ${g.respNom || ""}, le rapport de présence de "${g.nom}"${g.provenance ? ` (${g.provenance})` : ""} n'a pas encore été soumis. Merci de le faire dans les plus brefs délais — comptons sur ta diligence et ta responsabilité. 🙏\n\n${signatureMessage(compte)}`)}`}
                       target="_blank" rel="noopener noreferrer"
                       style={{ flexShrink: 0, fontSize: 12, fontWeight: 700, color: "#fff", backgroundColor: "#25D366", borderRadius: 999, padding: "7px 12px", textDecoration: "none", display: "flex", alignItems: "center", gap: 5 }}
                     ><IconeMessage size={12} /> Envoyer</a>
@@ -10066,7 +10067,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
       ) : (
         <>
           <ClassementsDuMois gemDuMois={gemDuMois} tribuDeptDuMois={tribuDeptDuMois} />
-          <ResumePerimetre compte={compte} gems={gemsDuPerimetre} membres={membresDuPerimetre} onVoirAbsences={() => setSousOnglet("absences")} cardStyle={cardStyle} />
+          <ResumePerimetre compte={compte} gems={gemsDuPerimetre} membres={membresDuPerimetre} tribus={tribus} departements={departements} onVoirAbsences={() => setSousOnglet("absences")} cardStyle={cardStyle} />
           <AnniversairesAVenir membres={membresDuPerimetre} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
           <div style={{ ...cardStyle, marginBottom: 20 }}>
             {creationOuverte ? (
@@ -11308,7 +11309,7 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                 }}
               />
 
-              <ResumePerimetre compte={compte} gems={gems} membres={membres} cardStyle={cardStyle} />
+              <ResumePerimetre compte={compte} gems={gems} membres={membres} tribus={tribus} departements={departements} cardStyle={cardStyle} />
 
               <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>Détail par GEM</p>
               {gems.length === 0 ? (
