@@ -3096,9 +3096,6 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
               })()}
             </div>
             <PrioritesPastorales compte={compte} membres={membres} gems={gems} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
-            <div style={{ marginTop: 24, marginBottom: 24 }}>
-              <ResumePerimetre compte={compte} gems={gems} membres={membres} onVoirAbsences={() => { setPage("absences"); setGemOuvert(null); setParentOuvert(null); }} cardStyle={cardStyle} />
-            </div>
             <div style={{ marginTop: 24 }}>
               <button
  className="btn-app"
@@ -11310,6 +11307,8 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
                   nbIrreguliers: membres.filter(m => regulariteParMembre?.[m.id]?.absencesConsecutives >= 2).length,
                 }}
               />
+
+              <ResumePerimetre compte={compte} gems={gems} membres={membres} cardStyle={cardStyle} />
 
               <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>Détail par GEM</p>
               {gems.length === 0 ? (
