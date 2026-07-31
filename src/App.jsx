@@ -3335,13 +3335,14 @@ function HistoriquePerimetre({ gems, membres, cardStyle }) {
   );
 }
 
-function ResumePerimetre({ gems, membres, onVoirAbsences, cardStyle }) {
+function ResumePerimetre({ compte, gems, membres, onVoirAbsences, cardStyle }) {
   const [chargement, setChargement] = useState(true);
   const [rapportsValides, setRapportsValides] = useState(0);
   const [gemsEnRetard, setGemsEnRetard] = useState([]);
   const [tauxPresence, setTauxPresence] = useState(null);
   const [absencesCount, setAbsencesCount] = useState(0);
   const [afficherRetard, setAfficherRetard] = useState(false);
+  const [relanceOuverte, setRelanceOuverte] = useState(false);
 
   useEffect(() => { chargerResume(); }, [gems.length, membres.length]);
 
@@ -3351,14 +3352,21 @@ function ResumePerimetre({ gems, membres, onVoirAbsences, cardStyle }) {
     if (!dernierDimanche || gems.length === 0) { setChargement(false); return; }
 
     const idsGems = gems.map(g => g.id);
-    const [{ data: validations }, { data: presencesSemaine }] = await Promise.all([
+    const [{ data: validations }, { data: presencesSemaine }, { data: assignationsGem }] = await Promise.all([
       supabase.from("validations_presence").select("gem_id").eq("dimanche_id", dernierDimanche.id).eq("valide", true).in("gem_id", idsGems),
       supabase.from("presences").select("*").eq("dimanche_id", dernierDimanche.id).in("membre_id", membres.map(m => m.id)),
+      supabase.from("assignations").select("gem_id, compte_id, comptes(nom, telephone)").eq("role_demande", "gem").eq("statut", "actif").in("gem_id", idsGems),
     ]);
 
     const idsGemsValides = new Set((validations || []).map(v => v.gem_id));
     setRapportsValides(idsGemsValides.size);
-    setGemsEnRetard(gems.filter(g => !idsGemsValides.has(g.id)));
+    const respParGem = {};
+    (assignationsGem || []).forEach(a => { if (a.comptes) respParGem[a.gem_id] = { nom: a.comptes.nom, telephone: a.comptes.telephone }; });
+    setGemsEnRetard(gems.filter(g => !idsGemsValides.has(g.id)).map(g => ({
+      ...g,
+      respNom: respParGem[g.id]?.nom || g.responsable_nom || null,
+      respTel: respParGem[g.id]?.telephone || g.responsable_telephone || null,
+    })));
 
     const slots = membres.length;
     if (presencesSemaine && presencesSemaine.length > 0) {
@@ -3374,7 +3382,7 @@ function ResumePerimetre({ gems, membres, onVoirAbsences, cardStyle }) {
     // jour normal pour soumettre le rapport du dimanche précédent).
     const dateDimanche = new Date(dernierDimanche.date + "T00:00:00");
     const joursEcoules = Math.floor((new Date(new Date().toDateString()) - dateDimanche) / 86400000);
-    setAfficherRetard(joursEcoules >= 2);
+    setAfficherRetard(joursEcoules >= 0); // ⚠️ TEMPORAIRE pour test — remettre >= 2 après
 
     setChargement(false);
   }
@@ -3409,11 +3417,43 @@ function ResumePerimetre({ gems, membres, onVoirAbsences, cardStyle }) {
       {afficherRetard && gemsEnRetard.length > 0 && (
         <div style={{ ...cardStyle, borderColor: RED_LIGHT, marginBottom: 24 }}>
           <p style={{ fontWeight: 700, fontSize: 13, color: RED_LIGHT, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}><IconeAlerte size={14} /> GEM n'ayant pas encore soumis leur rapport ({gemsEnRetard.length})</p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
             {gemsEnRetard.map(g => (
               <span key={g.id} style={{ fontSize: 12, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "4px 10px" }}>{g.nom}</span>
             ))}
           </div>
+          <button
+            className="btn-app"
+            onClick={() => setRelanceOuverte(v => !v)}
+            style={{ padding: "9px 14px", borderRadius: 8, backgroundColor: RED_LIGHT, color: "#fff", border: "none", fontWeight: 700, fontSize: 12.5, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
+          >
+            <IconeMessage size={13} /> Relancer les responsables par WhatsApp
+          </button>
+
+          {relanceOuverte && (
+            <div className="fade-in" style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+              <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: 0 }}>
+                WhatsApp n'autorise pas l'envoi groupé en un clic — clique sur chacun, le message d'urgence est déjà prêt.
+              </p>
+              {gemsEnRetard.map(g => (
+                <div key={g.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: TEAL_950, borderRadius: 8, padding: "8px 12px", gap: 8 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <p style={{ fontSize: 12.5, fontWeight: 700, margin: 0 }}>{g.nom}</p>
+                    <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.respNom || "Sans responsable identifié"}</p>
+                  </div>
+                  {g.respTel ? (
+                    <a
+                      href={`https://wa.me/${numeroPourWhatsApp(g.respTel)}?text=${encodeURIComponent(`Bonjour ${g.respNom || ""}, le rapport de présence de "${g.nom}" n'a pas encore été soumis. Merci de le faire dans les plus brefs délais — comptons sur ta diligence et ta responsabilité. 🙏\n\n${signatureMessage(compte)}`)}`}
+                      target="_blank" rel="noopener noreferrer"
+                      style={{ flexShrink: 0, fontSize: 12, fontWeight: 700, color: "#fff", backgroundColor: "#25D366", borderRadius: 999, padding: "7px 12px", textDecoration: "none", display: "flex", alignItems: "center", gap: 5 }}
+                    ><IconeMessage size={12} /> Envoyer</a>
+                  ) : (
+                    <span style={{ fontSize: 11, color: "var(--text-secondary)", fontStyle: "italic", flexShrink: 0 }}>Pas de numéro</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
