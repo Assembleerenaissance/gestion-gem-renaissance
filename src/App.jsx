@@ -10150,6 +10150,9 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
                             <span style={{display:"inline-flex",alignItems:"center",gap:4}}><IconePersonne size={11}/> {g.responsable_nom}{g.responsable_telephone ? ` — ${g.responsable_telephone}` : ""}</span>
                           ) : "Aucun responsable désigné"}
                         </p>
+                        <p style={{ fontSize: 10.5, color: "var(--gold-light)", margin: "2px 0 0", fontWeight: 600 }}>
+                          {estDept ? `Département ${parent?.nom || "?"}` : `Tribu de ${parent?.nom || "?"}`}
+                        </p>
                       </button>
                     )}
                     <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{membres.filter(m => m.gem_id === g.id).length} membre(s)</span>
