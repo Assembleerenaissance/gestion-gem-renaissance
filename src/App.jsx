@@ -3001,7 +3001,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
             compte={compte}
             gem={gemOuvert}
             membres={membres.filter(m => m.gem_id === gemOuvert.id)}
-            onBack={() => setGemOuvert(null)}
+            onBack={() => window.history.back()}
             onMembreAjoute={chargerDonnees}
             regulariteParMembre={regulariteParMembre}
             membreCible={membreCible}
@@ -3018,7 +3018,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
             gems={gems}
             membres={membres}
             regulariteParMembre={regulariteParMembre}
-            onBack={() => setParentOuvert(null)}
+            onBack={() => window.history.back()}
             onChange={chargerDonnees}
             cardStyle={cardStyle}
           />
@@ -8169,7 +8169,7 @@ function PageMembres({ compte, membres, gems, tribus, departements, gemsAutorise
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
         {perimetreEstTribuUniquement ? (
           <span style={{ padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${GOLD}`, backgroundColor: "transparent", color: GOLD_LIGHT, display: "inline-flex", alignItems: "center", gap: 6 }}>
-            <IconeGroupe size={14} /> Membres ({membresDuPerimetre.length})
+            <IconeGroupe size={14} /> Membres ({toutesLesPersonnes.length})
           </span>
         ) : (
           <button className="btn-app" onClick={() => { setVueBoss(v => !v); setFiltreBossIrreguliers(false); }} style={{ padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${GOLD}`, cursor: "pointer", backgroundColor: vueBoss ? GOLD : "transparent", color: vueBoss ? TEAL_950 : GOLD_LIGHT }}>
@@ -9412,7 +9412,8 @@ function RapportPerimetre({ compte, gems, membres, cardStyle }) {
 
   const moisDisponibles = [...new Set(dimanches.map(d => d.date.slice(0, 7)))];
 
-  const totalMembres = membres.length;
+  const nbResponsablesGemRapport = new Set(Object.values(responsablesParGem).filter(r => r.compte).map(r => r.compte.id)).size;
+  const totalMembres = membres.length + nbResponsablesGemRapport;
   const totalPresents = membres.filter(m => presences[m.id]).length;
   const tauxGlobal = totalMembres > 0 ? Math.round((totalPresents / totalMembres) * 100) : 0;
   const scoresValides = membres.map(m => moyenneSante(santeParMembre[m.id])).filter(s => s !== null);
@@ -9934,7 +9935,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
         compte={compte}
         gem={gemOuvert}
         membres={membres.filter(m => m.gem_id === gemOuvert.id)}
-        onBack={() => setGemOuvert(null)}
+        onBack={() => window.history.back()}
         onMembreAjoute={onMembreAjoute}
         regulariteParMembre={regulariteParMembre}
         membreCible={membreCible}
