@@ -3341,6 +3341,7 @@ function ResumePerimetre({ compte, gems, membres, tribus, departements, onVoirAb
   const [gemsEnRetard, setGemsEnRetard] = useState([]);
   const [tauxPresence, setTauxPresence] = useState(null);
   const [absencesCount, setAbsencesCount] = useState(0);
+  const [nbResponsablesGem, setNbResponsablesGem] = useState(0);
   const [afficherRetard, setAfficherRetard] = useState(false);
   const [relanceOuverte, setRelanceOuverte] = useState(false);
 
@@ -3362,6 +3363,9 @@ function ResumePerimetre({ compte, gems, membres, tribus, departements, onVoirAb
     setRapportsValides(idsGemsValides.size);
     const respParGem = {};
     (assignationsGem || []).forEach(a => { if (a.comptes) respParGem[a.gem_id] = { nom: a.comptes.nom, telephone: a.comptes.telephone }; });
+    // Les responsables GEM (avec un compte de connexion actif) comptent aussi
+    // comme des personnes suivies dans ce périmètre, en plus des membres.
+    setNbResponsablesGem(new Set((assignationsGem || []).map(a => a.compte_id)).size);
     setGemsEnRetard(gems.filter(g => !idsGemsValides.has(g.id)).map(g => ({
       ...g,
       respNom: respParGem[g.id]?.nom || g.responsable_nom || null,
@@ -3399,7 +3403,8 @@ function ResumePerimetre({ compte, gems, membres, tribus, departements, onVoirAb
         </div>
         <div className="card-app" style={cardStyle}>
           <p style={{ fontSize: 11, color: "var(--text-primary)", textTransform: "uppercase" }}>Membres</p>
-          <p style={{ fontSize: 24, fontWeight: 700 }}><NombreAnime valeur={membres.length} /></p>
+          <p style={{ fontSize: 24, fontWeight: 700 }}><NombreAnime valeur={membres.length + nbResponsablesGem} /></p>
+          {nbResponsablesGem > 0 && <p style={{ fontSize: 10, color: "var(--text-secondary)", margin: "2px 0 0" }}>dont {nbResponsablesGem} responsable{nbResponsablesGem > 1 ? "s" : ""} GEM</p>}
         </div>
         <div className="card-app" style={cardStyle}>
           <p style={{ fontSize: 11, color: "var(--text-primary)", textTransform: "uppercase" }}>Rapports (semaine)</p>
