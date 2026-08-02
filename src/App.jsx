@@ -5617,10 +5617,13 @@ function RapportSanteSemaine({ gem, membres, compte, cardStyle }) {
     const { error: err1 } = await supabase.from("sante_spirituelle").insert(lignes);
     if (err1) { toast("Erreur d'enregistrement : " + err1.message, "erreur"); setEnregistrement(false); return; }
 
-    const { error: err2 } = await supabase.from("validations_sante").upsert(
-      { gem_id: gem.id, mois, valide: true, valide_par: compte?.id || null, date_validation: new Date().toISOString() },
-      { onConflict: "gem_id,mois" }
-    );
+    // Vérifie puis met à jour ou crée la validation du mois — plus robuste
+    // qu'un upsert qui dépend d'une contrainte d'unicité particulière.
+    const { data: existant } = await supabase.from("validations_sante").select("id").eq("gem_id", gem.id).eq("mois", mois).maybeSingle();
+    const payload = { gem_id: gem.id, mois, valide: true, valide_par: compte?.id || null, date_validation: new Date().toISOString() };
+    const { error: err2 } = existant
+      ? await supabase.from("validations_sante").update(payload).eq("id", existant.id)
+      : await supabase.from("validations_sante").insert(payload);
     setEnregistrement(false);
     if (err2) { toast("Erreur de validation : " + err2.message, "erreur"); return; }
     setValide(true);
@@ -9940,22 +9943,52 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
     const monGem = gems.find(g => g.id === assignation.gem_id);
     if (!monGem) return <p style={{ color: "var(--text-secondary)" }}>Ton GEM est en cours de préparation...</p>;
     const membresGem = membres.filter(m => m.gem_id === monGem.id);
+    const sousOngletsGem = [
+      ["gems", "Mon GEM"],
+      ["absences", "Absences"],
+      ["historique", "Historique"],
+    ];
     return (
       <div>
         {selecteurRole}
-        <ClassementsDuMois gemDuMois={gemDuMois} tribuDeptDuMois={tribuDeptDuMois} />
-        <AnniversairesAVenir membres={membresGem} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
-        <DetailGem
-          compte={compte}
-          gem={monGem}
-          membres={membresGem}
-          onBack={null}
-          onMembreAjoute={onMembreAjoute}
-          regulariteParMembre={regulariteParMembre}
-          membreCible={membreCible}
-          onMembreCibleConsomme={onMembreCibleConsomme}
-          cardStyle={cardStyle}
-        />
+        <ParoleDuJour />
+        <CarrouselImages evenements={evenementsAvecImage || []} />
+        <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+          {sousOngletsGem.map(([cle, label]) => (
+            <button key={cle} className="btn-app" onClick={() => setSousOnglet(cle)} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: sousOnglet === cle ? GOLD : TEAL_900, color: sousOnglet === cle ? TEAL_950 : "var(--text-secondary-2)" }}>{label}</button>
+          ))}
+        </div>
+
+        {sousOnglet === "absences" ? (
+          <PageAbsences compte={compte} membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} gemsAutorises={[monGem.id]} cardStyle={cardStyle} />
+        ) : sousOnglet === "historique" ? (
+          <HistoriquePerimetre gems={[monGem]} membres={membresGem} cardStyle={cardStyle} />
+        ) : (
+          <>
+            <ClassementsDuMois gemDuMois={gemDuMois} tribuDeptDuMois={tribuDeptDuMois} />
+            <div style={{ ...cardStyle, marginBottom: 20, textAlign: "center" }}>
+              <p className="titre-moisson chiffre-app" style={{ fontSize: 32, fontWeight: 700, color: GOLD_LIGHT, margin: 0 }}>
+                {(() => {
+                  const taux = membresGem.map(m => regulariteParMembre?.[m.id]?.tauxRegularite).filter(t => t !== null && t !== undefined);
+                  return taux.length > 0 ? `${Math.round(taux.reduce((a, b) => a + b, 0) / taux.length)}%` : "—";
+                })()}
+              </p>
+              <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "4px 0 0" }}>Taux de régularité moyen de tes membres</p>
+            </div>
+            <AnniversairesAVenir membres={membresGem} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
+            <DetailGem
+              compte={compte}
+              gem={monGem}
+              membres={membresGem}
+              onBack={null}
+              onMembreAjoute={onMembreAjoute}
+              regulariteParMembre={regulariteParMembre}
+              membreCible={membreCible}
+              onMembreCibleConsomme={onMembreCibleConsomme}
+              cardStyle={cardStyle}
+            />
+          </>
+        )}
       </div>
     );
   }
