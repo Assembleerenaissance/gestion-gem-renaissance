@@ -6144,7 +6144,15 @@ function PagePrediction({ compte, membres, gems, tribus, departements, gemsAutor
 }
 
 function calculerListeBoss(membres, gems, tribus, departements, regulariteParMembre, assignationsActives, tousLesComptes) {
-  function chiffresNumero(tel) { return (tel || "").replace(/[^\d]/g, "").slice(-8); }
+  // Ne garde que le PREMIER numéro si le champ en contient plusieurs
+  // (ex: "0584390467/0500000000"), sinon la concaténation des deux numéros
+  // pouvait produire une clé qui correspondait par coïncidence au numéro
+  // de quelqu'un d'autre, créant de faux rapprochements dans BOSS.
+  function chiffresNumero(tel) {
+    const premier = (tel || "").split(/[\/,;]/)[0];
+    const chiffres = premier.replace(/[^\d]/g, "");
+    return chiffres.length >= 8 ? chiffres.slice(-9) : "";
+  }
 
   const groupesTelephone = {};
   membres.forEach(m => {
