@@ -522,8 +522,12 @@ function PageNouveauxMembres({ compte, tribus, cardStyle }) {
   async function surChoisirPhoto(e) {
     const fichier = e.target.files[0];
     if (!fichier) return;
-    const url = await redimensionnerImageAttachee(fichier);
-    setForm(f => ({ ...f, photo: url }));
+    try {
+      const url = await redimensionnerImageAttachee(fichier);
+      setForm(f => ({ ...f, photo: url }));
+    } catch (err) {
+      toast(err.message || "Impossible de traiter cette photo.", "erreur");
+    }
   }
 
   // Analyse d'un fichier CSV — seul le nom est obligatoire ; téléphone,
@@ -4867,10 +4871,12 @@ function numeroPourWhatsApp(tel) {
 // l'image entière, juste réduite pour ne pas alourdir la base de données.
 function redimensionnerImageAttachee(fichier) {
   return new Promise((resolve, reject) => {
+    const minuteur = setTimeout(() => reject(new Error("Le traitement de la photo a pris trop de temps — le format n'est peut-être pas pris en charge (essaie une capture d'écran de la photo, ou une image au format JPEG/PNG).")), 8000);
     const lecteur = new FileReader();
     lecteur.onload = e => {
       const img = new Image();
       img.onload = () => {
+        clearTimeout(minuteur);
         const maxTaille = 1000;
         const ratio = Math.min(1, maxTaille / Math.max(img.width, img.height));
         const largeur = Math.round(img.width * ratio), hauteur = Math.round(img.height * ratio);
@@ -4880,20 +4886,22 @@ function redimensionnerImageAttachee(fichier) {
         ctx.drawImage(img, 0, 0, largeur, hauteur);
         resolve(canvas.toDataURL("image/jpeg", 0.8));
       };
-      img.onerror = reject;
+      img.onerror = () => { clearTimeout(minuteur); reject(new Error("Impossible de lire cette image — essaie un format JPEG ou PNG.")); };
       img.src = e.target.result;
     };
-    lecteur.onerror = reject;
+    lecteur.onerror = () => { clearTimeout(minuteur); reject(new Error("Impossible de lire ce fichier.")); };
     lecteur.readAsDataURL(fichier);
   });
 }
 
 function redimensionnerPhoto(fichier) {
   return new Promise((resolve, reject) => {
+    const minuteur = setTimeout(() => reject(new Error("Le traitement de la photo a pris trop de temps — le format n'est peut-être pas pris en charge (essaie une capture d'écran de la photo, ou une image au format JPEG/PNG).")), 8000);
     const lecteur = new FileReader();
     lecteur.onload = e => {
       const img = new Image();
       img.onload = () => {
+        clearTimeout(minuteur);
         const taille = 240;
         const canvas = document.createElement("canvas");
         canvas.width = taille; canvas.height = taille;
@@ -4903,10 +4911,10 @@ function redimensionnerPhoto(fichier) {
         ctx.drawImage(img, (taille - largeur) / 2, (taille - hauteur) / 2, largeur, hauteur);
         resolve(canvas.toDataURL("image/jpeg", 0.75));
       };
-      img.onerror = reject;
+      img.onerror = () => { clearTimeout(minuteur); reject(new Error("Impossible de lire cette image — essaie un format JPEG ou PNG.")); };
       img.src = e.target.result;
     };
-    lecteur.onerror = reject;
+    lecteur.onerror = () => { clearTimeout(minuteur); reject(new Error("Impossible de lire ce fichier.")); };
     lecteur.readAsDataURL(fichier);
   });
 }
