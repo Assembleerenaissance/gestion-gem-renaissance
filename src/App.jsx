@@ -1517,6 +1517,9 @@ function StylesGlobaux() {
       /* Entrée échelonnée pour les listes de cartes — chaque élément apparaît
          juste après le précédent, effet "cascade" plus vivant qu'un bloc statique. */
       @keyframes entreeCascade { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      @keyframes balayageReflet { 0% { transform: translateX(-120%) rotate(20deg); } 100% { transform: translateX(220%) rotate(20deg); } }
+      @keyframes flotterCouronne { 0%, 100% { transform: translateY(0) rotate(-3deg); } 50% { transform: translateY(-3px) rotate(3deg); } }
+      @keyframes scintiller2 { 0%, 100% { opacity: 0.15; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.15); } }
       .liste-cascade > * { animation: entreeCascade 0.32s cubic-bezier(0.22,1,0.36,1) backwards; }
       .liste-cascade > *:nth-child(1) { animation-delay: 0.02s; }
       .liste-cascade > *:nth-child(2) { animation-delay: 0.06s; }
@@ -12526,11 +12529,24 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
     <div
       onTouchStart={surDebutGlissement}
       onTouchEnd={surFinGlissement}
-      style={{ position: "relative", overflow: "hidden", background: "linear-gradient(160deg, rgba(23,89,78,0.7), rgba(11,64,56,0.75))", backdropFilter: "blur(10px)", border: `1px solid ${GOLD}66`, borderRadius: 18, padding: "20px 16px 16px", marginBottom: 20, boxShadow: "0 16px 36px rgba(0,0,0,0.3)" }}
+      style={{
+        position: "relative", overflow: "hidden",
+        background: "linear-gradient(160deg, rgba(23,89,78,0.75), rgba(11,64,56,0.8))", backdropFilter: "blur(12px)",
+        borderRadius: 20, padding: "21px 17px 17px", marginBottom: 20,
+        boxShadow: "0 18px 40px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(214,165,76,0.5), inset 0 1px 0 rgba(255,255,255,0.08)",
+      }}
     >
+      {/* Liseré doré subtil qui encadre toute la carte */}
+      <div style={{ position: "absolute", inset: 0, borderRadius: 20, padding: 1, background: "linear-gradient(135deg, rgba(214,165,76,0.5), transparent 30%, transparent 70%, rgba(214,165,76,0.35))", WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)", WebkitMaskComposite: "xor", maskComposite: "exclude", pointerEvents: "none" }} />
+
       {/* Halo doré derrière le 1er de classe — donne de la profondeur */}
-      <div style={{ position: "absolute", top: "18%", left: "50%", transform: "translateX(-50%)", width: 200, height: 200, borderRadius: "50%", background: "radial-gradient(circle, rgba(214,165,76,0.28), transparent 70%)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: "16%", left: "50%", transform: "translateX(-50%)", width: 210, height: 210, borderRadius: "50%", background: "radial-gradient(circle, rgba(214,165,76,0.3), transparent 70%)", pointerEvents: "none" }} />
       <div style={{ position: "absolute", bottom: -8, right: 6, pointerEvents: "none" }}><EpiDeBle size={40} opacity={0.1} /></div>
+
+      {/* Petites étincelles discrètes autour du 1er */}
+      {[[22, 20, "0s"], [88, 12, "0.6s"], [78, 32, "1.2s"], [14, 34, "1.8s"]].map(([left, top, delai], i) => (
+        <span key={i} style={{ position: "absolute", left: `${left}%`, top: `${top}%`, width: 4, height: 4, borderRadius: "50%", backgroundColor: "#F0C669", animation: `scintiller2 2.4s ease-in-out ${delai} infinite`, pointerEvents: "none" }} />
+      ))}
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, position: "relative" }}>
         <p style={{ fontSize: 11.5, fontWeight: 700, color: GOLD_LIGHT, textTransform: "uppercase", letterSpacing: 1, margin: 0, display: "flex", alignItems: "center", gap: 6 }}>
@@ -12558,7 +12574,7 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
               style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", maxWidth: 118, opacity: 0, animation: `entreeCascade 0.5s cubic-bezier(0.22,1,0.36,1) ${0.15 + position * 0.12}s forwards` }}
             >
               {estPremier && (
-                <span style={{ marginBottom: 2, filter: "drop-shadow(0 2px 4px rgba(232,193,90,0.5))" }}>
+                <span style={{ marginBottom: 2, display: "inline-block", filter: "drop-shadow(0 2px 4px rgba(232,193,90,0.5))", animation: "flotterCouronne 2.6s ease-in-out infinite" }}>
                   <IconeCouronne size={20} color="#E8C15A" />
                 </span>
               )}
@@ -12590,7 +12606,7 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
                 })}
               </div>
 
-              {/* Marche du podium — dégradé + reflet brillant en haut */}
+              {/* Marche du podium — dégradé + reflet brillant qui balaie doucement */}
               <div
                 style={{
                   position: "relative", width: "100%", height: hauteursPodium[position], borderRadius: "12px 12px 4px 4px", overflow: "hidden",
@@ -12601,6 +12617,9 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
                 }}
               >
                 <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "45%", background: "linear-gradient(180deg, rgba(255,255,255,0.35), transparent)" }} />
+                {estPremier && (
+                  <div style={{ position: "absolute", top: 0, bottom: 0, width: "35%", background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent)", animation: "balayageReflet 3.2s ease-in-out infinite" }} />
+                )}
               </div>
             </div>
           );
