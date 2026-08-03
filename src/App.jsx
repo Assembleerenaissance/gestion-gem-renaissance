@@ -1246,6 +1246,22 @@ function IconeLune({ size = 16, color = "currentColor" }) {
 // pour un accès direct aux 4 destinations les plus utilisées au pouce, sans
 // avoir à ouvrir le menu ☰. "Plus" ouvre le menu complet habituel.
 function BarreOngletsBas({ page, setPage, estPasteur, nonLus, ouvrirMenuComplet, setGemOuvert, setParentOuvert }) {
+  // Sur certains navigateurs mobiles, la barre d'adresse qui apparaît/disparaît
+  // au toucher peut décaler l'affichage d'un élément "position: fixed" tant que
+  // la page n'a pas été retouchée. On force un recalcul dès que la hauteur
+  // visible change, pour que la barre reste toujours bien en place.
+  const [, forcerRecalcul] = useState(0);
+  useEffect(() => {
+    if (!window.visualViewport) return;
+    function surRedimensionnement() { forcerRecalcul(v => v + 1); }
+    window.visualViewport.addEventListener("resize", surRedimensionnement);
+    window.visualViewport.addEventListener("scroll", surRedimensionnement);
+    return () => {
+      window.visualViewport.removeEventListener("resize", surRedimensionnement);
+      window.visualViewport.removeEventListener("scroll", surRedimensionnement);
+    };
+  }, []);
+
   const onglets = estPasteur
     ? [
         { cle: "dashboard", label: "Accueil", icone: IconeMaison },
@@ -1270,11 +1286,12 @@ function BarreOngletsBas({ page, setPage, estPasteur, nonLus, ouvrirMenuComplet,
     <div
       className="barre-onglets-bas"
       style={{
-        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 900, width: "100%",
+        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 2000, width: "100%",
         backgroundColor: "var(--bg-surface)", borderTop: "1px solid var(--border-1)",
         justifyContent: "space-between", alignItems: "stretch",
-        paddingBottom: "env(safe-area-inset-bottom, 0px)",
-        boxShadow: "0 -4px 16px rgba(0,0,0,0.2)", boxSizing: "border-box",
+        paddingBottom: "max(env(safe-area-inset-bottom, 0px), 8px)",
+        boxShadow: "0 -4px 16px rgba(0,0,0,0.3)", boxSizing: "border-box",
+        transform: "translateZ(0)", willChange: "transform",
       }}
     >
       {onglets.map(o => {
