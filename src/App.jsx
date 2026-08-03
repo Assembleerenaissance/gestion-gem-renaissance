@@ -1270,11 +1270,11 @@ function BarreOngletsBas({ page, setPage, estPasteur, nonLus, ouvrirMenuComplet,
     <div
       className="barre-onglets-bas"
       style={{
-        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 900,
+        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 900, width: "100%",
         backgroundColor: "var(--bg-surface)", borderTop: "1px solid var(--border-1)",
-        justifyContent: "space-around", alignItems: "center",
+        justifyContent: "space-between", alignItems: "stretch",
         paddingBottom: "env(safe-area-inset-bottom, 0px)",
-        boxShadow: "0 -4px 16px rgba(0,0,0,0.2)",
+        boxShadow: "0 -4px 16px rgba(0,0,0,0.2)", boxSizing: "border-box",
       }}
     >
       {onglets.map(o => {
@@ -1285,27 +1285,27 @@ function BarreOngletsBas({ page, setPage, estPasteur, nonLus, ouvrirMenuComplet,
             className="btn-app"
             onClick={() => aller(o.cle)}
             style={{
-              flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-              padding: "10px 4px 8px", background: "none", border: "none", cursor: "pointer",
+              flex: "1 1 0", minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3,
+              padding: "10px 2px 8px", background: "none", border: "none", cursor: "pointer",
               color: actif ? "var(--gold)" : "var(--text-secondary)", position: "relative",
             }}
           >
             {o.badge > 0 && (
-              <span style={{ position: "absolute", top: 4, right: "28%", backgroundColor: "var(--red)", color: "#fff", fontSize: 9, fontWeight: 700, borderRadius: 999, minWidth: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" }}>{o.badge}</span>
+              <span style={{ position: "absolute", top: 4, right: "24%", backgroundColor: "var(--red)", color: "#fff", fontSize: 9, fontWeight: 700, borderRadius: 999, minWidth: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" }}>{o.badge}</span>
             )}
-            <o.icone size={20} color={actif ? "var(--gold)" : "var(--text-secondary)"} />
-            <span style={{ fontSize: 10, fontWeight: actif ? 700 : 500 }}>{o.label}</span>
-            {actif && <span style={{ position: "absolute", bottom: 0, width: 22, height: 3, borderRadius: 999, backgroundColor: "var(--gold)" }} />}
+            <o.icone size={19} color={actif ? "var(--gold)" : "var(--text-secondary)"} />
+            <span style={{ fontSize: 9.5, fontWeight: actif ? 700 : 500, whiteSpace: "nowrap" }}>{o.label}</span>
+            {actif && <span style={{ position: "absolute", bottom: 0, width: 20, height: 3, borderRadius: 999, backgroundColor: "var(--gold)" }} />}
           </button>
         );
       })}
       <button
         className="btn-app"
         onClick={ouvrirMenuComplet}
-        style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "10px 4px 8px", background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)" }}
+        style={{ flex: "1 1 0", minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, padding: "10px 2px 8px", background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)" }}
       >
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="20" y2="17" /></svg>
-        <span style={{ fontSize: 10, fontWeight: 500 }}>Plus</span>
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="20" y2="17" /></svg>
+        <span style={{ fontSize: 9.5, fontWeight: 500, whiteSpace: "nowrap" }}>Plus</span>
       </button>
     </div>
   );
