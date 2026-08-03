@@ -2972,24 +2972,32 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne, enFileAttente 
           <div style={{ padding: 20 }}>
             {(() => {
               function allerA(cible) { setPage(cible); setGemOuvert(null); setParentOuvert(null); setMenuMobileOuvert(false); }
-              function GroupeMenu({ titre, items }) {
+              function GroupeMenu({ titre, items, couleur = GOLD }) {
                 return (
-                  <div style={{ marginBottom: 24 }}>
-                    <p style={{ fontSize: 13, fontWeight: 700, color: GOLD_LIGHT, textTransform: "uppercase", letterSpacing: 1, marginBottom: 10 }}>{titre}</p>
-                    <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ marginBottom: 20 }}>
+                    <p style={{ fontSize: 12, fontWeight: 700, color: couleur, textTransform: "uppercase", letterSpacing: 1, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ width: 6, height: 6, borderRadius: 999, backgroundColor: couleur, display: "inline-block" }} />
+                      {titre}
+                    </p>
+                    <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                       {items.map(it => (
                         <button
                           key={it.cible}
                           className="btn-app"
                           onClick={it.action || (() => allerA(it.cible))}
-                          style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 18px", borderRadius: 10, backgroundColor: page === it.cible ? "rgba(208,175,28,0.15)" : TEAL_900, border: `1px solid ${page === it.cible ? GOLD : TEAL_700}`, color: page === it.cible ? GOLD_LIGHT : CREAM, fontWeight: 700, fontSize: 17, cursor: "pointer", textAlign: "left" }}
+                          style={{
+                            display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", borderRadius: 12,
+                            backgroundColor: page === it.cible ? `${couleur}30` : `${couleur}12`,
+                            border: page === it.cible ? `1px solid ${couleur}` : "1px solid transparent",
+                            color: page === it.cible ? couleur : CREAM, fontWeight: 600, fontSize: 15.5, cursor: "pointer", textAlign: "left",
+                          }}
                         >
                           <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
-                            {it.icone && <it.icone size={17} />}
+                            {it.icone && <it.icone size={16} color={page === it.cible ? couleur : "var(--text-secondary-2)"} />}
                             {it.label}
                           </span>
                           {it.badge > 0 && (
-                            <span style={{ backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 13, fontWeight: 700, minWidth: 22, height: 22, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px" }}>
+                            <span style={{ backgroundColor: RED_LIGHT, color: "#fff", borderRadius: 999, fontSize: 12, fontWeight: 700, minWidth: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 6px" }}>
                               {it.badge}
                             </span>
                           )}
@@ -3021,19 +3029,19 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne, enFileAttente 
 
                 return (
                   <>
-                    <GroupeMenu titre="Suivi" items={groupeSuivi} />
-                    <GroupeMenu titre="Rapports" items={[
+                    <GroupeMenu titre="Suivi" items={groupeSuivi} couleur="#D6A54C" />
+                    <GroupeMenu couleur="#3F9C93" titre="Rapports" items={[
                       { label: "Rapports", cible: "rapports", icone: IconeClipboard },
                       { label: "Historique", cible: "historique" },
                       { label: "Analyse", cible: "analyse" },
                     ]} />
-                    <GroupeMenu titre="Gestion" items={groupeGestion} />
-                    <GroupeMenu titre="Communication" items={[
+                    <GroupeMenu titre="Gestion" items={groupeGestion} couleur="#8B7BC7" />
+                    <GroupeMenu couleur="#C1585C" titre="Communication" items={[
                       { label: "Calendrier", cible: "calendrier", badge: nbNouveauxEvenements, icone: IconeCalendrier },
                       { label: "Messagerie", cible: "messagerie", badge: nbMessagesNonLus, icone: IconeMessage },
                       { label: "Mots de passe", cible: "mots_de_passe", badge: nbDemandesMdp, icone: IconeCle },
                     ]} />
-                    <GroupeMenu titre="Compte" items={[
+                    <GroupeMenu couleur="#5B8DB8" titre="Compte" items={[
                       { label: "Mon compte", cible: "mon_compte", icone: IconePersonne },
                       { label: "Notre identité", cible: "identite", icone: IconeGoutte },
                       { label: "Aide", cible: "aide", icone: IconeAide },
@@ -3045,15 +3053,15 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne, enFileAttente 
 
               return (
                 <>
-                  <GroupeMenu titre="Mon espace" items={[
+                  <GroupeMenu couleur="#D6A54C" titre="Mon espace" items={[
                     { label: "Mon espace", cible: "dashboard", icone: IconeMaison },
                     { label: "Rôle supplémentaire", cible: "demande_role_supp" },
                   ]} />
-                  <GroupeMenu titre="Communication" items={[
+                  <GroupeMenu couleur="#C1585C" titre="Communication" items={[
                     { label: "Calendrier", cible: "calendrier", badge: nbNouveauxEvenements, icone: IconeCalendrier },
                     { label: "Messagerie", cible: "messagerie", badge: nbMessagesNonLus, icone: IconeMessage },
                   ]} />
-                  <GroupeMenu titre="Compte" items={[
+                  <GroupeMenu couleur="#5B8DB8" titre="Compte" items={[
                     { label: "Mon compte", cible: "mon_compte", icone: IconePersonne },
                     { label: "Notre identité", cible: "identite", icone: IconeGoutte },
                       { label: "Aide", cible: "aide", icone: IconeAide },
