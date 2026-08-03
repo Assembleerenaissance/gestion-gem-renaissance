@@ -1242,6 +1242,75 @@ function IconeLune({ size = 16, color = "currentColor" }) {
     </svg>
   );
 }
+// Barre de navigation fixe en bas de l'écran — visible sur mobile seulement,
+// pour un accès direct aux 4 destinations les plus utilisées au pouce, sans
+// avoir à ouvrir le menu ☰. "Plus" ouvre le menu complet habituel.
+function BarreOngletsBas({ page, setPage, estPasteur, nonLus, ouvrirMenuComplet, setGemOuvert, setParentOuvert }) {
+  const onglets = estPasteur
+    ? [
+        { cle: "dashboard", label: "Accueil", icone: IconeMaison },
+        { cle: "membres", label: "Membres", icone: IconeGroupe },
+        { cle: "calendrier", label: "Agenda", icone: IconeCalendrier },
+        { cle: "messagerie", label: "Messages", icone: IconeMessage, badge: nonLus },
+      ]
+    : [
+        { cle: "dashboard", label: "Accueil", icone: IconeMaison },
+        { cle: "calendrier", label: "Agenda", icone: IconeCalendrier },
+        { cle: "messagerie", label: "Messages", icone: IconeMessage, badge: nonLus },
+        { cle: "mon_compte", label: "Profil", icone: IconePersonne },
+      ];
+
+  function aller(cle) {
+    setPage(cle);
+    setGemOuvert(null);
+    setParentOuvert(null);
+  }
+
+  return (
+    <div
+      className="barre-onglets-bas"
+      style={{
+        position: "fixed", bottom: 0, left: 0, right: 0, zIndex: 900,
+        backgroundColor: "var(--bg-surface)", borderTop: "1px solid var(--border-1)",
+        justifyContent: "space-around", alignItems: "center",
+        paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        boxShadow: "0 -4px 16px rgba(0,0,0,0.2)",
+      }}
+    >
+      {onglets.map(o => {
+        const actif = page === o.cle;
+        return (
+          <button
+            key={o.cle}
+            className="btn-app"
+            onClick={() => aller(o.cle)}
+            style={{
+              flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
+              padding: "10px 4px 8px", background: "none", border: "none", cursor: "pointer",
+              color: actif ? "var(--gold)" : "var(--text-secondary)", position: "relative",
+            }}
+          >
+            {o.badge > 0 && (
+              <span style={{ position: "absolute", top: 4, right: "28%", backgroundColor: "var(--red)", color: "#fff", fontSize: 9, fontWeight: 700, borderRadius: 999, minWidth: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" }}>{o.badge}</span>
+            )}
+            <o.icone size={20} color={actif ? "var(--gold)" : "var(--text-secondary)"} />
+            <span style={{ fontSize: 10, fontWeight: actif ? 700 : 500 }}>{o.label}</span>
+            {actif && <span style={{ position: "absolute", bottom: 0, width: 22, height: 3, borderRadius: 999, backgroundColor: "var(--gold)" }} />}
+          </button>
+        );
+      })}
+      <button
+        className="btn-app"
+        onClick={ouvrirMenuComplet}
+        style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, padding: "10px 4px 8px", background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)" }}
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="20" y2="17" /></svg>
+        <span style={{ fontSize: 10, fontWeight: 500 }}>Plus</span>
+      </button>
+    </div>
+  );
+}
+
 function BoutonTheme({ theme, onBasculer, taille = 36 }) {
   return (
     <button
@@ -1451,9 +1520,12 @@ function StylesGlobaux() {
 
       .nav-bureau { display: flex; gap: 8px; flex-wrap: wrap; }
       .bouton-hamburger { display: none; }
+      .barre-onglets-bas { display: none; }
       @media (max-width: 860px) {
         .nav-bureau { display: none !important; }
         .bouton-hamburger { display: flex !important; }
+        .barre-onglets-bas { display: flex !important; }
+        .contenu-avec-barre-bas { padding-bottom: 76px !important; }
       }
 
       @media print {
@@ -2913,7 +2985,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
         </div>
       )}
 
-      <div key={page} className="transition-page" style={{ padding: 24 }}>
+      <div key={page} className="transition-page contenu-avec-barre-bas" style={{ padding: 24 }}>
         {chargement ? (
           <p style={{ color: "var(--text-secondary-2)" }}>Chargement des données…</p>
         ) : page === "identite" ? (
@@ -3168,6 +3240,16 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
           <PageAssistants compte={compte} tribus={tribus} departements={departements} gems={gems} onChange={chargerDonnees} cardStyle={cardStyle} />
         )}
       </div>
+
+      <BarreOngletsBas
+        page={page}
+        setPage={setPage}
+        estPasteur={estPasteur}
+        nonLus={nbMessagesNonLus}
+        ouvrirMenuComplet={() => setMenuMobileOuvert(true)}
+        setGemOuvert={setGemOuvert}
+        setParentOuvert={setParentOuvert}
+      />
     </div>
   );
 }
