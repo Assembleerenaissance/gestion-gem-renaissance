@@ -2388,9 +2388,10 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
       supabase.from("assignations").select("*").eq("compte_id", compte.id),
     ]);
     setTribus(t || []); setDepartements(d || []); setGems(g || []); setMembres(m || []); setMesAssignations(a || []);
+    const { data: tousLesComptes } = await supabase.from("comptes").select("id, nom, role, assistant, telephone, date_naissance, quartier");
+    setTousLesComptes(tousLesComptes || []);
+
     if (estPasteur) {
-      const { data: tousLesComptes } = await supabase.from("comptes").select("id, nom, role, assistant, telephone, date_naissance, quartier");
-      setTousLesComptes(tousLesComptes || []);
       const { data: assignationsGem } = await supabase.from("assignations").select("gem_id, compte_id").eq("role_demande", "gem").eq("statut", "actif");
       const map = {};
       (assignationsGem || []).forEach(as => {
@@ -2920,7 +2921,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
         ) : page === "aide" ? (
           <PageAide estPasteur={estPasteur} cardStyle={cardStyle} />
         ) : page === "mon_compte" ? (
-          <PageMonCompte compte={compte} cardStyle={cardStyle} onMisAJour={chargerDonnees} />
+          <PageMonCompte compte={compte} assignationsActives={mesAssignations.filter(a => a.statut === "actif")} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} onMisAJour={chargerDonnees} />
         ) : page === "demande_role_supp" ? (
           <DemanderResponsabilite
             compte={compte}
@@ -2974,6 +2975,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
             gemDuMois={gemDuMois}
             tribuDeptDuMois={tribuDeptDuMois}
             evenementsAvecImage={evenementsAvecImage}
+            tousLesComptes={tousLesComptes}
             cardStyle={cardStyle}
           />
         ) : !estPasteur ? (
@@ -2994,6 +2996,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
             gemDuMois={gemDuMois}
             tribuDeptDuMois={tribuDeptDuMois}
             evenementsAvecImage={evenementsAvecImage}
+            tousLesComptes={tousLesComptes}
             cardStyle={cardStyle}
           />
         ) : gemOuvert ? (
@@ -6236,19 +6239,29 @@ function calculerListeBoss(membres, gems, tribus, departements, regulariteParMem
     })
     .filter(Boolean);
 
-  // Ajoute les responsables de département qui n'avaient encore aucune fiche membre du tout
+  // Ajoute les responsables de département qui n'avaient encore aucune fiche
+  // membre du tout — regroupés par personne, pour que quelqu'un qui sert
+  // dans PLUSIEURS départements (sans fiche membre nulle part) n'apparaisse
+  // qu'une seule fois, avec tous ses services listés ensemble.
+  const responsablesSansFicheParCompte = {};
   responsablesDept.forEach(r => {
     const cle = chiffresNumero(r.compte.telephone) || `sans-numero-resp-${r.compte.id}`;
     if (idsGemsUtilises.has(cle) || resultats.some(res => res.id === `boss-${cle}`)) return;
+    if (!responsablesSansFicheParCompte[r.compte.id]) responsablesSansFicheParCompte[r.compte.id] = { compte: r.compte, services: [] };
+    if (!responsablesSansFicheParCompte[r.compte.id].services.some(s => s.nom === r.nomDept && s.gemNom === r.libelleRole)) {
+      responsablesSansFicheParCompte[r.compte.id].services.push({ nom: r.nomDept, gemNom: r.libelleRole });
+    }
+  });
+  Object.values(responsablesSansFicheParCompte).forEach(({ compte: c, services }) => {
     resultats.push({
-      id: `boss-resp-${r.compte.id}`,
-      nom: r.compte.nom,
-      telephone: r.compte.telephone,
-      quartier: r.compte.quartier,
-      dateNaissance: r.compte.date_naissance,
+      id: `boss-resp-${c.id}`,
+      nom: c.nom,
+      telephone: c.telephone,
+      quartier: c.quartier,
+      dateNaissance: c.date_naissance,
       photo: null,
       nomTribu: null,
-      services: [{ nom: r.nomDept, gemNom: r.libelleRole }],
+      services,
       tauxMoyen: null,
       absencesConsecutives: 0,
       fiches: [],
@@ -6979,6 +6992,23 @@ function PageDemandes({ tribus, departements, compte, onTraite, cardStyle }) {
       }).select().single();
       if (error) { toast(error.message, "erreur"); return; }
       gemId = nouveauGem.id;
+
+      // Un responsable GEM est aussi un membre de son propre GEM — on lui
+      // crée directement sa fiche membre, sauf s'il en a déjà une (même
+      // numéro de téléphone) quelque part dans ce GEM.
+      const demandeur = comptesParId[d.compte_id];
+      if (demandeur) {
+        const chiffresDemandeur = (demandeur.telephone || "").replace(/[^\d]/g, "").slice(-8);
+        const { data: membresExistants } = await supabase.from("membres").select("id, telephone").eq("gem_id", gemId);
+        const dejaMembre = (membresExistants || []).some(m => m.telephone && m.telephone.replace(/[^\d]/g, "").slice(-8) === chiffresDemandeur);
+        if (!dejaMembre) {
+          await supabase.from("membres").insert({
+            gem_id: gemId, nom: demandeur.nom, telephone: demandeur.telephone,
+            quartier: demandeur.quartier || null, date_naissance: demandeur.date_naissance || null,
+            nouveau_converti: false,
+          });
+        }
+      }
     }
     const { error: err2 } = await supabase.from("assignations").update({ statut: "actif", gem_id: gemId, valide_par: compte.id }).eq("id", d.id);
     if (err2) { toast(err2.message, "erreur"); return; }
@@ -8916,7 +8946,7 @@ function PageAnalyse({ gems, membres, cardStyle }) {
   );
 }
 
-function PageMonCompte({ compte, cardStyle, onMisAJour }) {
+function PageMonCompte({ compte, assignationsActives, gems, tribus, departements, cardStyle, onMisAJour }) {
   const [ancienMdp, setAncienMdp] = useState("");
   const [nouveauMdp, setNouveauMdp] = useState("");
   const [confirmationMdp, setConfirmationMdp] = useState("");
@@ -8925,10 +8955,53 @@ function PageMonCompte({ compte, cardStyle, onMisAJour }) {
   const [erreur, setErreur] = useState("");
   const [dateNaissance, setDateNaissance] = useState(compte.date_naissance || "");
   const [quartier, setQuartier] = useState(compte.quartier || "");
+  const [photo, setPhoto] = useState(compte.photo || null);
+  const [baptise, setBaptise] = useState(compte.baptise || false);
+  const [egliseOrigine, setEgliseOrigine] = useState(compte.eglise_origine || "");
   const [enregistrementProfil, setEnregistrementProfil] = useState(false);
+  const [gemChoisiPourFiche, setGemChoisiPourFiche] = useState("");
+  const [rattachementEnCours, setRattachementEnCours] = useState(false);
+  const [dejaRattache, setDejaRattache] = useState(null); // null = pas encore vérifié
+
+  const rolesResponsablePur = (assignationsActives || []).filter(a => a.role_demande === "departement_resp" || a.role_demande === "tribu_resp");
+
+  useEffect(() => {
+    if (rolesResponsablePur.length === 0) return;
+    (async () => {
+      const chiffresMoi = (compte.telephone || "").replace(/[^\d]/g, "").slice(-8);
+      const { data } = await supabase.from("membres").select("id, gem_id, telephone").not("telephone", "is", null);
+      const trouve = (data || []).find(m => m.telephone.replace(/[^\d]/g, "").slice(-8) === chiffresMoi);
+      setDejaRattache(trouve ? gems.find(g => g.id === trouve.gem_id) : false);
+    })();
+  }, []);
+
+  async function rattacherAUnGem() {
+    if (!gemChoisiPourFiche) return;
+    setRattachementEnCours(true);
+    const { error } = await supabase.from("membres").insert({
+      gem_id: gemChoisiPourFiche, nom: compte.nom, telephone: compte.telephone,
+      quartier: compte.quartier || null, date_naissance: compte.date_naissance || null,
+      nouveau_converti: false,
+    });
+    setRattachementEnCours(false);
+    if (error) { toast("Erreur : " + error.message, "erreur"); return; }
+    toast("✓ Tu es maintenant rattaché(e) à ce GEM comme membre.", "succes");
+    setDejaRattache(gems.find(g => g.id === gemChoisiPourFiche));
+  }
 
   function emailTechnique(tel) {
     return `${(tel || "").replace(/[^\d]/g, "")}@gestiongem.com`;
+  }
+
+  async function surChoisirPhotoProfil(e) {
+    const fichier = e.target.files[0];
+    if (!fichier) return;
+    try {
+      const dataUrl = await redimensionnerPhoto(fichier);
+      setPhoto(dataUrl);
+    } catch (err) {
+      toast(err.message || "Impossible de traiter cette photo.", "erreur");
+    }
   }
 
   async function enregistrerProfil() {
@@ -8936,6 +9009,9 @@ function PageMonCompte({ compte, cardStyle, onMisAJour }) {
     const { error } = await supabase.from("comptes").update({
       date_naissance: dateNaissance || null,
       quartier: quartier.trim() || null,
+      photo: photo || null,
+      baptise,
+      eglise_origine: egliseOrigine.trim() || null,
     }).eq("id", compte.id);
     setEnregistrementProfil(false);
     if (error) { toast("Impossible d'enregistrer : " + error.message, "erreur"); return; }
@@ -8979,6 +9055,13 @@ function PageMonCompte({ compte, cardStyle, onMisAJour }) {
       <div style={{ ...cardStyle, marginBottom: 20 }}>
         <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><IconeCrayon size={14} /> Compléter mon profil</p>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            {photo ? <img src={photo} alt="" style={{ width: 52, height: 52, borderRadius: 999, objectFit: "cover", border: `2px solid ${GOLD}` }} /> : <AvatarInitiales nom={compte.nom} taille={52} />}
+            <label style={{ fontSize: 11, color: GOLD_LIGHT, cursor: "pointer", border: `1px solid ${TEAL_600}`, borderRadius: 8, padding: "8px 12px" }}>
+              📷 {photo ? "Changer ma photo" : "Ajouter ma photo"}
+              <input type="file" accept="image/*" onChange={surChoisirPhotoProfil} style={{ display: "none" }} />
+            </label>
+          </div>
           <div>
             <label style={{ fontSize: 11, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>🎂 Date de naissance (jour et mois)</label>
             <SelecteurJourMois value={dateNaissance} onChange={setDateNaissance} />
@@ -8992,6 +9075,19 @@ function PageMonCompte({ compte, cardStyle, onMisAJour }) {
               style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}
             />
           </div>
+          <div>
+            <label style={{ fontSize: 11, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>Église d'origine (si tu viens d'ailleurs)</label>
+            <input
+              value={egliseOrigine}
+              onChange={e => setEgliseOrigine(e.target.value)}
+              placeholder="Non renseigné"
+              style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}
+            />
+          </div>
+          <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: CREAM, cursor: "pointer" }}>
+            <input type="checkbox" checked={baptise} onChange={e => setBaptise(e.target.checked)} />
+            Je suis baptisé(e)
+          </label>
           <button
             className="btn-app"
             disabled={enregistrementProfil}
@@ -9002,6 +9098,39 @@ function PageMonCompte({ compte, cardStyle, onMisAJour }) {
           </button>
         </div>
       </div>
+
+      {rolesResponsablePur.length > 0 && dejaRattache !== null && (
+        <div style={{ ...cardStyle, marginBottom: 20 }}>
+          <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}><IconeGroupe size={14} /> Mon GEM de rattachement</p>
+          <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 12, lineHeight: 1.5 }}>
+            En tant que responsable, tu es aussi membre de l'église — choisis un GEM de ton périmètre pour que ta présence et ta régularité soient suivies comme pour tout le monde.
+          </p>
+          {dejaRattache ? (
+            <p style={{ fontSize: 13, color: "var(--green)", fontWeight: 600 }}>✓ Déjà rattaché(e) à "{dejaRattache.nom}"</p>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <select value={gemChoisiPourFiche} onChange={e => setGemChoisiPourFiche(e.target.value)} style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}>
+                <option value="">— Choisir mon GEM —</option>
+                {rolesResponsablePur.flatMap(r =>
+                  gems.filter(g => r.role_demande === "departement_resp" ? g.departement_id === r.departement_id : g.tribu_id === r.tribu_id)
+                ).map(g => (
+                  <option key={g.id} value={g.id}>
+                    {g.nom} — {g.tribu_id ? `Tribu de ${tribus.find(t => t.id === g.tribu_id)?.nom || "?"}` : `Département ${departements.find(d => d.id === g.departement_id)?.nom || "?"}`}
+                  </option>
+                ))}
+              </select>
+              <button
+                className="btn-app"
+                disabled={!gemChoisiPourFiche || rattachementEnCours}
+                onClick={rattacherAUnGem}
+                style={{ padding: "10px 16px", borderRadius: 8, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, var(--gold-light), var(--gold))", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer", alignSelf: "flex-start" }}
+              >
+                {rattachementEnCours ? "…" : "Me rattacher à ce GEM"}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       <div style={cardStyle}>
         <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>🔑 Changer mon mot de passe</p>
@@ -9875,7 +10004,7 @@ function EvolutionPerimetre({ membres, cardStyle }) {
 
 /* ------------------------------- Mon espace (responsable) ------------------------------- */
 
-function MonEspace({ compte, assignationsActives, gems, membres, tribus, departements, gemOuvert, setGemOuvert, onMembreAjoute, onCreerGem, regulariteParMembre, membreCible, onMembreCibleConsomme, gemDuMois, tribuDeptDuMois, evenementsAvecImage, cardStyle }) {
+function MonEspace({ compte, assignationsActives, gems, membres, tribus, departements, gemOuvert, setGemOuvert, onMembreAjoute, onCreerGem, regulariteParMembre, membreCible, onMembreCibleConsomme, gemDuMois, tribuDeptDuMois, evenementsAvecImage, tousLesComptes, cardStyle }) {
   const [nomNouveauGem, setNomNouveauGem] = useState("");
   const [nomResponsableGem, setNomResponsableGem] = useState("");
   const [telResponsableGem, setTelResponsableGem] = useState("+225 ");
@@ -9998,6 +10127,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
               <p style={{ fontSize: 12, color: "var(--text-secondary)", margin: "4px 0 0" }}>Taux de régularité moyen de tes membres</p>
             </div>
             <AnniversairesAVenir membres={membresGem} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
+            <AnniversairesResponsables comptes={tousLesComptes || []} cardStyle={cardStyle} />
             <DetailGem
               compte={compte}
               gem={monGem}
@@ -10124,6 +10254,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
           <ClassementsDuMois gemDuMois={gemDuMois} tribuDeptDuMois={tribuDeptDuMois} />
           <ResumePerimetre compte={compte} gems={gemsDuPerimetre} membres={membresDuPerimetre} tribus={tribus} departements={departements} onVoirAbsences={() => setSousOnglet("absences")} cardStyle={cardStyle} />
           <AnniversairesAVenir membres={membresDuPerimetre} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
+          <AnniversairesResponsables comptes={tousLesComptes || []} cardStyle={cardStyle} />
           <div style={{ ...cardStyle, marginBottom: 20 }}>
             {creationOuverte ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
