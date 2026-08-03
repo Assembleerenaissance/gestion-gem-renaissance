@@ -1773,6 +1773,31 @@ function toast(message, type = "info") {
   window.dispatchEvent(new CustomEvent("app-toast", { detail: { message, type } }));
 }
 
+// Exécute une écriture Supabase — si le réseau est absent (ou l'écriture
+// échoue à cause de ça), l'action est mise de côté et rejouée automatiquement
+// dès que la connexion revient, au lieu d'être perdue. Utile pour le
+// pointage de présence, souvent fait avec un réseau instable.
+async function ecrireAvecFileAttente({ table, action, payload, onConflict, matchColumn, matchValue }) {
+  const horsLigne = typeof navigator !== "undefined" && !navigator.onLine;
+  if (!horsLigne) {
+    try {
+      const requete = supabase.from(table);
+      let resultat;
+      if (action === "upsert") resultat = await requete.upsert(payload, { onConflict });
+      else if (action === "update") resultat = await requete.update(payload).eq(matchColumn, matchValue);
+      else resultat = await requete.insert(payload);
+      if (!resultat.error) return { ok: true };
+    } catch {}
+  }
+  // Écriture impossible tout de suite — on la met en attente.
+  try {
+    const file = JSON.parse(localStorage.getItem("gem_file_attente") || "[]");
+    file.push({ table, action, payload, onConflict, matchColumn, matchValue });
+    localStorage.setItem("gem_file_attente", JSON.stringify(file));
+  } catch {}
+  return { ok: false, enAttente: true };
+}
+
 // Enregistre une action sensible dans le journal d'audit — appel "silencieux"
 // (ne bloque jamais l'action même si l'enregistrement échoue).
 async function journaliser(compte, action, cible, details) {
@@ -1954,17 +1979,42 @@ function App() {
     try { return localStorage.getItem("gem_theme") || "dark"; } catch { return "dark"; }
   });
   const [enLigne, setEnLigne] = useState(() => (typeof navigator !== "undefined" ? navigator.onLine : true));
+  const [enFileAttente, setEnFileAttente] = useState(0);
 
   useEffect(() => {
-    function surConnexion() { setEnLigne(true); }
+    function surConnexion() {
+      setEnLigne(true);
+      traiterFileAttente();
+    }
     function surDeconnexion() { setEnLigne(false); }
     window.addEventListener("online", surConnexion);
     window.addEventListener("offline", surDeconnexion);
+    traiterFileAttente(); // au cas où des actions étaient déjà en attente au démarrage
     return () => {
       window.removeEventListener("online", surConnexion);
       window.removeEventListener("offline", surDeconnexion);
     };
   }, []);
+
+  async function traiterFileAttente() {
+    let file = [];
+    try { file = JSON.parse(localStorage.getItem("gem_file_attente") || "[]"); } catch {}
+    if (file.length === 0) { setEnFileAttente(0); return; }
+    const restantes = [];
+    for (const op of file) {
+      try {
+        const requete = supabase.from(op.table);
+        if (op.action === "upsert") await requete.upsert(op.payload, { onConflict: op.onConflict });
+        else if (op.action === "update") await requete.update(op.payload).eq(op.matchColumn, op.matchValue);
+        else if (op.action === "insert") await requete.insert(op.payload);
+      } catch {
+        restantes.push(op); // on la garde pour réessayer plus tard
+      }
+    }
+    try { localStorage.setItem("gem_file_attente", JSON.stringify(restantes)); } catch {}
+    setEnFileAttente(restantes.length);
+    if (file.length > restantes.length) toast(`✓ ${file.length - restantes.length} action(s) en attente ont été synchronisées.`, "succes");
+  }
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -2090,7 +2140,7 @@ function App() {
 
   if (verrouille) return <EcranVerrouillage compte={compte} onDeverrouille={() => { setVerrouille(false); enregistrerDerniereActivite(); }} />;
 
-  return <TableauDeBord compte={compte} theme={theme} onBasculerTheme={basculerTheme} enLigne={enLigne} />;
+  return <TableauDeBord compte={compte} theme={theme} onBasculerTheme={basculerTheme} enLigne={enLigne} enFileAttente={enFileAttente} />;
 }
 
 export default function AppAvecProtection() {
@@ -2329,7 +2379,7 @@ function EcranConnexion({ theme, onBasculerTheme }) {
 
 /* ----------------------------- Tableau de bord ----------------------------- */
 
-function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
+function TableauDeBord({ compte, theme, onBasculerTheme, enLigne, enFileAttente }) {
   const [page, setPage] = useState("dashboard");
   const [menuMobileOuvert, setMenuMobileOuvert] = useState(false);
   const [gemOuvert, setGemOuvert] = useState(null);
@@ -2342,6 +2392,32 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
   const dernierEtatConnu = useRef({ page: "dashboard", gemOuvert: null, parentOuvert: null });
   const retourEnCours = useRef(false);
   const premierRenduNavigation = useRef(true);
+
+  // Notifications en temps réel — dès qu'un nouveau message ou événement est
+  // ajouté par quelqu'un d'autre, une alerte apparaît immédiatement, sans
+  // avoir à recharger la page.
+  useEffect(() => {
+    const canal = supabase
+      .channel("notifications-app")
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages" }, payload => {
+        if (payload.new.de_compte_id === compte.id) return;
+        toast(`📢 Nouveau message diffusé — ${(payload.new.texte || "").slice(0, 60)}${(payload.new.texte || "").length > 60 ? "…" : ""}`, "info");
+        setNbMessagesNonLus(n => n + 1);
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "messages_directs" }, payload => {
+        if (payload.new.de_compte_id === compte.id) return;
+        const pourMoi = payload.new.destinataire_id === compte.id || (!payload.new.destinataire_id && (compte.role === "pasteur" || compte.assistant === true));
+        if (!pourMoi) return;
+        toast(payload.new.audio ? "🎙️ Nouveau message vocal reçu" : `💬 Nouveau message reçu — ${(payload.new.texte || "").slice(0, 60)}`, "info");
+        setNbMessagesNonLus(n => n + 1);
+      })
+      .on("postgres_changes", { event: "INSERT", schema: "public", table: "evenements" }, payload => {
+        if (payload.new.cree_par === compte.id) return;
+        toast(`📅 Nouvel événement ajouté au calendrier — ${payload.new.titre}`, "info");
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(canal); };
+  }, []);
 
   useEffect(() => {
     const etatActuel = { page, gemOuvert, parentOuvert };
@@ -2638,7 +2714,12 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne }) {
       {bienvenueVisible && <ParcoursBienvenue compte={compte} onTermine={() => setBienvenueVisible(false)} />}
       {!enLigne && (
         <div style={{ position: "sticky", top: 0, zIndex: 1500, backgroundColor: RED_LIGHT, color: "#fff", textAlign: "center", padding: "8px 16px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
-          <IconeAlerte size={15} /> Tu es hors ligne — certaines actions (enregistrer, envoyer...) ne fonctionneront pas tant que le réseau n'est pas rétabli.
+          <IconeAlerte size={15} /> Tu es hors ligne — le pointage de présence est mis en attente et sera envoyé au retour du réseau.
+        </div>
+      )}
+      {enLigne && enFileAttente > 0 && (
+        <div style={{ position: "sticky", top: 0, zIndex: 1500, backgroundColor: "var(--gold)", color: TEAL_950, textAlign: "center", padding: "8px 16px", fontSize: 13, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>
+          <span className="spinner-app" /> Synchronisation de {enFileAttente} action{enFileAttente > 1 ? "s" : ""} en attente…
         </div>
       )}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "16px 24px", borderBottom: `1px solid ${TEAL_800}`, flexWrap: "wrap", gap: 10 }}>
@@ -5200,14 +5281,20 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
     const etatActuel = presences[membreId];
     const nouvelEtat = !etatActuel?.present;
     const motifConserve = nouvelEtat ? "" : (etatActuel?.motif || "");
+    // Mise à jour immédiate à l'écran, quelle que soit la connexion — l'action
+    // est mise en attente et synchronisée automatiquement si le réseau manque,
+    // au lieu d'être perdue (utile un dimanche avec une connexion instable).
     setPresences(prev => ({ ...prev, [membreId]: { present: nouvelEtat, motif: motifConserve } }));
-    const { error } = await supabase.from("presences").upsert({ membre_id: membreId, dimanche_id: dimancheId, present: nouvelEtat, motif: motifConserve || null }, { onConflict: "membre_id,dimanche_id" });
-    if (error) {
-      toast("⚠️ La présence n'a pas pu être enregistrée : " + error.message, "erreur");
-      setPresences(prev => ({ ...prev, [membreId]: etatActuel || { present: false, motif: "" } }));
-      return;
+    const resultat = await ecrireAvecFileAttente({
+      table: "presences", action: "upsert",
+      payload: { membre_id: membreId, dimanche_id: dimancheId, present: nouvelEtat, motif: motifConserve || null },
+      onConflict: "membre_id,dimanche_id",
+    });
+    if (resultat.enAttente) {
+      toast("📴 Hors ligne — la présence sera envoyée dès le retour du réseau.", "info");
+    } else if (rapportPresenceValide) {
+      setRapportPresenceValide(false);
     }
-    if (rapportPresenceValide) setRapportPresenceValide(false);
   }
 
   async function enregistrerMotif(membreId, motif) {
