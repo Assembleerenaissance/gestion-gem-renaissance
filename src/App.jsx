@@ -1250,7 +1250,7 @@ function BarreOngletsBas({ page, setPage, estPasteur, nonLus, ouvrirMenuComplet,
     ? [
         { cle: "dashboard", label: "Accueil", icone: IconeMaison },
         { cle: "membres", label: "Membres", icone: IconeGroupe },
-        { cle: "calendrier", label: "Agenda", icone: IconeCalendrier },
+        { cle: "rapports", label: "Rapports", icone: IconeClipboard },
         { cle: "messagerie", label: "Messages", icone: IconeMessage, badge: nonLus },
       ]
     : [
