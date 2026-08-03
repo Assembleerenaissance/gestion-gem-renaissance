@@ -12488,13 +12488,11 @@ function GraphiqueCroissance({ donnees, hauteur = 160 }) {
 function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
   const [index, setIndex] = useState(0);
   const debutGlissement = useRef(null);
-  const hauteursPodium = [58, 78, 42]; // 2e, 1er, 3e — ordre visuel du podium
-  const couleursMedaille = ["#E8C15A", "#C9CDD6", "#D69A5C"]; // or, argent, bronze — 1er/2e/3e
 
   const onglets = [
-    { cle: "gem", label: "GEM", items: gemDuMois, cles: [["tauxRapport", "📋"], ["tauxPresence", "📅"], ["nombreActivites", "🙏"]] },
-    { cle: "tribu", label: "Tribus", items: tribuDeptDuMois?.tribu, cles: [["tauxRapport", "📋"], ["tauxPresence", "📅"], ["tauxSuiviNouveaux", "🌱"], ["nombreActivites", "🙏"]] },
-    { cle: "departement", label: "Départements", items: tribuDeptDuMois?.departement, cles: [["tauxRapport", "📋"], ["tauxPresence", "📅"], ["tauxSuiviNouveaux", "🌱"], ["nombreActivites", "🙏"]] },
+    { cle: "gem", label: "GEM", items: gemDuMois, cles: [["tauxRapport", "Rapports"], ["tauxPresence", "Présence"], ["nombreActivites", "Activités"]] },
+    { cle: "tribu", label: "Tribus", items: tribuDeptDuMois?.tribu, cles: [["tauxRapport", "Rapports"], ["tauxPresence", "Présence"], ["tauxSuiviNouveaux", "Nouveaux"], ["nombreActivites", "Activités"]] },
+    { cle: "departement", label: "Départements", items: tribuDeptDuMois?.departement, cles: [["tauxRapport", "Rapports"], ["tauxPresence", "Présence"], ["tauxSuiviNouveaux", "Nouveaux"], ["nombreActivites", "Activités"]] },
   ];
 
   const disponibles = onglets.filter(o => o.items && o.items.length > 0);
@@ -12506,10 +12504,6 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
     return cle === "nombreActivites" ? `${valeur}` : `${valeur}%`;
   }
 
-  function initiales(nom) {
-    return (nom || "?").split(" ").filter(Boolean).slice(0, 2).map(p => p[0]).join("").toUpperCase();
-  }
-
   function surDebutGlissement(e) { debutGlissement.current = e.touches[0].clientX; }
   function surFinGlissement(e) {
     if (debutGlissement.current === null || disponibles.length <= 1) return;
@@ -12519,126 +12513,87 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
     debutGlissement.current = null;
   }
 
-  // Réordonne les 3 premiers pour l'affichage "podium" : 2e à gauche, 1er au
-  // centre (plus grand), 3e à droite — comme une vraie estrade de victoire.
   const top3 = actif.items.slice(0, 3);
-  const ordrePodium = top3.length === 3 ? [top3[1], top3[0], top3[2]] : top3;
-  const indicesReels = top3.length === 3 ? [1, 0, 2] : top3.map((_, i) => i);
 
   return (
     <div
       onTouchStart={surDebutGlissement}
       onTouchEnd={surFinGlissement}
       style={{
-        position: "relative", overflow: "hidden",
-        background: "linear-gradient(160deg, rgba(23,89,78,0.75), rgba(11,64,56,0.8))", backdropFilter: "blur(12px)",
-        borderRadius: 20, padding: "21px 17px 17px", marginBottom: 20,
-        boxShadow: "0 18px 40px rgba(0,0,0,0.35), inset 0 0 0 1px rgba(214,165,76,0.5), inset 0 1px 0 rgba(255,255,255,0.08)",
+        position: "relative", backgroundColor: "var(--bg-surface)", borderRadius: 16,
+        padding: "26px 22px 20px", marginBottom: 20, boxShadow: "0 2px 16px rgba(0,0,0,0.14)",
+        border: "1px solid var(--border-1)",
       }}
     >
-      {/* Liseré doré subtil qui encadre toute la carte */}
-      <div style={{ position: "absolute", inset: 0, borderRadius: 20, padding: 1, background: "linear-gradient(135deg, rgba(214,165,76,0.5), transparent 30%, transparent 70%, rgba(214,165,76,0.35))", WebkitMask: "linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0)", WebkitMaskComposite: "xor", maskComposite: "exclude", pointerEvents: "none" }} />
-
-      {/* Halo doré derrière le 1er de classe — donne de la profondeur */}
-      <div style={{ position: "absolute", top: "16%", left: "50%", transform: "translateX(-50%)", width: 210, height: 210, borderRadius: "50%", background: "radial-gradient(circle, rgba(214,165,76,0.3), transparent 70%)", pointerEvents: "none" }} />
-      <div style={{ position: "absolute", bottom: -8, right: 6, pointerEvents: "none" }}><EpiDeBle size={40} opacity={0.1} /></div>
-
-      {/* Petites étincelles discrètes autour du 1er */}
-      {[[22, 20, "0s"], [88, 12, "0.6s"], [78, 32, "1.2s"], [14, 34, "1.8s"]].map(([left, top, delai], i) => (
-        <span key={i} style={{ position: "absolute", left: `${left}%`, top: `${top}%`, width: 4, height: 4, borderRadius: "50%", backgroundColor: "#F0C669", animation: `scintiller2 2.4s ease-in-out ${delai} infinite`, pointerEvents: "none" }} />
-      ))}
-
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, position: "relative" }}>
-        <p style={{ fontSize: 11.5, fontWeight: 700, color: GOLD_LIGHT, textTransform: "uppercase", letterSpacing: 1, margin: 0, display: "flex", alignItems: "center", gap: 6 }}>
-          <IconeTrophee size={14} /> Top 3 {actif.label} — ce mois
-        </p>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 22 }}>
+        <div>
+          <p style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: 1.5, margin: "0 0 3px" }}>Distinction du mois</p>
+          <p className="titre-moisson" style={{ fontSize: 19, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}>{actif.label}</p>
+        </div>
         {disponibles.length > 1 && (
-          <div style={{ display: "flex", gap: 5 }}>
+          <div style={{ display: "flex", gap: 4 }}>
             {disponibles.map((o, i) => (
-              <button key={o.cle} onClick={() => setIndex(i)} style={{ width: actif.cle === o.cle ? 18 : 6, height: 6, borderRadius: 999, border: "none", cursor: "pointer", backgroundColor: actif.cle === o.cle ? GOLD : "rgba(255,255,255,0.28)", padding: 0, transition: "width 0.3s ease" }} />
+              <button key={o.cle} onClick={() => setIndex(i)} style={{ width: actif.cle === o.cle ? 16 : 5, height: 5, borderRadius: 999, border: "none", cursor: "pointer", backgroundColor: actif.cle === o.cle ? "var(--gold)" : "var(--border-2)", padding: 0, transition: "width 0.3s ease" }} />
             ))}
           </div>
         )}
       </div>
 
-      {/* ---------- Podium visuel ---------- */}
-      <div key={actif.cle} className="fade-in" style={{ display: "flex", alignItems: "flex-end", justifyContent: "center", gap: 10, marginBottom: 18, position: "relative" }}>
-        {ordrePodium.map((item, position) => {
-          if (!item) return <div key={position} style={{ flex: 1 }} />;
-          const iReel = indicesReels[position];
-          const estPremier = iReel === 0;
-          const couleurMedaille = couleursMedaille[iReel];
+      <div key={actif.cle} style={{ display: "flex", flexDirection: "column" }}>
+        {top3.map((item, i) => {
+          const estPremier = i === 0;
           return (
             <div
-              key={item.gemId || item.id || iReel}
-              style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", maxWidth: 118, opacity: 0, animation: `entreeCascade 0.5s cubic-bezier(0.22,1,0.36,1) ${0.15 + position * 0.12}s forwards` }}
+              key={item.gemId || item.id || i}
+              style={{
+                display: "flex", alignItems: "center", gap: 16, padding: "14px 0",
+                borderTop: i > 0 ? "1px solid var(--border-1)" : "none",
+                opacity: 0, animation: `entreeCascade 0.45s cubic-bezier(0.22,1,0.36,1) ${i * 0.1}s forwards`,
+              }}
             >
-              {estPremier && (
-                <span style={{ marginBottom: 2, display: "inline-block", filter: "drop-shadow(0 2px 4px rgba(232,193,90,0.5))", animation: "flotterCouronne 2.6s ease-in-out infinite" }}>
-                  <IconeCouronne size={20} color="#E8C15A" />
-                </span>
-              )}
-
-              {/* Avatar en initiales, avec bordure médaille */}
-              <div style={{ position: "relative", marginBottom: 6 }}>
-                <div
-                  style={{
-                    width: estPremier ? 58 : 46, height: estPremier ? 58 : 46, borderRadius: "50%",
-                    background: `linear-gradient(145deg, ${couleurMedaille}, ${couleurMedaille}99)`,
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    border: `3px solid ${estPremier ? "#F6F1E4" : "rgba(255,255,255,0.5)"}`,
-                    boxShadow: estPremier ? `0 6px 16px ${couleurMedaille}80` : "0 3px 8px rgba(0,0,0,0.25)",
-                  }}
-                >
-                  <span style={{ fontFamily: "'Fraunces', serif", fontWeight: 700, fontSize: estPremier ? 20 : 16, color: "#1A2E2A" }}>{initiales(item.nom)}</span>
-                </div>
-                <div style={{ position: "absolute", bottom: -4, right: -4, width: 22, height: 22, borderRadius: "50%", backgroundColor: couleurMedaille, border: "2px solid var(--bg-surface)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 800, color: "#1A2E2A" }}>
-                  {iReel + 1}
-                </div>
-              </div>
-
-              <p className="titre-moisson" style={{ fontSize: estPremier ? 13.5 : 11.5, fontWeight: 600, color: CREAM, textAlign: "center", margin: "0 0 4px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: "100%" }}>{item.nom}</p>
-
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 3, justifyContent: "center", marginBottom: 8, minHeight: 14 }}>
-                {actif.cles.map(([cle, icone]) => {
-                  const v = afficherValeur(cle, item[cle]);
-                  return v !== null ? <span key={cle} style={{ fontSize: 9, color: "var(--text-secondary-2)", whiteSpace: "nowrap" }}>{icone}{v}</span> : null;
-                })}
-              </div>
-
-              {/* Marche du podium — dégradé + reflet brillant qui balaie doucement */}
-              <div
+              <span
+                className="titre-moisson"
                 style={{
-                  position: "relative", width: "100%", height: hauteursPodium[position], borderRadius: "12px 12px 4px 4px", overflow: "hidden",
-                  background: estPremier
-                    ? "linear-gradient(180deg, #F0C669, #D6A54C 60%, #B8863A)"
-                    : "linear-gradient(180deg, rgba(214,165,76,0.4), rgba(214,165,76,0.15))",
-                  boxShadow: estPremier ? "0 8px 20px rgba(214,165,76,0.4)" : "inset 0 1px 0 rgba(255,255,255,0.08)",
+                  fontSize: estPremier ? 34 : 26, fontWeight: 600, lineHeight: 1, flexShrink: 0, width: estPremier ? 46 : 38,
+                  color: estPremier ? "var(--gold)" : "transparent",
+                  WebkitTextStroke: estPremier ? "none" : "1px var(--border-2)",
+                  letterSpacing: -1,
                 }}
               >
-                <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: "45%", background: "linear-gradient(180deg, rgba(255,255,255,0.35), transparent)" }} />
-                {estPremier && (
-                  <div style={{ position: "absolute", top: 0, bottom: 0, width: "35%", background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.55), transparent)", animation: "balayageReflet 3.2s ease-in-out infinite" }} />
-                )}
+                {String(i + 1).padStart(2, "0")}
+              </span>
+
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p className="titre-moisson" style={{ fontSize: estPremier ? 15.5 : 14, fontWeight: estPremier ? 600 : 500, color: "var(--text-primary)", margin: "0 0 3px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {item.nom}
+                </p>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                  {actif.cles.map(([cle, label]) => {
+                    const v = afficherValeur(cle, item[cle]);
+                    return v !== null ? (
+                      <span key={cle} style={{ fontSize: 11, color: "var(--text-secondary)" }}>
+                        {label} <span style={{ color: "var(--text-secondary-2)", fontWeight: 600 }}>{v}</span>
+                      </span>
+                    ) : null;
+                  })}
+                </div>
               </div>
+
+              {estPremier && (
+                <span style={{ flexShrink: 0, fontSize: 9.5, fontWeight: 700, color: "var(--gold)", border: "1px solid var(--gold)", borderRadius: 999, padding: "4px 10px", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                  1er
+                </span>
+              )}
             </div>
           );
         })}
       </div>
 
       {actif.cle === "gem" && top3[0] && (top3[0].nomResponsable || top3[0].rattachement) && (
-        <p style={{ fontSize: 11, color: "var(--text-secondary)", textAlign: "center", marginBottom: 10 }}>
+        <p style={{ fontSize: 11.5, color: "var(--text-secondary)", marginTop: 14, paddingTop: 14, borderTop: "1px solid var(--border-1)" }}>
           {top3[0].nomResponsable ? <span style={{display:"inline-flex",alignItems:"center",gap:4}}><IconePersonne size={11}/> {top3[0].nomResponsable}</span> : "Aucun responsable"}{top3[0].rattachement ? ` — ${top3[0].rattachement}` : ""}
         </p>
       )}
-
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, justifyContent: "center", paddingTop: 10, borderTop: "1px solid rgba(255,255,255,0.08)" }}>
-        {actif.cles.map(([, icone]) => (
-          <span key={icone} style={{ fontSize: 10, color: "var(--text-secondary)" }}>
-            {icone} {{ "📋": "Rapports remplis", "📅": "Présence au culte", "🌱": "Suivi des nouveaux", "🙏": "Activités effectuées" }[icone]}
-          </span>
-        ))}
-      </div>
     </div>
   );
 }
