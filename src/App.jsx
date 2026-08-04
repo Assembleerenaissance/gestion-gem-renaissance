@@ -9157,6 +9157,7 @@ function PageMonCompte({ compte, assignationsActives, gems, tribus, departements
   const [enCours, setEnCours] = useState(false);
   const [erreur, setErreur] = useState("");
   const [dateNaissance, setDateNaissance] = useState(compte.date_naissance || "");
+  const [telephoneContact, setTelephoneContact] = useState(compte.telephone || "+225 ");
   const [quartier, setQuartier] = useState(compte.quartier || "");
   const [photo, setPhoto] = useState(compte.photo || null);
   const [baptise, setBaptise] = useState(compte.baptise || false);
@@ -9208,6 +9209,7 @@ function PageMonCompte({ compte, assignationsActives, gems, tribus, departements
   }
 
   async function enregistrerProfil() {
+    if (!numeroTelephoneValide(telephoneContact)) { toast("Le numéro de téléphone ne semble pas valide.", "erreur"); return; }
     setEnregistrementProfil(true);
     const { error } = await supabase.from("comptes").update({
       date_naissance: dateNaissance || null,
@@ -9215,6 +9217,7 @@ function PageMonCompte({ compte, assignationsActives, gems, tribus, departements
       photo: photo || null,
       baptise,
       eglise_origine: egliseOrigine.trim() || null,
+      telephone: telephoneContact.trim(),
     }).eq("id", compte.id);
     setEnregistrementProfil(false);
     if (error) { toast("Impossible d'enregistrer : " + error.message, "erreur"); return; }
@@ -9251,7 +9254,7 @@ function PageMonCompte({ compte, assignationsActives, gems, tribus, departements
       <div style={{ ...cardStyle, marginBottom: 20 }}>
         <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 10 }}>Informations</p>
         <p style={{ fontSize: 13, color: "var(--text-secondary-2)", marginBottom: 4 }}><b>Nom :</b> {compte.nom}</p>
-        <p style={{ fontSize: 13, color: "var(--text-secondary-2)", marginBottom: 4 }}><b>Téléphone :</b> {compte.telephone}</p>
+        <p style={{ fontSize: 13, color: "var(--text-secondary-2)", marginBottom: 4 }}><b>Numéro de connexion :</b> {compte.telephone}</p>
         <p style={{ fontSize: 13, color: "var(--text-secondary-2)" }}><b>Rôle :</b> {compte.role === "pasteur" ? "Pasteur" : compte.assistant ? "Assistant désigné" : "Responsable"}</p>
       </div>
 
@@ -9264,6 +9267,18 @@ function PageMonCompte({ compte, assignationsActives, gems, tribus, departements
               📷 {photo ? "Changer ma photo" : "Ajouter ma photo"}
               <input type="file" accept="image/*" onChange={surChoisirPhotoProfil} style={{ display: "none" }} />
             </label>
+          </div>
+          <div>
+            <label style={{ fontSize: 11, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>📞 Téléphone</label>
+            <input
+              value={telephoneContact}
+              onChange={e => setTelephoneContact(e.target.value)}
+              placeholder="+225 ..."
+              style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}
+            />
+            <p style={{ fontSize: 10.5, color: "var(--text-secondary)", marginTop: 4, lineHeight: 1.4 }}>
+              ⚠️ Le numéro utilisé pour te connecter à l'application ne change pas ici — c'est uniquement le numéro affiché aux autres (appel, WhatsApp).
+            </p>
           </div>
           <div>
             <label style={{ fontSize: 11, color: "var(--text-secondary)", display: "block", marginBottom: 4 }}>🎂 Date de naissance (jour et mois)</label>
