@@ -1470,24 +1470,24 @@ function StylesGlobaux() {
         color-scheme: dark;
       }
 
-      /* ---------- Thème clair — même identité, luminance inversée ---------- */
+      /* ---------- Thème clair — palette "Maison Bleu Nuit" : fond blanc pur, sarcelle profond, accent terracotta ---------- */
       [data-theme="light"] {
-        --bg-base: #F2EEE0;
+        --bg-base: #FFFFFF;
         --bg-surface: #FFFFFF;
-        --bg-surface-2: #F8F4E8;
-        --bg-surface-3: #EFE8D5;
-        --border-1: #CBDFD3;
-        --border-2: #A9CABC;
-        --gold: #C4924B;
-        --gold-light: #9C6D28;
-        --text-primary: #14332D;
-        --text-secondary: #5C7B72;
-        --text-secondary-2: #486860;
-        --red: #C6555A;
-        --green: #3F8A63;
-        --green-success: #3F8A63;
-        --gold-warn: #A9781F;
-        --overlay: rgba(20,51,45,0.45);
+        --bg-surface-2: #F7F7F6;
+        --bg-surface-3: #EDEEEC;
+        --border-1: #EDEEEC;
+        --border-2: #D8DBD9;
+        --gold: #073B36;
+        --gold-light: #1C7A6C;
+        --text-primary: #171F1E;
+        --text-secondary: #5C6B68;
+        --text-secondary-2: #3D4A47;
+        --red: #C4595C;
+        --green: #3F9C6E;
+        --green-success: #3F9C6E;
+        --gold-warn: #C96F4A;
+        --overlay: rgba(7,59,54,0.45);
         color-scheme: light;
       }
 
