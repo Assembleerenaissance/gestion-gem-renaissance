@@ -3222,46 +3222,38 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne, enFileAttente 
           />
         ) : page === "dashboard" ? (
           <>
-            <div style={{ marginBottom: 24 }}>
-              <p style={{ fontSize: 12, fontWeight: 600, color: "var(--gold-light)", textTransform: "uppercase", letterSpacing: 1.2, margin: "0 0 4px" }}>
-                {(() => { const h = new Date().getHours(); return h < 12 ? "Bonjour" : h < 18 ? "Bon après-midi" : "Bonsoir"; })()}, {compte.nom.split(" ")[0]}
-              </p>
-              <h2 className="titre-moisson" style={{ fontSize: 28, fontWeight: 600, margin: 0, display: "flex", alignItems: "center", gap: 10 }}>
-                <EpiDeBle size={24} /> Tableau de bord
-              </h2>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+              <EpiDeBle size={22} />
+              <h2 className="titre-moisson" style={{ fontSize: 24, fontWeight: 600, margin: 0 }}>Tableau de bord</h2>
             </div>
             <ParoleDuJour />
             <CarrouselImages evenements={evenementsAvecImage} />
             <BanniereRappelPointage rappel={rappelPointageGlobal} />
-
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))", gap: 14, marginBottom: 28 }}>
-              {[
-                { icone: IconeGroupe, label: "Membres suivis", valeur: membres.length, hero: true, onClick: null },
-                { icone: IconePousse, label: "Nouveaux ce mois", valeur: nbNouveauxCeMois, onClick: () => { setPage("nouveaux_membres"); setGemOuvert(null); setParentOuvert(null); } },
-                { icone: IconeMaison, label: "GEM actifs", valeur: gems.length, onClick: null },
-                { icone: IconeGroupe, label: "Tribus", valeur: tribus.length, onClick: null },
-                { icone: IconeBatiment, label: "Départements", valeur: departements.length, onClick: null },
-              ].map((s, i) => {
-                const Contenu = (
-                  <>
-                    <div style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: "var(--bg-surface-3)", display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12, flexShrink: 0 }}>
-                      <s.icone size={20} color="var(--gold)" />
-                    </div>
-                    <p style={{ fontSize: 11, color: "var(--text-secondary)", fontWeight: 600, textTransform: "uppercase", letterSpacing: 0.4, margin: "0 0 2px" }}>{s.label}</p>
-                    <p className="titre-moisson chiffre-app" style={{ fontSize: s.hero ? 32 : 26, fontWeight: 600, color: "var(--text-primary)", margin: 0 }}><NombreAnime valeur={s.valeur} /></p>
-                  </>
-                );
-                const style = {
-                  ...cardStyle, gridColumn: s.hero ? "span 2" : undefined, display: "flex", flexDirection: "column", alignItems: "flex-start",
-                  textAlign: "left", cursor: s.onClick ? "pointer" : "default", border: s.onClick ? "none" : cardStyle.border,
-                  opacity: 0, animation: `entreeCascade 0.4s cubic-bezier(0.22,1,0.36,1) ${i * 0.06}s forwards`,
-                };
-                return s.onClick
-                  ? <button key={s.label} onClick={s.onClick} className="card-app" style={style}>{Contenu}</button>
-                  : <div key={s.label} className="card-app" style={style}>{Contenu}</div>;
-              })}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 16, marginBottom: 24 }}>
+              <div className="card-app" style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 14 }}>
+                <span style={{ fontSize: 28 }}>👥</span>
+                <div><p style={{ fontSize: 12, color: "var(--text-primary)", textTransform: "uppercase" }}>Membres suivis</p><p style={{ fontSize: 28, fontWeight: 700 }}><NombreAnime valeur={membres.length} /></p></div>
+              </div>
+              <button
+                onClick={() => { setPage("nouveaux_membres"); setGemOuvert(null); setParentOuvert(null); }}
+                className="card-app" style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 14, cursor: "pointer", textAlign: "left", border: "none" }}
+              >
+                <IconePousse size={26} color="var(--gold)" />
+                <div><p style={{ fontSize: 12, color: "var(--text-primary)", textTransform: "uppercase" }}>Nouveaux ce mois</p><p style={{ fontSize: 28, fontWeight: 700 }}><NombreAnime valeur={nbNouveauxCeMois} /></p></div>
+              </button>
+              <div className="card-app" style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 14 }}>
+                <span style={{ fontSize: 28 }}>🏠</span>
+                <div><p style={{ fontSize: 12, color: "var(--text-primary)", textTransform: "uppercase" }}>GEM actifs</p><p style={{ fontSize: 28, fontWeight: 700 }}><NombreAnime valeur={gems.length} /></p></div>
+              </div>
+              <div className="card-app" style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 14 }}>
+                <span style={{ fontSize: 28 }}>🏛️</span>
+                <div><p style={{ fontSize: 12, color: "var(--text-primary)", textTransform: "uppercase" }}>Tribus</p><p style={{ fontSize: 28, fontWeight: 700 }}><NombreAnime valeur={tribus.length} /></p></div>
+              </div>
+              <div className="card-app" style={{ ...cardStyle, display: "flex", alignItems: "center", gap: 14 }}>
+                <span style={{ fontSize: 28 }}>🏢</span>
+                <div><p style={{ fontSize: 12, color: "var(--text-primary)", textTransform: "uppercase" }}>Départements</p><p style={{ fontSize: 28, fontWeight: 700 }}><NombreAnime valeur={departements.length} /></p></div>
+              </div>
             </div>
-
             <ClassementsDuMois gemDuMois={gemDuMois} tribuDeptDuMois={tribuDeptDuMois} />
             <AnniversairesAVenir membres={membres} gems={gems} tribus={tribus} departements={departements} cardStyle={cardStyle} />
             <AnniversairesResponsables comptes={tousLesComptes} cardStyle={cardStyle} />
