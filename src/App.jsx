@@ -3560,6 +3560,19 @@ function ResumePerimetre({ compte, gems, membres, tribus, departements, onVoirAb
 
   useEffect(() => { chargerResume(); }, [gems.length, membres.length]);
 
+  // Actualisation en temps réel — dès qu'un GEM valide son rapport de
+  // présence (où que ce soit dans l'app), la liste se met à jour toute
+  // seule, sans avoir à recharger la page.
+  const idInstance = useRef(Math.random().toString(36).slice(2));
+
+  useEffect(() => {
+    const canal = supabase
+      .channel(`resume-perimetre-${idInstance.current}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "validations_presence" }, () => chargerResume())
+      .subscribe();
+    return () => { supabase.removeChannel(canal); };
+  }, []);
+
   async function chargerResume() {
     setChargement(true);
     const { data: dernierDimanche } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(1).maybeSingle();
