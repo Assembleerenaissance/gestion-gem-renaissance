@@ -3298,7 +3298,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne, enFileAttente 
                 );
               })()}
             </div>
-            <PrioritesPastorales compte={compte} membres={membres} gems={gems} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
+            <PrioritesPastorales compte={compte} membres={membres} gems={gems} tribus={tribus} departements={departements} regulariteParMembre={regulariteParMembre} cardStyle={cardStyle} />
             <div style={{ marginTop: 24 }}>
               <button
  className="btn-app"
@@ -3836,12 +3836,20 @@ function Pagination({ page, setPage, totalPages }) {
   );
 }
 
-function PrioritesPastorales({ compte, membres, gems, regulariteParMembre, cardStyle }) {
+function PrioritesPastorales({ compte, membres, gems, tribus, departements, regulariteParMembre, cardStyle }) {
   const [page, setPage] = useState(1);
   const PAR_PAGE = 10;
 
   function nomGem(gemId) {
     return gems.find(g => g.id === gemId)?.nom || "GEM inconnu";
+  }
+
+  function provenance(gemId) {
+    const g = gems.find(gg => gg.id === gemId);
+    if (!g) return "";
+    if (g.tribu_id) return `Tribu de ${(tribus || []).find(t => t.id === g.tribu_id)?.nom || "?"}`;
+    if (g.departement_id) return `Département ${(departements || []).find(d => d.id === g.departement_id)?.nom || "?"}`;
+    return "";
   }
 
   const membresAlerte = membres
@@ -3864,7 +3872,7 @@ function PrioritesPastorales({ compte, membres, gems, regulariteParMembre, cardS
             <div key={membre.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, borderColor: RED_LIGHT }}>
               <div>
                 <p style={{ fontWeight: 700, marginBottom: 2 }}>{membre.nom}</p>
-                <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>{nomGem(membre.gem_id)}</p>
+                <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>{nomGem(membre.gem_id)}{provenance(membre.gem_id) ? ` — ${provenance(membre.gem_id)}` : ""}</p>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "6px 12px" }}><IconeAlerte size={12} style={{verticalAlign:"-2px",marginRight:3}} /> {regularite.absencesConsecutives} absences consécutives</span>
