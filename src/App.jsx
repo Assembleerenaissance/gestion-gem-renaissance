@@ -3580,8 +3580,8 @@ function ResumePerimetre({ compte, gems, membres, tribus, departements, onVoirAb
     setNbResponsablesGem(new Set((assignationsGem || []).map(a => a.compte_id)).size);
     setGemsEnRetard(gems.filter(g => !idsGemsValides.has(g.id)).map(g => ({
       ...g,
-      respNom: respParGem[g.id]?.nom || g.responsable_nom || null,
-      respTel: respParGem[g.id]?.telephone || g.responsable_telephone || null,
+      respNom: g.responsable_nom || respParGem[g.id]?.nom || null,
+      respTel: g.responsable_telephone || respParGem[g.id]?.telephone || null,
       provenance: g.tribu_id ? `Tribu de ${(tribus || []).find(t => t.id === g.tribu_id)?.nom || "?"}` : g.departement_id ? `Département ${(departements || []).find(d => d.id === g.departement_id)?.nom || "?"}` : "",
     })));
 
@@ -7219,6 +7219,11 @@ function PageDemandes({ tribus, departements, compte, onTraite, cardStyle }) {
             nouveau_converti: false,
           });
         }
+        // On garde aussi une copie légère du nom/téléphone du responsable
+        // directement sur le GEM — ça évite de dépendre uniquement de la
+        // jointure vers les comptes, qui peut être invisible pour certains
+        // utilisateurs selon les règles de sécurité.
+        await supabase.from("gems").update({ responsable_nom: demandeur.nom, responsable_telephone: demandeur.telephone }).eq("id", gemId);
       }
     }
     const { error: err2 } = await supabase.from("assignations").update({ statut: "actif", gem_id: gemId, valide_par: compte.id }).eq("id", d.id);
