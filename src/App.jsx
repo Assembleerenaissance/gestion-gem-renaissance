@@ -472,8 +472,9 @@ function PageNouveauxMembres({ compte, tribus, cardStyle }) {
     const estMoisEnCours = mois === new Date().toISOString().slice(0, 7);
     if (estMoisEnCours) {
       const dateAuj = dimancheActuel();
-      const { data: dimExistant } = await supabase.from("dimanches").select("*").eq("date", dateAuj).maybeSingle();
-      if (!dimExistant) await supabase.from("dimanches").insert({ date: dateAuj });
+      // upsert plutôt que "vérifier puis créer" — évite tout doublon si deux
+      // personnes ouvrent l'app au même moment un dimanche.
+      await supabase.from("dimanches").upsert({ date: dateAuj }, { onConflict: "date", ignoreDuplicates: true });
     }
 
     if ((data || []).length > 0) {
@@ -5273,11 +5274,11 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
   async function initialiserPresences() {
     setChargementPresences(true);
     const dateAuj = dimancheActuel();
-    let { data: dimAuj } = await supabase.from("dimanches").select("*").eq("date", dateAuj).maybeSingle();
-    if (!dimAuj) {
-      const { data: nouveauDim } = await supabase.from("dimanches").insert({ date: dateAuj }).select().single();
-      dimAuj = nouveauDim;
-    }
+    // upsert plutôt que "vérifier puis créer" — évite tout doublon si deux
+    // responsables ouvrent la page au même moment un dimanche — puis on
+    // relit systématiquement pour être sûr d'avoir la bonne ligne.
+    await supabase.from("dimanches").upsert({ date: dateAuj }, { onConflict: "date", ignoreDuplicates: true });
+    const { data: dimAuj } = await supabase.from("dimanches").select("*").eq("date", dateAuj).maybeSingle();
     const { data: toutesLesSemaines } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(52);
     setDimanchesDisponibles(toutesLesSemaines || []);
     setDimancheId(dimAuj.id);
@@ -5994,16 +5995,15 @@ function ActivitesSemaine({ gem, membres, compte, cardStyle }) {
 
   async function initialiser() {
     setChargement(true);
-    // S'assure que la semaine en cours existe dans la liste, sans forcer sa sélection.
+    // S'assure que la semaine en cours existe dans la liste, sans forcer sa
+    // sélection — upsert plutôt que "vérifier puis créer" pour éviter tout
+    // doublon en cas d'ouverture simultanée par plusieurs personnes.
     const dateAuj = dimancheActuel();
-    let { data: dimAuj } = await supabase.from("dimanches").select("*").eq("date", dateAuj).maybeSingle();
-    if (!dimAuj) {
-      const { data: nouveauDim } = await supabase.from("dimanches").insert({ date: dateAuj }).select().single();
-      dimAuj = nouveauDim;
-    }
+    await supabase.from("dimanches").upsert({ date: dateAuj }, { onConflict: "date", ignoreDuplicates: true });
     const { data: toutesLesSemaines } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(52);
     setDimanches(toutesLesSemaines || []);
-    setDimancheId(dimAuj.id);
+    const dimAuj = (toutesLesSemaines || []).find(d => d.date === dateAuj);
+    if (dimAuj) setDimancheId(dimAuj.id);
   }
 
   async function chargerActivite() {
