@@ -1254,7 +1254,7 @@ function IconeLune({ size = 16, color = "currentColor" }) {
 // Barre de navigation fixe en bas de l'écran — visible sur mobile seulement,
 // pour un accès direct aux 4 destinations les plus utilisées au pouce, sans
 // avoir à ouvrir le menu ☰. "Plus" ouvre le menu complet habituel.
-function BarreOngletsBas({ page, setPage, estPasteur, nonLus, ouvrirMenuComplet, setGemOuvert, setParentOuvert }) {
+function BarreOngletsBas({ page, setPage, estPasteur, nonLus, ouvrirMenuComplet, fermerMenuComplet, setGemOuvert, setParentOuvert }) {
   // Sur mobile, quand le clavier s'ouvre (en tapant un message par exemple),
   // la zone réellement visible à l'écran rétrécit. Une barre simplement
   // "fixée en bas" peut alors se retrouver cachée derrière le clavier tant
@@ -1295,6 +1295,7 @@ function BarreOngletsBas({ page, setPage, estPasteur, nonLus, ouvrirMenuComplet,
     setPage(cle);
     setGemOuvert(null);
     setParentOuvert(null);
+    if (fermerMenuComplet) fermerMenuComplet();
   }
 
   return (
@@ -3456,6 +3457,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne, enFileAttente 
         estPasteur={estPasteur}
         nonLus={nbMessagesNonLus}
         ouvrirMenuComplet={() => setMenuMobileOuvert(true)}
+        fermerMenuComplet={() => setMenuMobileOuvert(false)}
         setGemOuvert={setGemOuvert}
         setParentOuvert={setParentOuvert}
       />
@@ -7957,34 +7959,41 @@ function PageAbsences({ compte, membres, gems, tribus, departements, regulariteP
             <>
             <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {absentsAffiches.map(({ membre, absencesConsecutives, motif }) => (
-                <div key={membre.id} style={{ ...cardStyle, borderColor: absencesConsecutives >= 2 ? RED_LIGHT : TEAL_700 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 8 }}>
-                    <div>
-                      <p style={{ fontWeight: 700, marginBottom: 2 }}>{membre.nom}</p>
+                <div key={membre.id} style={{ ...cardStyle, position: "relative", overflow: "hidden", paddingLeft: 18, borderColor: undefined }}>
+                  <div style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: 4, backgroundColor: absencesConsecutives >= 2 ? "var(--red)" : "var(--gold-warn)" }} />
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    {membre.photo ? (
+                      <img src={membre.photo} alt="" style={{ width: 42, height: 42, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+                    ) : (
+                      <AvatarInitiales nom={membre.nom} taille={42} />
+                    )}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontWeight: 700, marginBottom: 1 }}>{membre.nom}</p>
                       <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>{nomGem(membre.gem_id)} — {provenance(membre.gem_id)}</p>
-                      {motif && <p style={{ fontSize: 12, color: GOLD_LIGHT, marginTop: 4 }}>Motif : {motif}</p>}
                     </div>
-                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-                      {absencesConsecutives >= 1 && (
-                        <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", backgroundColor: absencesConsecutives >= 2 ? RED_LIGHT : TEAL_700, borderRadius: 999, padding: "5px 10px" }}>
-                          {absencesConsecutives} dimanche{absencesConsecutives > 1 ? "s" : ""} consécutif{absencesConsecutives > 1 ? "s" : ""}
-                        </span>
-                      )}
-                      {membre.telephone && (
-                        <>
-                          <a title="Appeler" href={`tel:${membre.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}><IconeTelephone size={15} /></a>
-                          <a
-                            title="WhatsApp"
-                            href={`https://wa.me/${numeroPourWhatsApp(membre.telephone)}?text=${encodeURIComponent(`Bonjour ${membre.nom}, tu nous as manqué au culte. Est-ce que tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏
+                  </div>
+                  {motif && <p style={{ fontSize: 12, color: "var(--gold-warn)", margin: "8px 0 0" }}>Motif : {motif}</p>}
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                    {absencesConsecutives >= 1 && (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, color: absencesConsecutives >= 2 ? "var(--red)" : "var(--gold-warn)" }}>
+                        <span style={{ width: 6, height: 6, borderRadius: 999, backgroundColor: absencesConsecutives >= 2 ? "var(--red)" : "var(--gold-warn)" }} />
+                        {absencesConsecutives} dimanche{absencesConsecutives > 1 ? "s" : ""} consécutif{absencesConsecutives > 1 ? "s" : ""}
+                      </span>
+                    )}
+                    {membre.telephone && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginLeft: "auto" }}>
+                        <a title="Appeler" href={`tel:${membre.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><IconeTelephone size={15} /></a>
+                        <a
+                          title="WhatsApp"
+                          href={`https://wa.me/${numeroPourWhatsApp(membre.telephone)}?text=${encodeURIComponent(`Bonjour ${membre.nom}, tu nous as manqué au culte. Est-ce que tout va bien ? Nous t'aimons et espérons te revoir bientôt. 🙏
 
 ${signatureMessage(compte)}`)}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center" }}
-                          ><IconeMessage size={15} /></a>
-                        </>
-                      )}
-                    </div>
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                        ><IconeMessage size={15} /></a>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
