@@ -1597,6 +1597,17 @@ function StylesGlobaux() {
       ::selection { background-color: rgba(214,165,76,0.35); }
 
       .nav-bureau { display: flex; gap: 8px; flex-wrap: wrap; }
+
+      /* ---------- Rangée de filtres (pills) — défilement horizontal fluide, ---------- */
+      /* jamais de retour à la ligne moche, comme sur les vraies apps mobiles.          */
+      .chips-row {
+        display: flex; gap: 8px; flex-wrap: nowrap; overflow-x: auto;
+        padding-bottom: 6px; margin-bottom: 16px;
+        scrollbar-width: none; -ms-overflow-style: none;
+        -webkit-overflow-scrolling: touch;
+      }
+      .chips-row::-webkit-scrollbar { display: none; }
+      .chips-row > * { flex-shrink: 0; white-space: nowrap; }
       .bouton-hamburger { display: none; }
       .barre-onglets-bas { display: none; }
       @media (max-width: 860px) {
@@ -8560,30 +8571,30 @@ function PageMembres({ compte, membres, gems, tribus, departements, gemsAutorise
         style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_850, color: CREAM, border: `1px solid ${TEAL_700}`, marginBottom: 12, width: "100%", maxWidth: 320 }}
       />
 
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 16 }}>
+      <div className="chips-row">
         {perimetreEstTribuUniquement ? (
-          <span style={{ padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${GOLD}`, backgroundColor: "transparent", color: GOLD_LIGHT, display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <span style={{ padding: "9px 16px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${GOLD}`, backgroundColor: "transparent", color: GOLD_LIGHT, display: "inline-flex", alignItems: "center", gap: 6 }}>
             <IconeGroupe size={14} /> Membres ({toutesLesPersonnes.length})
           </span>
         ) : (
-          <button className="btn-app" onClick={() => { setVueBoss(v => !v); setFiltreBossIrreguliers(false); }} style={{ padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${GOLD}`, cursor: "pointer", backgroundColor: vueBoss ? GOLD : "transparent", color: vueBoss ? TEAL_950 : GOLD_LIGHT }}>
+          <button className="btn-app" onClick={() => { setVueBoss(v => !v); setFiltreBossIrreguliers(false); }} style={{ padding: "9px 16px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${GOLD}`, cursor: "pointer", backgroundColor: vueBoss ? GOLD : "transparent", color: vueBoss ? TEAL_950 : GOLD_LIGHT, boxShadow: vueBoss ? "0 4px 12px rgba(214,165,76,0.35)" : "none", transition: "box-shadow 0.2s ease" }}>
             <span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeEtoile size={14}/> BOSS ({listeBoss.length})</span>
           </button>
         )}
         {!vueBoss && (
           <>
-            <button className="btn-app" onClick={() => setFiltreIrreguliers(v => !v)} style={{ padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${RED_LIGHT}`, cursor: "pointer", backgroundColor: filtreIrreguliers ? RED_LIGHT : "transparent", color: filtreIrreguliers ? "#fff" : RED_LIGHT }}>
-              ⚠️ Membres irréguliers (2+ absences / 4 dimanches)
+            <button className="btn-app" onClick={() => setFiltreIrreguliers(v => !v)} style={{ padding: "9px 16px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${RED_LIGHT}`, cursor: "pointer", backgroundColor: filtreIrreguliers ? RED_LIGHT : "transparent", color: filtreIrreguliers ? "#fff" : RED_LIGHT, boxShadow: filtreIrreguliers ? "0 4px 12px rgba(226,119,123,0.35)" : "none" }}>
+              ⚠️ Irréguliers (2+ absences)
             </button>
             {(estPasteur ? ["", "membre", "gem", "departement_resp", "tribu_resp"] : ["", "membre", "gem"]).map(r => (
-              <button key={r} className="btn-app" onClick={() => setFiltreRole(r)} style={{ padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${TEAL_600}`, cursor: "pointer", backgroundColor: filtreRole === r ? GOLD : "transparent", color: filtreRole === r ? TEAL_950 : "var(--text-secondary-2)" }}>
+              <button key={r} className="btn-app" onClick={() => setFiltreRole(r)} style={{ padding: "9px 16px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${TEAL_600}`, cursor: "pointer", backgroundColor: filtreRole === r ? GOLD : "transparent", color: filtreRole === r ? TEAL_950 : "var(--text-secondary-2)", boxShadow: filtreRole === r ? "0 4px 12px rgba(214,165,76,0.35)" : "none" }}>
                 {r === "" ? "Tous" : libelleRole(r)}
               </button>
             ))}
           </>
         )}
         {vueBoss && (
-          <button className="btn-app" onClick={() => setFiltreBossIrreguliers(v => !v)} style={{ padding: "8px 14px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${RED_LIGHT}`, cursor: "pointer", backgroundColor: filtreBossIrreguliers ? RED_LIGHT : "transparent", color: filtreBossIrreguliers ? "#fff" : RED_LIGHT }}>
+          <button className="btn-app" onClick={() => setFiltreBossIrreguliers(v => !v)} style={{ padding: "9px 16px", borderRadius: 999, fontSize: 12, fontWeight: 700, border: `1px solid ${RED_LIGHT}`, cursor: "pointer", backgroundColor: filtreBossIrreguliers ? RED_LIGHT : "transparent", color: filtreBossIrreguliers ? "#fff" : RED_LIGHT }}>
             ⚠️ BOSS irréguliers ({bossIrreguliers.length})
           </button>
         )}
@@ -8636,29 +8647,31 @@ function PageMembres({ compte, membres, gems, tribus, departements, gemsAutorise
           {resultatsAffiches.map(p => {
             const tauxReg = p.types.includes("membre") ? regulariteParMembre?.[p.membreId]?.tauxRegularite : null;
             return (
-              <button key={p.id} className="btn-app card-app" onClick={() => setPersonneOuverte(p)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+              <button key={p.id} className="btn-app card-app" onClick={() => setPersonneOuverte(p)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 12 }}>
                 {p.photo ? (
-                  <img src={p.photo} alt="" style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+                  <img src={p.photo} alt="" style={{ width: 42, height: 42, borderRadius: "50%", objectFit: "cover", flexShrink: 0, border: `2px solid ${TEAL_600}` }} />
                 ) : (
-                  <AvatarInitiales nom={p.nom} taille={40} />
+                  <div style={{ borderRadius: "50%", border: `2px solid ${TEAL_600}`, flexShrink: 0 }}><AvatarInitiales nom={p.nom} taille={38} /></div>
                 )}
-                <div style={{ flex: 1, minWidth: 100 }}>
-                  <p style={{ fontWeight: 700, margin: 0 }}>{p.nom}</p>
-                  <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: 0 }}>{libelleRoles(p)}</p>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <p style={{ fontWeight: 700, margin: "0 0 3px", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{p.nom}</p>
+                  <span style={{ fontSize: 10.5, fontWeight: 700, color: p.types.includes("gem") || p.types.includes("departement_resp") || p.types.includes("tribu_resp") ? GOLD_LIGHT : "var(--text-secondary)", backgroundColor: p.types.includes("gem") || p.types.includes("departement_resp") || p.types.includes("tribu_resp") ? "rgba(214,165,76,0.12)" : TEAL_900, borderRadius: 999, padding: "2px 8px", display: "inline-block", maxWidth: "100%", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {libelleRoles(p)}
+                  </span>
                 </div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
                   {tauxReg !== null && tauxReg !== undefined && (
                     <span style={{
-                      fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "4px 10px",
+                      fontSize: 11, fontWeight: 700, borderRadius: 999, padding: "4px 9px",
                       color: tauxReg >= 40 ? TEAL_950 : "#fff",
                       backgroundColor: tauxReg >= 70 ? "var(--green-success)" : tauxReg >= 40 ? GOLD_LIGHT : RED_LIGHT,
                     }}>
-                      📊 {tauxReg}%
+                      {tauxReg}%
                     </span>
                   )}
                   {p.types.includes("membre") && (absencesRecentes[p.membreId]?.absences || 0) >= 2 && (
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, color: (absencesRecentes[p.membreId].absences >= 3) ? "var(--red)" : "var(--gold-warn)" }}>
-                      <span style={{ width: 6, height: 6, borderRadius: 999, backgroundColor: (absencesRecentes[p.membreId].absences >= 3) ? "var(--red)" : "var(--gold-warn)" }} />
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 3, fontSize: 10.5, fontWeight: 700, color: (absencesRecentes[p.membreId].absences >= 3) ? "var(--red)" : "var(--gold-warn)", whiteSpace: "nowrap" }}>
+                      <span style={{ width: 5, height: 5, borderRadius: 999, backgroundColor: (absencesRecentes[p.membreId].absences >= 3) ? "var(--red)" : "var(--gold-warn)", flexShrink: 0 }} />
                       {absencesRecentes[p.membreId].absences}/{absencesRecentes[p.membreId].total}
                     </span>
                   )}
@@ -8666,7 +8679,7 @@ function PageMembres({ compte, membres, gems, tribus, departements, gemsAutorise
                     <span
                       title={estPasteur ? "Supprimer ce membre" : "Demander la suppression de ce membre"}
                       onClick={e => { e.stopPropagation(); setMembreASupprimer(p); }}
-                      style={{ width: 30, height: 30, borderRadius: 999, backgroundColor: "var(--bg-base)", border: "1px solid var(--red)", color: "var(--red)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}
+                      style={{ width: 28, height: 28, borderRadius: 999, backgroundColor: "var(--bg-base)", border: "1px solid var(--red)", color: "var(--red)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}
                     >
                       <IconePoubelle size={13} />
                     </span>
