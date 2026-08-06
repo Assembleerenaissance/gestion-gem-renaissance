@@ -701,7 +701,7 @@ function PageNouveauxMembres({ compte, tribus, cardStyle }) {
           </div>
         )}
 
-        <button className="btn-app" onClick={() => setNouveauASupprimer(n)} style={{ width: "100%", padding: "10px 0", borderRadius: 9, backgroundColor: "transparent", border: `1px solid ${RED_LIGHT}`, color: RED_LIGHT, fontWeight: 700, fontSize: 12.5, cursor: "pointer" }}>
+        <button className="btn-app" onClick={() => setNouveauASupprimer(n)} style={{ width: "100%", padding: "10px 0", borderRadius: 9, backgroundColor: "transparent", border: `1px solid ${RED_LIGHT}`, color: RED_LIGHT, fontWeight: 700, fontSize: 13, cursor: "pointer" }}>
           <IconePoubelle size={13} style={{verticalAlign:"-2px",marginRight:5}} />Retirer de la liste
         </button>
 
@@ -1325,8 +1325,15 @@ function BarreOngletsBas({ page, setPage, estPasteur, nonLus, ouvrirMenuComplet,
             {o.badge > 0 && (
               <span style={{ position: "absolute", top: 4, right: "24%", backgroundColor: "var(--red)", color: "#fff", fontSize: 9, fontWeight: 700, borderRadius: 999, minWidth: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" }}>{o.badge}</span>
             )}
-            <o.icone size={19} color={actif ? "var(--gold)" : "var(--text-secondary)"} />
-            <span style={{ fontSize: 9.5, fontWeight: actif ? 700 : 500, whiteSpace: "nowrap" }}>{o.label}</span>
+            <span style={{
+              display: "flex", alignItems: "center", justifyContent: "center", width: 34, height: 26, borderRadius: 10,
+              backgroundColor: actif ? "rgba(227,185,90,0.14)" : "transparent",
+              filter: actif ? "drop-shadow(0 2px 4px rgba(227,185,90,0.35))" : "none",
+              transition: "background-color 0.2s ease, filter 0.2s ease",
+            }}>
+              <o.icone size={19} color={actif ? "var(--gold)" : "var(--text-secondary)"} />
+            </span>
+            <span style={{ fontSize: 10, fontWeight: actif ? 700 : 500, whiteSpace: "nowrap" }}>{o.label}</span>
             {actif && <span style={{ position: "absolute", bottom: 0, width: 20, height: 3, borderRadius: 999, backgroundColor: "var(--gold)" }} />}
           </button>
         );
@@ -1337,7 +1344,7 @@ function BarreOngletsBas({ page, setPage, estPasteur, nonLus, ouvrirMenuComplet,
         style={{ flex: "1 1 0", minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 3, padding: "10px 2px 8px", background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)" }}
       >
         <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="4" y1="7" x2="20" y2="7" /><line x1="4" y1="12" x2="20" y2="12" /><line x1="4" y1="17" x2="20" y2="17" /></svg>
-        <span style={{ fontSize: 9.5, fontWeight: 500, whiteSpace: "nowrap" }}>Plus</span>
+        <span style={{ fontSize: 10, fontWeight: 500, whiteSpace: "nowrap" }}>Plus</span>
       </button>
     </div>
   );
@@ -1460,21 +1467,21 @@ function StylesGlobaux() {
 
       /* ---------- Thème sombre (par défaut) — "Terre & Moisson" ---------- */
       :root, [data-theme="dark"] {
-        --bg-base: #0B4038;
-        --bg-surface: #124D43;
-        --bg-surface-2: #17594E;
-        --bg-surface-3: #1B6659;
-        --border-1: #227A6B;
-        --border-2: #2C917F;
-        --gold: #D6A54C;
-        --gold-light: #EFCB77;
-        --text-primary: #F6F1E4;
-        --text-secondary: #B9D3CB;
-        --text-secondary-2: #D8E8E1;
+        --bg-base: #033536;
+        --bg-surface: #0A4C4A;
+        --bg-surface-2: #0E5A57;
+        --bg-surface-3: #126863;
+        --border-1: #1D7A72;
+        --border-2: #2A9089;
+        --gold: #E3B95A;
+        --gold-light: #F5D876;
+        --text-primary: #F4F7F0;
+        --text-secondary: #A8C9C3;
+        --text-secondary-2: #C9E0DA;
         --red: #E2777B;
         --green: #8FCBA8;
         --green-success: #6fcf97;
-        --gold-warn: #e8c25a;
+        --gold-warn: #EDC768;
         --overlay: var(--overlay);
         color-scheme: dark;
       }
@@ -1511,6 +1518,41 @@ function StylesGlobaux() {
       .btn-app:disabled { opacity: 0.6; cursor: not-allowed; }
       .card-app { transition: transform 0.18s cubic-bezier(0.22,1,0.36,1), box-shadow 0.18s ease, border-color 0.15s ease; }
       .card-app:hover { transform: translateY(-3px); box-shadow: 0 10px 24px rgba(0,0,0,0.22); }
+
+      /* ---------- États de focus — halo doré discret sur tout champ actif ---------- */
+      input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+        transition: box-shadow 0.15s ease, border-color 0.15s ease;
+      }
+      input:not([type="checkbox"]):not([type="radio"]):focus, select:focus, textarea:focus {
+        outline: none;
+        border-color: var(--gold) !important;
+        box-shadow: 0 0 0 3px rgba(227,185,90,0.22);
+      }
+
+      /* ---------- Cases à cocher stylisées, à la couleur de l'app ---------- */
+      input[type="checkbox"], input[type="radio"] {
+        accent-color: var(--gold);
+        width: 16px; height: 16px;
+        cursor: pointer;
+      }
+
+      /* ---------- Hiérarchie des boutons ---------- */
+      .btn-primaire {
+        background: linear-gradient(135deg, var(--gold-light), var(--gold));
+        color: var(--bg-base); border: none; font-weight: 700;
+        box-shadow: 0 4px 14px rgba(227,185,90,0.28);
+      }
+      .btn-secondaire {
+        background: transparent; color: var(--gold-light);
+        border: 1px solid var(--gold); font-weight: 600;
+      }
+      .btn-tertiaire {
+        background: none; color: var(--text-secondary); border: none; font-weight: 500;
+      }
+      .btn-primaire, .btn-secondaire, .btn-tertiaire {
+        border-radius: 10px; cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.15s ease;
+      }
+      .btn-primaire:active, .btn-secondaire:active, .btn-tertiaire:active { transform: scale(0.97); }
       .fade-in { animation: fadeInApp 0.24s cubic-bezier(0.22,1,0.36,1); }
       .barre-graphique { transition: opacity 0.15s ease; }
       .barre-graphique:hover { opacity: 0.75; }
@@ -1812,6 +1854,24 @@ function toast(message, type = "info") {
 // échoue à cause de ça), l'action est mise de côté et rejouée automatiquement
 // dès que la connexion revient, au lieu d'être perdue. Utile pour le
 // pointage de présence, souvent fait avec un réseau instable.
+// Libellé d'un mois au format "YYYY-MM" — versions partagées, réutilisées
+// partout au lieu d'être redéfinies dans chaque composant (long : "juillet
+// 2026", court : "juil.").
+function libelleMois(cle) {
+  if (!cle) return "";
+  const [annee, mois] = cle.split("-");
+  return new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+}
+function libelleMoisCourt(cle) {
+  if (!cle) return "";
+  const [annee, mois] = cle.split("-");
+  return new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "short" });
+}
+// Initiales d'un nom complet — ex: "Jean Kouassi" -> "JK".
+function initiales(nom) {
+  return (nom || "?").split(" ").filter(Boolean).slice(0, 2).map(p => p[0]).join("").toUpperCase();
+}
+
 async function ecrireAvecFileAttente({ table, action, payload, onConflict, matchColumn, matchValue }) {
   const horsLigne = typeof navigator !== "undefined" && !navigator.onLine;
   if (!horsLigne) {
@@ -2225,7 +2285,7 @@ function EcranConnexion({ theme, onBasculerTheme }) {
   }, []);
 
   function emailTechnique(tel) {
-    return `${tel.replace(/[^\d]/g, "")}@gestiongem.com`;
+    return `${(tel || "").replace(/[^\d]/g, "")}@gestiongem.com`;
   }
 
   async function seConnecter() {
@@ -2304,7 +2364,7 @@ function EcranConnexion({ theme, onBasculerTheme }) {
     <div
       style={{
         minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", padding: 16,
-        backgroundImage: `linear-gradient(180deg, rgba(11,64,56,0.5) 0%, rgba(11,64,56,0.94) 100%), url(${BERGER_IMG})`,
+        backgroundImage: `linear-gradient(180deg, rgba(3,53,54,0.5) 0%, rgba(3,53,54,0.94) 100%), url(${BERGER_IMG})`,
         backgroundSize: "cover", backgroundPosition: "center",
         position: "relative", overflow: "hidden",
       }}
@@ -2317,22 +2377,29 @@ function EcranConnexion({ theme, onBasculerTheme }) {
         }}
       />
       <style>{`@keyframes deriveDouce { 0% { transform: translate(-3%, -2%) scale(1); } 100% { transform: translate(3%, 2%) scale(1.08); } }`}</style>
-      <div className="fade-in" style={{ position: "relative", width: "100%", maxWidth: mode === "inscription" ? 420 : 380, maxHeight: "92vh", overflowY: "auto", backgroundColor: "rgba(18,77,67,0.94)", backdropFilter: "blur(10px)", border: "1px solid rgba(239,203,119,0.22)", borderRadius: 20, padding: 28, boxShadow: "0 30px 70px rgba(0,0,0,0.45)" }}>
+      <div className="fade-in" style={{ position: "relative", width: "100%", maxWidth: mode === "inscription" ? 420 : 380, maxHeight: "92vh", overflowY: "auto", backgroundColor: "rgba(10,76,74,0.94)", backdropFilter: "blur(10px)", border: "1px solid rgba(245,216,118,0.22)", borderRadius: 20, padding: 28, boxShadow: "0 30px 70px rgba(0,0,0,0.45)" }}>
         {onBasculerTheme && (
           <div style={{ position: "absolute", top: 14, right: 14 }}>
             <BoutonTheme theme={theme} onBasculer={onBasculerTheme} taille={32} />
           </div>
         )}
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}>
-          <img src={LOGO_VH} alt="Vases d'Honneur" style={{ height: 76, width: "auto", filter: "drop-shadow(0 6px 16px rgba(0,0,0,0.35))" }} />
+        <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+          <div style={{ width: 64, height: 64, borderRadius: 16, background: "linear-gradient(135deg, var(--bg-surface-2), var(--bg-base))", display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 8px 20px rgba(0,0,0,0.3)", border: "1px solid rgba(245,216,118,0.25)", padding: 8 }}>
+            <img src={LOGO_VH} alt="Vases d'Honneur" style={{ width: "100%", height: "100%", objectFit: "contain" }} />
+          </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 4 }}>
           <EpiDeBle size={16} />
           <h1 className="titre-moisson" style={{ color: "var(--text-primary)", fontSize: 27, fontWeight: 600, margin: 0, textAlign: "center" }}>Gestion des GEM</h1>
           <EpiDeBle size={16} />
         </div>
-        <p style={{ color: "var(--text-secondary-2)", fontSize: 13, marginBottom: 22, textAlign: "center", letterSpacing: 0.3 }}>Assemblée RENAISSANCE · Bouaflé</p>
-        <div style={{ display: "flex", gap: 6, marginBottom: 18, backgroundColor: "rgba(11,64,56,0.4)", borderRadius: 11, padding: 4 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, marginBottom: 10 }}>
+          <span style={{ width: 28, height: 1, backgroundColor: "var(--gold)", opacity: 0.5 }} />
+          <span style={{ width: 5, height: 5, backgroundColor: "var(--gold)", transform: "rotate(45deg)", flexShrink: 0 }} />
+          <span style={{ width: 28, height: 1, backgroundColor: "var(--gold)", opacity: 0.5 }} />
+        </div>
+        <p style={{ color: "var(--gold-light)", fontSize: 12, fontWeight: 600, marginBottom: 22, textAlign: "center", letterSpacing: 2.5, textTransform: "uppercase" }}>Assemblée RENAISSANCE · Bouaflé</p>
+        <div style={{ display: "flex", gap: 6, marginBottom: 18, backgroundColor: "rgba(10,76,74,0.4)", borderRadius: 11, padding: 4 }}>
           <button
  className="btn-app"
  onClick={() => { setMode("connexion"); setMotDePasseOublieOuvert(false); if (telephone === "+225 ") setTelephone(""); }} style={{ flex: 1, padding: "9px 0", borderRadius: 8, fontWeight: 600, fontSize: 13, backgroundColor: mode === "connexion" ? "var(--gold)" : "transparent", backgroundImage: mode === "connexion" ? "linear-gradient(135deg, var(--gold-light), var(--gold))" : "none", color: mode === "connexion" ? "var(--bg-base)" : "var(--text-secondary-2)", border: "none", boxShadow: mode === "connexion" ? "0 3px 10px rgba(214,165,76,0.3)" : "none" }}>Se connecter</button>
@@ -2361,31 +2428,41 @@ function EcranConnexion({ theme, onBasculerTheme }) {
         ) : (
           <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
             {mode === "inscription" && (
-              <input value={nom} onChange={e => setNom(e.target.value)} placeholder="Nom complet" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_850, color: CREAM, border: `1px solid ${TEAL_700}` }} />
+              <div>
+                <label style={{ fontSize: 13, color: "var(--text-secondary-2)", display: "block", marginBottom: 5 }}>Nom complet</label>
+                <input value={nom} onChange={e => setNom(e.target.value)} placeholder="Ton nom et prénom" style={{ width: "100%", boxSizing: "border-box", padding: 12, borderRadius: 10, backgroundColor: "var(--bg-base)", color: CREAM, border: "1px solid rgba(255,255,255,0.1)" }} />
+              </div>
             )}
-            <input value={telephone} onChange={e => setTelephone(e.target.value)} placeholder="Téléphone" type="tel" autoComplete="tel" name="telephone" style={{ padding: 10, borderRadius: 8, backgroundColor: TEAL_850, color: CREAM, border: `1px solid ${TEAL_700}` }} />
+            <div>
+              <label style={{ fontSize: 13, color: "var(--text-secondary-2)", display: "block", marginBottom: 5 }}>Téléphone</label>
+              <input value={telephone} onChange={e => setTelephone(e.target.value)} placeholder="+225 ..." type="tel" autoComplete="tel" name="telephone" style={{ width: "100%", boxSizing: "border-box", padding: 12, borderRadius: 10, backgroundColor: "var(--bg-base)", color: CREAM, border: "1px solid rgba(255,255,255,0.1)" }} />
+            </div>
 
-            <input
-              value={motDePasse}
-              onChange={e => setMotDePasse(e.target.value)}
-              placeholder="Mot de passe (8 car. min.)"
-              type={motDePasseVisible ? "text" : "password"}
-              autoComplete={mode === "inscription" ? "new-password" : "current-password"}
-              name="mot-de-passe"
-              style={inputPasswordStyle}
-            />
+            <div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
+                <label style={{ fontSize: 13, color: "var(--text-secondary-2)" }}>Mot de passe</label>
+                {mode === "connexion" && (
+                  <button
+ className="btn-app"
+ onClick={() => { setMotDePasseOublieOuvert(true); setMessageOubli(""); setTelephoneOubli(telephone); }} style={{ background: "none", border: "none", color: "var(--gold-light)", fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0 }}>
+                    Oublié ?
+                  </button>
+                )}
+              </div>
+              <input
+                value={motDePasse}
+                onChange={e => setMotDePasse(e.target.value)}
+                placeholder="••••••••"
+                type={motDePasseVisible ? "text" : "password"}
+                autoComplete={mode === "inscription" ? "new-password" : "current-password"}
+                name="mot-de-passe"
+                style={{ width: "100%", boxSizing: "border-box", padding: 12, borderRadius: 10, backgroundColor: "var(--bg-base)", color: CREAM, border: "1px solid rgba(255,255,255,0.1)" }}
+              />
+            </div>
             <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "var(--text-secondary-2)", cursor: "pointer", marginTop: -4 }}>
               <input type="checkbox" checked={motDePasseVisible} onChange={e => setMotDePasseVisible(e.target.checked)} />
               Afficher le mot de passe
             </label>
-
-            {mode === "connexion" && (
-              <button
- className="btn-app"
- onClick={() => { setMotDePasseOublieOuvert(true); setMessageOubli(""); setTelephoneOubli(telephone); }} style={{ alignSelf: "flex-end", background: "none", border: "none", color: GOLD_LIGHT, fontSize: 12, fontWeight: 600, cursor: "pointer", padding: 0, marginTop: -4 }}>
-                Mot de passe oublié ?
-              </button>
-            )}
 
             {mode === "inscription" && (
               <>
@@ -2402,7 +2479,7 @@ function EcranConnexion({ theme, onBasculerTheme }) {
             )}
 
             {erreur && <p style={{ color: RED_LIGHT, fontSize: 12 }}>{erreur}</p>}
-            <button disabled={chargement} onClick={mode === "connexion" ? seConnecter : sInscrire} style={{ padding: "12px 0", borderRadius: 8, fontWeight: 700, fontSize: 14, backgroundColor: GOLD, backgroundImage: "linear-gradient(135deg, var(--gold-light), var(--gold))", color: TEAL_950, boxShadow: "0 4px 14px rgba(214,165,76,0.28)", border: "none", cursor: "pointer" }}>
+            <button className="btn-primaire" disabled={chargement} onClick={mode === "connexion" ? seConnecter : sInscrire} style={{ padding: "13px 0", fontSize: 15, backgroundColor: "var(--border-2)", backgroundImage: "none", color: "#fff", boxShadow: "0 4px 14px rgba(0,0,0,0.2)", marginTop: 4 }}>
               {chargement ? "…" : mode === "connexion" ? "Accéder à mon espace" : "Créer mon compte"}
             </button>
           </div>
@@ -3024,11 +3101,19 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne, enFileAttente 
                             display: "flex", justifyContent: "space-between", alignItems: "center", padding: "14px 16px", borderRadius: 12,
                             backgroundColor: page === it.cible ? `${couleur}30` : `${couleur}12`,
                             border: page === it.cible ? `1px solid ${couleur}` : "1px solid transparent",
-                            color: page === it.cible ? couleur : CREAM, fontWeight: 600, fontSize: 15.5, cursor: "pointer", textAlign: "left",
+                            color: page === it.cible ? couleur : CREAM, fontWeight: 600, fontSize: 16, cursor: "pointer", textAlign: "left",
                           }}
                         >
-                          <span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>
-                            {it.icone && <it.icone size={16} color={page === it.cible ? couleur : "var(--text-secondary-2)"} />}
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 12 }}>
+                            {it.icone && (
+                              <span style={{
+                                display: "flex", alignItems: "center", justifyContent: "center", width: 30, height: 30, borderRadius: 9, flexShrink: 0,
+                                backgroundColor: page === it.cible ? `${couleur}25` : `${couleur}14`,
+                                boxShadow: page === it.cible ? `0 2px 6px ${couleur}40` : "none",
+                              }}>
+                                <it.icone size={15} color={page === it.cible ? couleur : "var(--text-secondary-2)"} />
+                              </span>
+                            )}
                             {it.label}
                           </span>
                           {it.badge > 0 && (
@@ -3490,11 +3575,11 @@ function HistoriquePerimetre({ gems, membres, cardStyle }) {
           <>
             <div style={{ ...cardStyle, marginBottom: 20 }}>
               <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>Présence — dimanche par dimanche</p>
-              <GraphiqueBarres
+              <GraphiqueCourbe
+                couleur="var(--green)"
                 donnees={presenceParDimanche.map(d => ({
                   libelle: new Date(d.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }),
                   valeur: d.taux, texteAffiche: `${d.taux}%`,
-                  infoBulle: `${new Date(d.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })} : ${d.taux}% de présence`,
                 }))}
               />
             </div>
@@ -3510,7 +3595,8 @@ function HistoriquePerimetre({ gems, membres, cardStyle }) {
           <>
             <div style={{ ...cardStyle, marginBottom: 20 }}>
               <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>Taux de présence moyen — mois par mois</p>
-              <GraphiqueBarres
+              <GraphiqueCourbe
+                couleur="var(--green)"
                 donnees={presenceParMois.map(d => {
                   const [annee, mois] = d.mois.split("-");
                   return { libelle: new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "short" }), valeur: d.taux, texteAffiche: `${d.taux}%` };
@@ -3519,7 +3605,8 @@ function HistoriquePerimetre({ gems, membres, cardStyle }) {
             </div>
             <div style={{ ...cardStyle, marginBottom: 20 }}>
               <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>🌡️ Santé spirituelle moyenne — mois par mois</p>
-              <GraphiqueBarres
+              <GraphiqueCourbe
+                couleur="var(--gold)"
                 donnees={santeParMois.filter(s => s.moyenne !== null).map(d => {
                   const [annee, mois] = d.mois.split("-");
                   return { libelle: new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "short" }), valeur: d.moyenne, texteAffiche: `${d.moyenne}/10` };
@@ -3538,7 +3625,7 @@ function HistoriquePerimetre({ gems, membres, cardStyle }) {
           <>
             <div style={{ ...cardStyle, marginBottom: 20 }}>
               <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>Taux de présence moyen — année par année</p>
-              <GraphiqueBarres donnees={presenceParAnnee.map(d => ({ libelle: d.annee, valeur: d.taux, texteAffiche: `${d.taux}%` }))} />
+              <GraphiqueCourbe couleur="var(--green)" donnees={presenceParAnnee.map(d => ({ libelle: d.annee, valeur: d.taux, texteAffiche: `${d.taux}%` }))} />
             </div>
             <CommentaireIntelligent titre="🧠 Analyse intelligente de l'année" stats={{ tauxPresence: dernierTauxAnnee, tauxPresencePrecedent: precedentTauxAnnee }} />
           </>
@@ -3647,17 +3734,24 @@ function ResumePerimetre({ compte, gems, membres, tribus, departements, onVoirAb
       </div>
 
       {afficherRetard && gemsEnRetard.length > 0 && (
-        <div style={{ ...cardStyle, borderColor: RED_LIGHT, marginBottom: 24 }}>
-          <p style={{ fontWeight: 700, fontSize: 13, color: RED_LIGHT, marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}><IconeAlerte size={14} /> GEM n'ayant pas encore soumis leur rapport ({gemsEnRetard.length})</p>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 12 }}>
+        <div style={{ ...cardStyle, position: "relative", overflow: "hidden", paddingLeft: 18, marginBottom: 24 }}>
+          <div style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: 4, backgroundColor: "var(--red)" }} />
+          <p style={{ fontWeight: 700, fontSize: 13, color: "var(--text-primary)", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+            <span style={{ width: 7, height: 7, borderRadius: 999, backgroundColor: "var(--red)", flexShrink: 0 }} />
+            GEM n'ayant pas encore soumis leur rapport ({gemsEnRetard.length})
+          </p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6, marginBottom: 14 }}>
             {gemsEnRetard.map(g => (
-              <span key={g.id} style={{ fontSize: 12, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "4px 10px" }}>{g.nom}{g.provenance ? ` — ${g.provenance}` : ""}</span>
+              <div key={g.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "var(--bg-base)", borderRadius: 9, padding: "9px 12px" }}>
+                <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>{g.nom}</span>
+                {g.provenance && <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>{g.provenance}</span>}
+              </div>
             ))}
           </div>
           <button
-            className="btn-app"
+            className="btn-app btn-primaire"
             onClick={() => setRelanceOuverte(v => !v)}
-            style={{ padding: "9px 14px", borderRadius: 8, backgroundColor: RED_LIGHT, color: "#fff", border: "none", fontWeight: 700, fontSize: 12.5, cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}
+            style={{ width: "100%", padding: "11px 14px", fontSize: 13.5, display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
           >
             <IconeMessage size={13} /> Relancer les responsables par WhatsApp
           </button>
@@ -3668,9 +3762,9 @@ function ResumePerimetre({ compte, gems, membres, tribus, departements, onVoirAb
                 WhatsApp n'autorise pas l'envoi groupé en un clic — clique sur chacun, le message d'urgence est déjà prêt.
               </p>
               {gemsEnRetard.map(g => (
-                <div key={g.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: TEAL_950, borderRadius: 8, padding: "8px 12px", gap: 8 }}>
+                <div key={g.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", backgroundColor: "var(--bg-base)", borderRadius: 9, padding: "9px 12px", gap: 8 }}>
                   <div style={{ minWidth: 0 }}>
-                    <p style={{ fontSize: 12.5, fontWeight: 700, margin: 0 }}>{g.nom}{g.provenance ? <span style={{ fontWeight: 400, color: "var(--text-secondary)" }}> — {g.provenance}</span> : ""}</p>
+                    <p style={{ fontSize: 13, fontWeight: 700, margin: 0 }}>{g.nom}{g.provenance ? <span style={{ fontWeight: 400, color: "var(--text-secondary)" }}> — {g.provenance}</span> : ""}</p>
                     <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{g.respNom || "Sans responsable identifié"}</p>
                   </div>
                   {g.respTel ? (
@@ -3867,18 +3961,28 @@ function PrioritesPastorales({ compte, membres, gems, tribus, departements, regu
       {membresAlerte.length === 0 ? (
         <p style={{ color: "var(--text-secondary)", fontSize: 13 }}>Aucun membre en absence répétée pour l'instant — tout va bien.</p>
       ) : (
-        <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {membresAffiches.map(({ membre, regularite }) => (
-            <div key={membre.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8, borderColor: RED_LIGHT }}>
-              <div>
-                <p style={{ fontWeight: 700, marginBottom: 2 }}>{membre.nom}</p>
-                <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>{nomGem(membre.gem_id)}{provenance(membre.gem_id) ? ` — ${provenance(membre.gem_id)}` : ""}</p>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 12, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "6px 12px" }}><IconeAlerte size={12} style={{verticalAlign:"-2px",marginRight:3}} /> {regularite.absencesConsecutives} absences consécutives</span>
+        <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {membresAffiches.map(({ membre, regularite }) => {
+            const grave = regularite.absencesConsecutives >= 3;
+            return (
+              <div key={membre.id} style={{ ...cardStyle, position: "relative", overflow: "hidden", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", paddingLeft: 18 }}>
+                <div style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: 4, backgroundColor: grave ? "var(--red)" : "var(--gold-warn)" }} />
+                {membre.photo ? (
+                  <img src={membre.photo} alt="" style={{ width: 44, height: 44, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+                ) : (
+                  <AvatarInitiales nom={membre.nom} taille={44} />
+                )}
+                <div style={{ flex: 1, minWidth: 140 }}>
+                  <p style={{ fontWeight: 700, marginBottom: 1 }}>{membre.nom}</p>
+                  <p style={{ fontSize: 12, color: "var(--text-secondary)", marginBottom: 5 }}>{nomGem(membre.gem_id)}{provenance(membre.gem_id) ? ` — ${provenance(membre.gem_id)}` : ""}</p>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, color: grave ? "var(--red)" : "var(--gold-warn)" }}>
+                    <span style={{ width: 6, height: 6, borderRadius: 999, backgroundColor: grave ? "var(--red)" : "var(--gold-warn)" }} />
+                    {regularite.absencesConsecutives} dimanches d'absence
+                  </span>
+                </div>
                 {membre.telephone && (
-                  <>
-                    <a title="Appeler" href={`tel:${membre.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0 }}>
+                    <a title="Appeler" href={`tel:${membre.telephone}`} style={{ fontSize: 16, color: "var(--bg-base)", textDecoration: "none", backgroundColor: "var(--gold-light)", border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}>
                       <IconeTelephone size={15} /></a>
                     <a
                       href={`https://wa.me/${numeroPourWhatsApp(membre.telephone)}?text=${encodeURIComponent(`Bonjour ${membre.nom}, tu nous manques beaucoup ces derniers temps. Est-ce que tout va bien ? Nous t'aimons et espérons te revoir bientôt au culte. 🙏
@@ -3889,11 +3993,11 @@ ${signatureMessage(compte)}`)}`}
                       style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)" }}
                     >
                       <IconeMessage size={15} /></a>
-                  </>
+                  </div>
                 )}
               </div>
-            </div>
-          ))}
+            );
+          })}
           <Pagination page={page} setPage={setPage} totalPages={totalPages} />
         </div>
       )}
@@ -4019,7 +4123,7 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
                     {type === "tribu" ? "Patriarche/Matriarche" : "Responsable"} : {it.responsable_nom}{it.responsable_telephone ? ` — ${it.responsable_telephone}` : ""}
                   </p>
                   {estPasteur && (
-                    <button className="btn-app" onClick={() => { setRespParentEnEdition(it.id); setNomRespParentEdition(it.responsable_nom || ""); setTelRespParentEdition(it.responsable_telephone || "+225 "); }} style={{ fontSize: 10.5, color: GOLD_LIGHT, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                    <button className="btn-app" onClick={() => { setRespParentEnEdition(it.id); setNomRespParentEdition(it.responsable_nom || ""); setTelRespParentEdition(it.responsable_telephone || "+225 "); }} style={{ fontSize: 11, color: GOLD_LIGHT, background: "none", border: "none", cursor: "pointer", padding: 0 }}>
                       <IconeCrayon size={9} style={{verticalAlign:"-1px",marginRight:3}} />Modifier
                     </button>
                   )}
@@ -4068,7 +4172,7 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
                               </div>
                             </div>
                           ) : (
-                            <button className="btn-app" onClick={() => { setRespGemEnEdition(g.id); setNomRespGemEdition(g.responsable_nom || ""); setTelRespGemEdition(g.responsable_telephone || "+225 "); }} style={{ fontSize: 10.5, color: GOLD_LIGHT, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "3px 10px" }}>
+                            <button className="btn-app" onClick={() => { setRespGemEnEdition(g.id); setNomRespGemEdition(g.responsable_nom || ""); setTelRespGemEdition(g.responsable_telephone || "+225 "); }} style={{ fontSize: 11, color: GOLD_LIGHT, background: "none", border: "none", cursor: "pointer", textAlign: "left", padding: "3px 10px" }}>
                               <IconeCrayon size={9} style={{verticalAlign:"-1px",marginRight:3}} />{g.responsable_nom ? "Modifier le responsable" : "+ Ajouter un responsable"}
                             </button>
                           )
@@ -4301,9 +4405,6 @@ function DetailParent({ compte, estPasteur, responsablesParGem, parent, type, ge
     return gems.find(g => g.id === gemId)?.nom || "GEM inconnu";
   }
 
-  function initiales(nomComplet) {
-    return nomComplet.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]).join("").toUpperCase();
-  }
 
   async function envoyerDemandeSuppression(motif) {
     const membre = membreAConfirmer;
@@ -4557,8 +4658,9 @@ ${signatureMessage(compte)}`);
                           </span>
                         )}
                         {regularite?.absencesConsecutives >= 2 && (
-                          <span style={{ fontSize: 11, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "2px 8px" }}>
-                            ⚠️ {regularite.absencesConsecutives} absences
+                          <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, color: regularite.absencesConsecutives >= 3 ? "var(--red)" : "var(--gold-warn)" }}>
+                            <span style={{ width: 6, height: 6, borderRadius: 999, backgroundColor: regularite.absencesConsecutives >= 3 ? "var(--red)" : "var(--gold-warn)" }} />
+                            {regularite.absencesConsecutives} absences
                           </span>
                         )}
                         {regularite?.presencesConsecutives >= 4 && (
@@ -5114,7 +5216,7 @@ function redimensionnerImageAttachee(fichier) {
         canvas.width = largeur; canvas.height = hauteur;
         const ctx = canvas.getContext("2d");
         ctx.drawImage(img, 0, 0, largeur, hauteur);
-        resolve(canvas.toDataURL("image/jpeg", 0.8));
+        resolve(canvas.toDataURL("image/jpeg", 0.9));
       };
       img.onerror = () => { clearTimeout(minuteur); reject(new Error("Impossible de lire cette image — essaie un format JPEG ou PNG.")); };
       img.src = e.target.result;
@@ -5132,14 +5234,14 @@ function redimensionnerPhoto(fichier) {
       const img = new Image();
       img.onload = () => {
         clearTimeout(minuteur);
-        const taille = 240;
+        const taille = 320;
         const canvas = document.createElement("canvas");
         canvas.width = taille; canvas.height = taille;
         const ctx = canvas.getContext("2d");
         const ratio = Math.max(taille / img.width, taille / img.height);
         const largeur = img.width * ratio, hauteur = img.height * ratio;
         ctx.drawImage(img, (taille - largeur) / 2, (taille - hauteur) / 2, largeur, hauteur);
-        resolve(canvas.toDataURL("image/jpeg", 0.75));
+        resolve(canvas.toDataURL("image/jpeg", 0.88));
       };
       img.onerror = () => { clearTimeout(minuteur); reject(new Error("Impossible de lire cette image — essaie un format JPEG ou PNG.")); };
       img.src = e.target.result;
@@ -6716,9 +6818,6 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
     return RED_LIGHT;
   }
 
-  function initiales(nomComplet) {
-    return nomComplet.split(" ").filter(Boolean).slice(0, 2).map(p => p[0]).join("").toUpperCase();
-  }
 
   async function surChangerPhoto(e) {
     const fichier = e.target.files[0];
@@ -6792,8 +6891,9 @@ function FicheMembre({ compte, membre, derniereSante, regularite, ouvert, onTogg
               </span>
             )}
             {regularite?.absencesConsecutives >= 2 && (
-              <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "2px 8px", display: "inline-block" }}>
-                ⚠️ {regularite.absencesConsecutives} absences — Visite à faire
+              <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, color: regularite.absencesConsecutives >= 3 ? "var(--red)" : "var(--gold-warn)" }}>
+                <span style={{ width: 5, height: 5, borderRadius: 999, backgroundColor: regularite.absencesConsecutives >= 3 ? "var(--red)" : "var(--gold-warn)" }} />
+                {regularite.absencesConsecutives} absences — Visite à faire
               </span>
             )}
             {regularite?.presencesConsecutives >= 4 && (
@@ -8183,7 +8283,13 @@ function PageMembres({ compte, membres, gems, tribus, departements, gemsAutorise
 
   // Fusionne une même personne présente à la fois comme membre suivi ET comme
   // responsable (même numéro de téléphone), pour n'avoir qu'une seule fiche.
-  function chiffresNumero(tel) { return (tel || "").replace(/[^\d]/g, "").slice(-8); }
+  // Ne garde que le premier numéro si le champ en contient plusieurs, et
+  // ignore les numéros trop courts — évite les faux rapprochements.
+  function chiffresNumero(tel) {
+    const premier = (tel || "").split(/[\/,;]/)[0];
+    const chiffres = premier.replace(/[^\d]/g, "");
+    return chiffres.length >= 8 ? chiffres.slice(-9) : "";
+  }
   const toutesLesPersonnes = [];
   const responsablesUtilises = new Set();
   personnesMembres.forEach(pm => {
@@ -8299,7 +8405,7 @@ function PageMembres({ compte, membres, gems, tribus, departements, gemsAutorise
           <button
             className="btn-app"
             onClick={() => setBossASupprimerDuStatut({ ...b, fichesDept })}
-            style={{ width: "100%", padding: "10px 0", borderRadius: 9, backgroundColor: "transparent", border: `1px solid ${RED_LIGHT}`, color: RED_LIGHT, fontWeight: 700, fontSize: 12.5, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+            style={{ width: "100%", padding: "10px 0", borderRadius: 9, backgroundColor: "transparent", border: `1px solid ${RED_LIGHT}`, color: RED_LIGHT, fontWeight: 700, fontSize: 13, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
           >
             <IconePoubelle size={13} /> Retirer du statut BOSS
           </button>
@@ -8491,7 +8597,10 @@ function PageMembres({ compte, membres, gems, tribus, departements, gemsAutorise
                     </span>
                   )}
                   {b.absencesConsecutives >= 2 && (
-                    <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "3px 9px" }}><IconeAlerte size={10} style={{verticalAlign:"-1px",marginRight:2}} /> {b.absencesConsecutives} cultes ratés</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 10, fontWeight: 700, color: b.absencesConsecutives >= 3 ? "var(--red)" : "var(--gold-warn)" }}>
+                      <span style={{ width: 5, height: 5, borderRadius: 999, backgroundColor: b.absencesConsecutives >= 3 ? "var(--red)" : "var(--gold-warn)" }} />
+                      {b.absencesConsecutives} cultes ratés
+                    </span>
                   )}
                 </div>
               </button>
@@ -8506,8 +8615,13 @@ function PageMembres({ compte, membres, gems, tribus, departements, gemsAutorise
           {resultatsAffiches.map(p => {
             const tauxReg = p.types.includes("membre") ? regulariteParMembre?.[p.membreId]?.tauxRegularite : null;
             return (
-              <button key={p.id} className="btn-app card-app" onClick={() => setPersonneOuverte(p)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                <div>
+              <button key={p.id} className="btn-app card-app" onClick={() => setPersonneOuverte(p)} style={{ ...cardStyle, textAlign: "left", cursor: "pointer", display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                {p.photo ? (
+                  <img src={p.photo} alt="" style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+                ) : (
+                  <AvatarInitiales nom={p.nom} taille={40} />
+                )}
+                <div style={{ flex: 1, minWidth: 100 }}>
                   <p style={{ fontWeight: 700, margin: 0 }}>{p.nom}</p>
                   <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: 0 }}>{libelleRoles(p)}</p>
                 </div>
@@ -8522,15 +8636,18 @@ function PageMembres({ compte, membres, gems, tribus, departements, gemsAutorise
                     </span>
                   )}
                   {p.types.includes("membre") && (absencesRecentes[p.membreId]?.absences || 0) >= 2 && (
-                    <span style={{ fontSize: 10, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, borderRadius: 999, padding: "3px 9px" }}><IconeAlerte size={10} style={{verticalAlign:"-1px",marginRight:2}} /> {absencesRecentes[p.membreId].absences}/{absencesRecentes[p.membreId].total} absences</span>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 11, fontWeight: 700, color: (absencesRecentes[p.membreId].absences >= 3) ? "var(--red)" : "var(--gold-warn)" }}>
+                      <span style={{ width: 6, height: 6, borderRadius: 999, backgroundColor: (absencesRecentes[p.membreId].absences >= 3) ? "var(--red)" : "var(--gold-warn)" }} />
+                      {absencesRecentes[p.membreId].absences}/{absencesRecentes[p.membreId].total}
+                    </span>
                   )}
                   {p.types.includes("membre") && (
                     <span
                       title={estPasteur ? "Supprimer ce membre" : "Demander la suppression de ce membre"}
                       onClick={e => { e.stopPropagation(); setMembreASupprimer(p); }}
-                      style={{ width: 28, height: 28, borderRadius: 999, backgroundColor: "rgba(226,119,123,0.15)", color: RED_LIGHT, display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}
+                      style={{ width: 30, height: 30, borderRadius: 999, backgroundColor: "var(--bg-base)", border: "1px solid var(--red)", color: "var(--red)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", flexShrink: 0 }}
                     >
-                      <IconePoubelle size={12} />
+                      <IconePoubelle size={13} />
                     </span>
                   )}
                 </div>
@@ -8738,10 +8855,6 @@ function PageSanteResponsables({ tousLesComptes, gems, tribus, departements, res
     setChargement(false);
   }
 
-  function libelleMois(cle) {
-    const [annee, mois] = cle.split("-");
-    return new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
-  }
 
   function infosResponsable(compte) {
     const gemId = Object.keys(responsablesParGem || {}).find(id => responsablesParGem[id] === compte.nom);
@@ -8798,13 +8911,12 @@ function PageSanteResponsables({ tousLesComptes, gems, tribus, departements, res
             {historiqueDetail.length > 1 && (
               <div style={{ ...cardStyle, marginBottom: 20 }}>
                 <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>📈 Courbe d'évolution — {compteDetail.nom}</p>
-                <GraphiqueBarres
+                <GraphiqueCourbe
+                  couleur="var(--gold)"
                   donnees={[...historiqueDetail].reverse().map(h => ({
                     libelle: new Date(h.date_maj).toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }),
                     valeur: moyenneSante(h),
                     texteAffiche: moyenneSante(h),
-                    couleur: couleurScore(moyenneSante(h)),
-                    infoBulle: `${new Date(h.date_maj).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })} : ${moyenneSante(h)}/10`,
                   }))}
                 />
               </div>
@@ -8843,13 +8955,12 @@ function PageSanteResponsables({ tousLesComptes, gems, tribus, departements, res
       {evolutionMoyenne.length > 0 && (
         <div style={{ ...cardStyle, marginBottom: 24 }}>
           <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>Évolution de la moyenne (6 derniers mois)</p>
-          <GraphiqueBarres
+          <GraphiqueCourbe
+            couleur="var(--gold)"
             donnees={evolutionMoyenne.map(e => ({
               libelle: libelleMois(e.mois),
               valeur: e.moyenne,
               texteAffiche: e.moyenne,
-              couleur: couleurScore(e.moyenne),
-              infoBulle: `${libelleMois(e.mois)} : moyenne ${e.moyenne}/10`,
             }))}
           />
         </div>
@@ -8904,10 +9015,6 @@ function PageAnalyse({ gems, membres, cardStyle }) {
 
   useEffect(() => { analyser(); }, []);
 
-  function libelleMois(cle) {
-    const [annee, mois] = cle.split("-");
-    return new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
-  }
 
   function libelleDate(iso) {
     return new Date(iso + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
@@ -9310,7 +9417,7 @@ function PageMonCompte({ compte, assignationsActives, gems, tribus, departements
               placeholder="+225 ..."
               style={{ width: "100%", padding: 10, borderRadius: 8, backgroundColor: TEAL_900, color: CREAM, border: `1px solid ${TEAL_600}` }}
             />
-            <p style={{ fontSize: 10.5, color: "var(--text-secondary)", marginTop: 4, lineHeight: 1.4 }}>
+            <p style={{ fontSize: 11, color: "var(--text-secondary)", marginTop: 4, lineHeight: 1.4 }}>
               ⚠️ Le numéro utilisé pour te connecter à l'application ne change pas ici — c'est uniquement le numéro affiché aux autres (appel, WhatsApp).
             </p>
           </div>
@@ -9785,11 +9892,6 @@ function RapportPerimetre({ compte, gems, membres, cardStyle }) {
     setChargement(false);
   }
 
-  function libelleMois(cle) {
-    if (!cle) return "";
-    const [annee, mois] = cle.split("-");
-    return new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
-  }
 
   const moisDisponibles = [...new Set(dimanches.map(d => d.date.slice(0, 7)))];
 
@@ -10040,11 +10142,6 @@ function ActivitesSemainePerimetre({ gems, membres, tribus, departements, cardSt
     return "";
   }
 
-  function libelleMois(cle) {
-    if (!cle) return "";
-    const [annee, mois] = cle.split("-");
-    return new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
-  }
 
   const moisDisponibles = [...new Set(dimanches.map(d => d.date.slice(0, 7)))];
   const anneesDisponibles = [...new Set(dimanches.map(d => d.date.slice(0, 4)))];
@@ -10555,7 +10652,7 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
                             <span style={{display:"inline-flex",alignItems:"center",gap:4}}><IconePersonne size={11}/> {g.responsable_nom}{g.responsable_telephone ? ` — ${g.responsable_telephone}` : ""}</span>
                           ) : "Aucun responsable désigné"}
                         </p>
-                        <p style={{ fontSize: 10.5, color: "var(--gold-light)", margin: "2px 0 0", fontWeight: 600 }}>
+                        <p style={{ fontSize: 11, color: "var(--gold-light)", margin: "2px 0 0", fontWeight: 600 }}>
                           {estDept ? `Département ${parent?.nom || "?"}` : `Tribu de ${parent?.nom || "?"}`}
                         </p>
                       </button>
@@ -11038,14 +11135,14 @@ function DetailTribuDeptClassement({ type, item, gems, membres, onBack, cardStyl
       {croissance.length >= 2 && (
         <div style={{ ...cardStyle, marginBottom: 20 }}>
           <p style={{ fontWeight: 600, fontSize: 14, marginBottom: 16 }}>📈 Courbe de croissance (12 derniers mois)</p>
-          <GraphiqueBarres
+          <GraphiqueCourbe
+            couleur="var(--green)"
             donnees={croissance.map(c => {
               const [annee, mois] = c.mois.split("-");
               return {
                 libelle: new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "short" }),
                 valeur: c.total,
                 texteAffiche: c.total,
-                infoBulle: `${new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" })} : ${c.total} membres au total (+${c.nouveaux})`,
               };
             })}
           />
@@ -11235,16 +11332,6 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
 
   const moisDisponibles = [...new Set(dimanches.map(d => d.date.slice(0, 7)))];
   const anneesDisponibles = [...new Set(dimanches.map(d => d.date.slice(0, 4)))];
-  function libelleMois(cle) {
-    if (!cle) return "";
-    const [annee, mois] = cle.split("-");
-    return new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
-  }
-  function libelleMoisCourt(cle) {
-    const [annee, mois] = cle.split("-");
-    return new Date(annee, mois - 1, 1).toLocaleDateString("fr-FR", { month: "short" });
-  }
-
   // --- Vue hebdomadaire ---
   const totalMembres = membres.length;
   const totalPresents = membres.filter(m => presences[m.id]).length;
@@ -11928,12 +12015,12 @@ ${signatureMessage(compte)}`);
                 <p style={{ color: "var(--text-secondary)", fontSize: 13, marginBottom: 24 }}>Pas encore de données pour cette année.</p>
               ) : (
                 <div style={{ ...cardStyle, marginBottom: 28 }}>
-                  <GraphiqueBarres
+                  <GraphiqueCourbe
+                    couleur="var(--green)"
                     donnees={evolutionMensuelleAnnee.map(m => ({
                       libelle: libelleMoisCourt(m.mois),
                       valeur: m.taux,
                       texteAffiche: `${m.taux}%`,
-                      infoBulle: `${libelleMoisCourt(m.mois)} ${anneeChoisie} : ${m.taux}% de présence`,
                     }))}
                     hauteur={130}
                   />
@@ -12538,7 +12625,7 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
   const [index, setIndex] = useState(0);
   const debutGlissement = useRef(null);
   const hauteursPodium = [58, 78, 42]; // 2e, 1er, 3e — ordre visuel du podium
-  const couleursMedaille = ["#E8C15A", "#C9CDD6", "#D69A5C"]; // or, argent, bronze — 1er/2e/3e
+  const couleursMedaille = ["#E3B95A", "#C9CDD6", "#C08A5C"]; // or (couleur de marque), argent, bronze — 1er/2e/3e
 
   const onglets = [
     { cle: "gem", label: "GEM", items: gemDuMois, cles: [["tauxRapport", "📋"], ["tauxPresence", "📅"], ["nombreActivites", "🙏"]] },
@@ -12555,9 +12642,6 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
     return cle === "nombreActivites" ? `${valeur}` : `${valeur}%`;
   }
 
-  function initiales(nom) {
-    return (nom || "?").split(" ").filter(Boolean).slice(0, 2).map(p => p[0]).join("").toUpperCase();
-  }
 
   function surDebutGlissement(e) { debutGlissement.current = e.touches[0].clientX; }
   function surFinGlissement(e) {
@@ -12598,7 +12682,7 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
       ))}
 
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18, position: "relative" }}>
-        <p style={{ fontSize: 11.5, fontWeight: 700, color: GOLD_LIGHT, textTransform: "uppercase", letterSpacing: 1, margin: 0, display: "flex", alignItems: "center", gap: 6 }}>
+        <p style={{ fontSize: 12, fontWeight: 700, color: GOLD_LIGHT, textTransform: "uppercase", letterSpacing: 1, margin: 0, display: "flex", alignItems: "center", gap: 6 }}>
           <IconeTrophee size={14} /> Top 3 {actif.label} — ce mois
         </p>
         {disponibles.length > 1 && (
@@ -12660,7 +12744,7 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
                 style={{
                   position: "relative", width: "100%", height: hauteursPodium[position], borderRadius: "12px 12px 4px 4px", overflow: "hidden",
                   background: estPremier
-                    ? "linear-gradient(180deg, #F0C669, #D6A54C 60%, #B8863A)"
+                    ? "linear-gradient(180deg, var(--gold-light), var(--gold) 60%, var(--gold))"
                     : "linear-gradient(180deg, rgba(214,165,76,0.4), rgba(214,165,76,0.15))",
                   boxShadow: estPremier ? "0 8px 20px rgba(214,165,76,0.4)" : "inset 0 1px 0 rgba(255,255,255,0.08)",
                 }}
@@ -12960,12 +13044,12 @@ function PageHistorique({ cardStyle }) {
             {presenceParDimanche.length === 0 ? (
               <EtatVide icone={IconeGroupe} titre="Aucun pointage de présence pour l'instant" />
             ) : (
-              <GraphiqueBarres
+              <GraphiqueCourbe
+                couleur="var(--green)"
                 donnees={presenceParDimanche.map(p => ({
                   libelle: new Date(p.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }),
                   valeur: p.presents,
                   texteAffiche: p.presents,
-                  infoBulle: `${new Date(p.date + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })} : ${p.presents} présent(s)`,
                 }))}
               />
             )}
@@ -12976,12 +13060,12 @@ function PageHistorique({ cardStyle }) {
             {presenceParMois.length === 0 ? (
               <EtatVide icone={IconeCalendrier} titre="Aucune donnée mensuelle pour l'instant" />
             ) : (
-              <GraphiqueBarres
+              <GraphiqueCourbe
+                couleur="var(--green)"
                 donnees={presenceParMois.map(m => ({
                   libelle: libelleMois(m.mois),
                   valeur: m.taux,
                   texteAffiche: `${m.taux}%`,
-                  infoBulle: `${libelleMois(m.mois)} : ${m.taux}% de présence`,
                 }))}
               />
             )}
@@ -12992,13 +13076,12 @@ function PageHistorique({ cardStyle }) {
             {santeParMois.length === 0 ? (
               <EtatVide icone={IconeThermometre} titre="Aucune évaluation enregistrée" />
             ) : (
-              <GraphiqueBarres
+              <GraphiqueCourbe
+                couleur="var(--gold)"
                 donnees={santeParMois.map(s => ({
                   libelle: libelleMois(s.mois),
                   valeur: s.moyenne,
                   texteAffiche: s.moyenne,
-                  couleur: couleurScore(s.moyenne),
-                  infoBulle: `${libelleMois(s.mois)} : santé spirituelle moyenne ${s.moyenne}/10`,
                 }))}
               />
             )}
@@ -13009,12 +13092,12 @@ function PageHistorique({ cardStyle }) {
             {activiteParMois.length === 0 ? (
               <EtatVide icone={IconeClipboard} titre="Aucun rapport d'activité enregistré" />
             ) : (
-              <GraphiqueBarres
+              <GraphiqueCourbe
+                couleur="var(--green)"
                 donnees={activiteParMois.map(a => ({
                   libelle: libelleMois(a.mois),
                   valeur: a.taux,
                   texteAffiche: `${a.taux}%`,
-                  infoBulle: `${libelleMois(a.mois)} : ${a.taux}% des GEM ont rapporté leurs activités`,
                 }))}
               />
             )}
