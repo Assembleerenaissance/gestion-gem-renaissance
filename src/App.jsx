@@ -3349,22 +3349,29 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne, enFileAttente 
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 16, marginBottom: 28 }}>
               <div className="card-app" style={cardStyle}>
                 <p style={{ fontSize: 12, color: "var(--text-primary)", textTransform: "uppercase" }}>Présence pointée</p>
-                <p style={{ fontSize: 26, fontWeight: 700, color: rapportsPresenceSemaine.valides === rapportsPresenceSemaine.total && rapportsPresenceSemaine.total > 0 ? "var(--green-success)" : GOLD_LIGHT }}>
-                  <NombreAnime valeur={rapportsPresenceSemaine.valides} /> / {rapportsPresenceSemaine.total}
+                <p className="titre-moisson chiffre-app" style={{ fontSize: 30, fontWeight: 600, letterSpacing: "-0.01em", color: rapportsPresenceSemaine.valides === rapportsPresenceSemaine.total && rapportsPresenceSemaine.total > 0 ? "var(--green-success)" : GOLD_LIGHT }}>
+                  <NombreAnime valeur={rapportsPresenceSemaine.valides} /> <span style={{ fontSize: 16, fontFamily: "'Inter', sans-serif", fontWeight: 500, color: "var(--text-secondary)" }}>/ {rapportsPresenceSemaine.total}</span>
                 </p>
-                <p style={{ fontSize: 11, color: "var(--text-secondary)" }}>GEM ayant validé leur présence</p>
+                <p style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 10 }}>GEM ayant validé leur présence</p>
+                <BarreProgression pourcentage={rapportsPresenceSemaine.total > 0 ? (rapportsPresenceSemaine.valides / rapportsPresenceSemaine.total) * 100 : 0} couleur={GOLD} />
               </div>
               <div className="card-app" style={cardStyle}>
                 <p style={{ fontSize: 12, color: "var(--text-primary)", textTransform: "uppercase" }}>Activités validées</p>
-                <p style={{ fontSize: 26, fontWeight: 700, color: rapportsActivitesSemaine.valides === rapportsActivitesSemaine.total && rapportsActivitesSemaine.total > 0 ? "var(--green-success)" : GOLD_LIGHT }}>
-                  <NombreAnime valeur={rapportsActivitesSemaine.valides} /> / {rapportsActivitesSemaine.total}
+                <p className="titre-moisson chiffre-app" style={{ fontSize: 30, fontWeight: 600, letterSpacing: "-0.01em", color: rapportsActivitesSemaine.valides === rapportsActivitesSemaine.total && rapportsActivitesSemaine.total > 0 ? "var(--green-success)" : GOLD_LIGHT }}>
+                  <NombreAnime valeur={rapportsActivitesSemaine.valides} /> <span style={{ fontSize: 16, fontFamily: "'Inter', sans-serif", fontWeight: 500, color: "var(--text-secondary)" }}>/ {rapportsActivitesSemaine.total}</span>
                 </p>
-                <p style={{ fontSize: 11, color: "var(--text-secondary)" }}>GEM ayant validé leurs activités</p>
+                <p style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 10 }}>GEM ayant validé leurs activités</p>
+                <BarreProgression pourcentage={rapportsActivitesSemaine.total > 0 ? (rapportsActivitesSemaine.valides / rapportsActivitesSemaine.total) * 100 : 0} couleur={GOLD} />
               </div>
               <button className="btn-app card-app" onClick={() => { setPage("absences"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...cardStyle, cursor: "pointer", textAlign: "left", borderColor: absencesSemaine.nombre > 0 ? RED_LIGHT : cardStyle.border }}>
-                <p style={{ fontSize: 12, color: "var(--text-primary)", textTransform: "uppercase" }}>🚫 Absents ce dimanche</p>
-                <p style={{ fontSize: 26, fontWeight: 700, color: absencesSemaine.nombre === 0 ? "var(--green-success)" : RED_LIGHT }}>
-                  <NombreAnime valeur={absencesSemaine.nombre} /> ({absencesSemaine.pourcentage}%)
+                <p style={{ fontSize: 12, color: "var(--text-primary)", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6 }}>
+                  <span style={{ width: 22, height: 22, borderRadius: "50%", backgroundColor: absencesSemaine.nombre > 0 ? "rgba(226,119,123,0.16)" : "rgba(143,203,168,0.16)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    <IconeInterdit size={11} color={absencesSemaine.nombre > 0 ? RED_LIGHT : "var(--green-success)"} />
+                  </span>
+                  Absents ce dimanche
+                </p>
+                <p className="titre-moisson chiffre-app" style={{ fontSize: 30, fontWeight: 600, letterSpacing: "-0.01em", color: absencesSemaine.nombre === 0 ? "var(--green-success)" : RED_LIGHT }}>
+                  <NombreAnime valeur={absencesSemaine.nombre} /> <span style={{ fontSize: 15, fontFamily: "'Inter', sans-serif", fontWeight: 600, color: RED_LIGHT }}>({absencesSemaine.pourcentage}%)</span>
                 </p>
                 <p style={{ fontSize: 11, color: "var(--text-secondary)" }}>Clique pour voir le détail</p>
               </button>
@@ -3373,8 +3380,13 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne, enFileAttente 
                 const bossIrreguliersDashboard = listeBossDashboard.filter(b => b.absencesConsecutives >= 2);
                 return (
                   <button className="btn-app card-app" onClick={() => { setPage("membres"); setGemOuvert(null); setParentOuvert(null); }} style={{ ...cardStyle, cursor: "pointer", textAlign: "left", borderColor: bossIrreguliersDashboard.length > 0 ? RED_LIGHT : GOLD }}>
-                    <p style={{ fontSize: 12, color: "var(--text-primary)", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 5 }}><IconeEtoile size={13} /> BOSS</p>
-                    <p style={{ fontSize: 26, fontWeight: 700, color: GOLD_LIGHT }}>
+                    <p style={{ fontSize: 12, color: "var(--text-primary)", textTransform: "uppercase", display: "flex", alignItems: "center", gap: 6 }}>
+                      <span style={{ width: 22, height: 22, borderRadius: "50%", backgroundColor: "rgba(214,165,76,0.16)", display: "inline-flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <IconeEtoile size={11} color={GOLD} />
+                      </span>
+                      BOSS
+                    </p>
+                    <p className="titre-moisson chiffre-app" style={{ fontSize: 30, fontWeight: 600, letterSpacing: "-0.01em", color: GOLD_LIGHT }}>
                       <NombreAnime valeur={listeBossDashboard.length} />
                     </p>
                     <p style={{ fontSize: 11, color: bossIrreguliersDashboard.length > 0 ? RED_LIGHT : "var(--text-secondary)" }}>
@@ -10011,17 +10023,25 @@ function RapportPerimetre({ compte, gems, membres, cardStyle }) {
 
 ${signatureMessage(compte)}`);
                     return (
-                      <div key={m.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-                        <div>
-                          <p style={{ fontWeight: 700, marginBottom: 2 }}>{m.nom}</p>
-                          <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>{nomGem(m.gem_id)} · {m.telephone}</p>
-                          {motifsParMembre[m.id] && <p style={{ fontSize: 12, color: "var(--gold-warn)", marginTop: 4 }}>Motif : {motifsParMembre[m.id]}</p>}
+                      <div key={m.id} style={{ ...cardStyle, position: "relative", overflow: "hidden", paddingLeft: 18 }}>
+                        <div style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: 4, backgroundColor: "var(--gold-warn)" }} />
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          {m.photo ? (
+                            <img src={m.photo} alt="" style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+                          ) : (
+                            <AvatarInitiales nom={m.nom} taille={40} />
+                          )}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontWeight: 700, marginBottom: 1 }}>{m.nom}</p>
+                            <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>{nomGem(m.gem_id)} · {m.telephone}</p>
+                          </div>
                         </div>
+                        {motifsParMembre[m.id] && <p style={{ fontSize: 12, color: "var(--gold-warn)", margin: "8px 0 0" }}>Motif : {motifsParMembre[m.id]}</p>}
                         {m.telephone && (
-                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            <a title="Appeler" href={`tel:${m.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
+                          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                            <a title="Appeler" href={`tel:${m.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", flexShrink: 0 }}>
                               <IconeTelephone size={15} /></a>
-                            <a title="Envoyer un message WhatsApp" href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
+                            <a title="Envoyer un message WhatsApp" href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", flexShrink: 0 }}>
                               <IconeMessage size={15} /></a>
                           </div>
                         )}
@@ -10067,16 +10087,24 @@ ${signatureMessage(compte)}`);
 
 ${signatureMessage(compte)}`);
                     return (
-                      <div key={m.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-                        <div>
-                          <p style={{ fontWeight: 700, marginBottom: 2 }}>{m.nom}</p>
-                          <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>{nomGem(m.gem_id)} · {m.telephone}</p>
+                      <div key={m.id} style={{ ...cardStyle, position: "relative", overflow: "hidden", paddingLeft: 18 }}>
+                        <div style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: 4, backgroundColor: "var(--red)" }} />
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          {m.photo ? (
+                            <img src={m.photo} alt="" style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+                          ) : (
+                            <AvatarInitiales nom={m.nom} taille={40} />
+                          )}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontWeight: 700, marginBottom: 1 }}>{m.nom}</p>
+                            <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>{nomGem(m.gem_id)} · {m.telephone}</p>
+                          </div>
                         </div>
                         {m.telephone && (
-                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            <a title="Appeler" href={`tel:${m.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
+                          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                            <a title="Appeler" href={`tel:${m.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", flexShrink: 0 }}>
                               <IconeTelephone size={15} /></a>
-                            <a title="Envoyer un message WhatsApp" href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
+                            <a title="Envoyer un message WhatsApp" href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", flexShrink: 0 }}>
                               <IconeMessage size={15} /></a>
                           </div>
                         )}
@@ -11953,17 +11981,25 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
 
 ${signatureMessage(compte)}`);
                     return (
-                      <div key={m.id} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-                        <div>
-                          <p style={{ fontWeight: 700, marginBottom: 2 }}>{m.nom}</p>
-                          <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>{gemMembre?.nom || "GEM inconnu"} · {m.telephone}</p>
-                          {motifsParMembre[m.id] && <p style={{ fontSize: 12, color: "var(--gold-warn)", marginTop: 4 }}>Motif : {motifsParMembre[m.id]}</p>}
+                      <div key={m.id} style={{ ...cardStyle, position: "relative", overflow: "hidden", paddingLeft: 18 }}>
+                        <div style={{ position: "absolute", top: 0, left: 0, bottom: 0, width: 4, backgroundColor: "var(--gold-warn)" }} />
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                          {m.photo ? (
+                            <img src={m.photo} alt="" style={{ width: 40, height: 40, borderRadius: "50%", objectFit: "cover", flexShrink: 0 }} />
+                          ) : (
+                            <AvatarInitiales nom={m.nom} taille={40} />
+                          )}
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <p style={{ fontWeight: 700, marginBottom: 1 }}>{m.nom}</p>
+                            <p style={{ fontSize: 12, color: "var(--text-secondary)" }}>{gemMembre?.nom || "GEM inconnu"} · {m.telephone}</p>
+                          </div>
                         </div>
+                        {motifsParMembre[m.id] && <p style={{ fontSize: 12, color: "var(--gold-warn)", margin: "8px 0 0" }}>Motif : {motifsParMembre[m.id]}</p>}
                         {m.telephone && (
-                          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                            <a title="Appeler" href={`tel:${m.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
+                          <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                            <a title="Appeler" href={`tel:${m.telephone}`} style={{ fontSize: 16, color: TEAL_950, textDecoration: "none", backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", flexShrink: 0 }}>
                               <IconeTelephone size={15} /></a>
-                            <a title="Envoyer un message WhatsApp" href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", whiteSpace: "nowrap" }}>
+                            <a title="Envoyer un message WhatsApp" href={`https://wa.me/${numeroWhatsApp}?text=${messageWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ fontSize: 16, color: "#fff", textDecoration: "none", backgroundColor: "#25D366", border: "none", borderRadius: 999, width: 36, height: 36, display: "flex", alignItems: "center", justifyContent: "center", boxShadow: "0 2px 8px rgba(0,0,0,0.15)", flexShrink: 0 }}>
                               <IconeMessage size={15} /></a>
                           </div>
                         )}
