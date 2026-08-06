@@ -11203,11 +11203,12 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
   const [tauxPrecedentAnnee, setTauxPrecedentAnnee] = useState(null);
 
   const [chargement, setChargement] = useState(true);
+  const [periodeJauges, setPeriodeJauges] = useState("hebdomadaire"); // hebdomadaire | mensuelle | annuelle
 
   useEffect(() => { chargerDimanches(); }, []);
-  useEffect(() => { if (dimancheChoisi && (vue === "hebdomadaire" || vue === "classement")) chargerDonneesRapport(); }, [dimancheChoisi, vue]);
-  useEffect(() => { if (moisChoisi && (vue === "mensuelle" || vue === "classement")) chargerDonneesMois(); }, [moisChoisi, vue]);
-  useEffect(() => { if (anneeChoisie && (vue === "annuelle" || vue === "classement")) chargerDonneesAnnee(); }, [anneeChoisie, vue]);
+  useEffect(() => { if (dimancheChoisi && (vue === "hebdomadaire" || vue === "classement" || (vue === "jauges" && periodeJauges === "hebdomadaire"))) chargerDonneesRapport(); }, [dimancheChoisi, vue, periodeJauges]);
+  useEffect(() => { if (moisChoisi && (vue === "mensuelle" || vue === "classement" || (vue === "jauges" && periodeJauges === "mensuelle"))) chargerDonneesMois(); }, [moisChoisi, vue, periodeJauges]);
+  useEffect(() => { if (anneeChoisie && (vue === "annuelle" || vue === "classement" || (vue === "jauges" && periodeJauges === "annuelle"))) chargerDonneesAnnee(); }, [anneeChoisie, vue, periodeJauges]);
 
   async function chargerDimanches() {
     const { data } = await supabase.from("dimanches").select("*").order("date", { ascending: false }).limit(200);
@@ -11706,9 +11707,69 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
  onClick={() => setVue("classement")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "classement" ? GOLD : TEAL_900, color: vue === "classement" ? TEAL_950 : "var(--text-secondary-2)", display: "inline-flex", alignItems: "center", gap: 6 }}>
           <IconeTrophee size={14} /> Classement
         </button>
+        <button
+ className="btn-app"
+ onClick={() => setVue("jauges")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "jauges" ? GOLD : TEAL_900, color: vue === "jauges" ? TEAL_950 : "var(--text-secondary-2)", display: "inline-flex", alignItems: "center", gap: 6 }}>
+          🎯 Taux par tribu/département
+        </button>
       </div>
 
-      {vue === "classement" ? (
+      {vue === "jauges" ? (
+        (() => {
+          // Calcul hebdomadaire — à partir de "presences" (objet membre -> présent),
+          // propre au dimanche sélectionné, contrairement aux périodes mensuelle/
+          // annuelle qui utilisent déjà calculerClassementPresence.
+          function calculerJaugesHebdo(type, items) {
+            return items.map(it => {
+              const gemsDuParent = gems.filter(g => g.type === type && (type === "tribu" ? g.tribu_id : g.departement_id) === it.id);
+              const idsGems = gemsDuParent.map(g => g.id);
+              const membresDuParent = membres.filter(m => idsGems.includes(m.gem_id));
+              if (membresDuParent.length === 0) return { nom: it.nom, id: it.id, valeur: null };
+              const presents = membresDuParent.filter(m => presences[m.id]).length;
+              return { nom: it.nom, id: it.id, valeur: Math.round((presents / membresDuParent.length) * 100) };
+            }).filter(x => x.valeur !== null);
+          }
+
+          const jaugesTribus = periodeJauges === "hebdomadaire" ? calculerJaugesHebdo("tribu", tribus)
+            : periodeJauges === "mensuelle" ? calculerClassementPresence("tribu", tribus, dimanchesDuMois, presencesMois)
+            : calculerClassementPresence("tribu", tribus, dimanchesAnnee, presencesAnnee);
+          const jaugesDepartements = periodeJauges === "hebdomadaire" ? calculerJaugesHebdo("departement", departements)
+            : periodeJauges === "mensuelle" ? calculerClassementPresence("departement", departements, dimanchesDuMois, presencesMois)
+            : calculerClassementPresence("departement", departements, dimanchesAnnee, presencesAnnee);
+
+          return (
+            <div>
+              <div style={{ display: "flex", gap: 8, marginBottom: 24, flexWrap: "wrap" }}>
+                {[["hebdomadaire", "Hebdomadaire"], ["mensuelle", "Mensuelle"], ["annuelle", "Annuelle"]].map(([cle, label]) => (
+                  <button key={cle} className="btn-app" onClick={() => setPeriodeJauges(cle)} style={{ padding: "8px 16px", borderRadius: 999, fontWeight: 600, fontSize: 12.5, border: `1px solid var(--gold)`, cursor: "pointer", backgroundColor: periodeJauges === cle ? "var(--gold)" : "transparent", color: periodeJauges === cle ? "var(--bg-base)" : "var(--gold-light)" }}>{label}</button>
+                ))}
+              </div>
+
+              <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 14 }}>Tribus</p>
+              {jaugesTribus.length === 0 ? (
+                <p style={{ fontSize: 13, color: "var(--text-secondary)", marginBottom: 24 }}>Pas encore de données pour cette période.</p>
+              ) : (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 20, marginBottom: 28 }}>
+                  {jaugesTribus.map(t => (
+                    <JaugeCirculaire key={t.id} pourcentage={t.valeur} couleur={t.valeur >= 70 ? "var(--green)" : t.valeur >= 40 ? "var(--gold)" : "var(--red)"} libelle={`Tribu de ${t.nom}`} />
+                  ))}
+                </div>
+              )}
+
+              <p style={{ fontWeight: 700, fontSize: 15, marginBottom: 14 }}>Départements</p>
+              {jaugesDepartements.length === 0 ? (
+                <p style={{ fontSize: 13, color: "var(--text-secondary)" }}>Pas encore de données pour cette période.</p>
+              ) : (
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 20 }}>
+                  {jaugesDepartements.map(d => (
+                    <JaugeCirculaire key={d.id} pourcentage={d.valeur} couleur={d.valeur >= 70 ? "var(--green)" : d.valeur >= 40 ? "var(--gold)" : "var(--red)"} libelle={d.nom} />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })()
+      ) : vue === "classement" ? (
         detailOuvert ? (
           <DetailTribuDeptClassement type={detailOuvert.type} item={detailOuvert.item} gems={gems} membres={membres} onBack={() => setDetailOuvert(null)} cardStyle={cardStyle} />
         ) : (
@@ -12788,6 +12849,39 @@ function ClassementsDuMois({ gemDuMois, tribuDeptDuMois }) {
 // Graphique en courbe — tracé lisse (courbe de Bézier), animation de dessin
 // progressif, et un effet "verni" (dégradé brillant sous la courbe) pour un
 // rendu plus riche que de simples barres.
+// Jauge circulaire — pour afficher un pourcentage (taux de présence) sous
+// forme d'anneau, avec animation de remplissage progressif.
+function JaugeCirculaire({ pourcentage, couleur = "var(--gold)", taille = 84, epaisseur = 8, libelle }) {
+  const [anime, setAnime] = useState(0);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setAnime(pourcentage || 0));
+    return () => cancelAnimationFrame(id);
+  }, [pourcentage]);
+
+  const rayon = (taille - epaisseur) / 2;
+  const circonference = 2 * Math.PI * rayon;
+  const decalage = circonference - (Math.min(100, Math.max(0, anime)) / 100) * circonference;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+      <div style={{ position: "relative", width: taille, height: taille }}>
+        <svg width={taille} height={taille} style={{ transform: "rotate(-90deg)" }}>
+          <circle cx={taille / 2} cy={taille / 2} r={rayon} fill="none" stroke="var(--border-1)" strokeWidth={epaisseur} />
+          <circle
+            cx={taille / 2} cy={taille / 2} r={rayon} fill="none" stroke={couleur} strokeWidth={epaisseur} strokeLinecap="round"
+            strokeDasharray={circonference} strokeDashoffset={decalage}
+            style={{ transition: "stroke-dashoffset 0.9s cubic-bezier(0.22,1,0.36,1)" }}
+          />
+        </svg>
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <span className="titre-moisson chiffre-app" style={{ fontSize: taille * 0.22, fontWeight: 700, color: "var(--text-primary)" }}>{pourcentage !== null && pourcentage !== undefined ? `${pourcentage}%` : "—"}</span>
+        </div>
+      </div>
+      {libelle && <p style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary-2)", textAlign: "center", margin: 0, maxWidth: taille + 30, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{libelle}</p>}
+    </div>
+  );
+}
+
 function GraphiqueCourbe({ donnees, hauteur = 160, couleur = "var(--gold)" }) {
   const [dessine, setDessine] = useState(false);
   const cheminRef = useRef(null);
