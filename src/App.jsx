@@ -3448,7 +3448,7 @@ function TableauDeBord({ compte, theme, onBasculerTheme, enLigne, enFileAttente 
         ) : page === "historique" ? (
           <PageHistorique cardStyle={cardStyle} />
         ) : page === "analyse" ? (
-          <PageAnalyse gems={gems} membres={membres} cardStyle={cardStyle} />
+          <PageAnalyse gems={gems} membres={membres} tribus={tribus} departements={departements} responsablesParGem={responsablesParGem} cardStyle={cardStyle} />
         ) : page === "mots_de_passe" ? (
           <PageMotsDePasse cardStyle={cardStyle} onTraite={rafraichirCompteurs} />
         ) : page === "suppressions" ? (
@@ -4092,10 +4092,12 @@ function ListeParents({ titre, items, type, gems, estPasteur, onOpenGem, onOpenP
 
   async function enregistrerRespGem(gemId) {
     if (!nomRespGemEdition.trim()) { toast("Le nom du responsable est obligatoire.", "erreur"); return; }
-    if (!numeroTelephoneValide(telRespGemEdition)) { toast("Le numéro du responsable ne semble pas valide.", "erreur"); return; }
+    const telNettoye = telRespGemEdition.trim();
+    const telAEnregistrer = (telNettoye && telNettoye !== "+225") ? telNettoye : null;
+    if (telAEnregistrer && !numeroTelephoneValide(telAEnregistrer)) { toast("Le numéro du responsable ne semble pas valide — laisse le champ vide si tu ne l'as pas.", "erreur"); return; }
     const { error } = await supabase.from("gems").update({
       responsable_nom: nomRespGemEdition.trim(),
-      responsable_telephone: telRespGemEdition.trim(),
+      responsable_telephone: telAEnregistrer,
     }).eq("id", gemId);
     setRespGemEnEdition(null);
     if (!error) { toast("✓ Responsable enregistré.", "succes"); onCreerGem(); }
@@ -5340,13 +5342,15 @@ function DetailGem({ compte, gem, membres, onBack, onMembreAjoute, regularitePar
 
   async function enregistrerResponsableProvisoire() {
     if (!nomResponsableProvisoire.trim()) { toast("Le nom du responsable est obligatoire.", "erreur"); return; }
-    if (!numeroTelephoneValide(telResponsableProvisoire)) { toast("Le numéro du responsable ne semble pas valide.", "erreur"); return; }
+    const telNettoye = telResponsableProvisoire.trim();
+    const telAEnregistrer = (telNettoye && telNettoye !== "+225") ? telNettoye : null;
+    if (telAEnregistrer && !numeroTelephoneValide(telAEnregistrer)) { toast("Le numéro du responsable ne semble pas valide — laisse le champ vide si tu ne l'as pas.", "erreur"); return; }
     const { error } = await supabase.from("gems").update({
       responsable_nom: nomResponsableProvisoire.trim(),
-      responsable_telephone: telResponsableProvisoire.trim(),
+      responsable_telephone: telAEnregistrer,
     }).eq("id", gem.id);
     setEditionResponsableProvisoire(false);
-    if (!error) { toast("✓ Responsable indiqué pour ce GEM.", "succes"); gem.responsable_nom = nomResponsableProvisoire.trim(); gem.responsable_telephone = telResponsableProvisoire.trim(); if (onMembreAjoute) onMembreAjoute(); }
+    if (!error) { toast("✓ Responsable indiqué pour ce GEM.", "succes"); gem.responsable_nom = nomResponsableProvisoire.trim(); gem.responsable_telephone = telAEnregistrer; if (onMembreAjoute) onMembreAjoute(); }
     else toast("Erreur : " + error.message, "erreur");
   }
 
@@ -8470,34 +8474,46 @@ function PageMembres({ compte, membres, gems, tribus, departements, gemsAutorise
 
     return (
       <div>
-        <button className="btn-app" onClick={() => setPersonneOuverte(null)} style={{ background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", marginBottom: 16, fontSize: 13 }}>← Retour à la liste</button>
-        <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 16 }}>
+        <button className="btn-app" onClick={() => setPersonneOuverte(null)} style={{ background: "none", border: "none", color: "var(--text-secondary)", cursor: "pointer", marginBottom: 16, fontSize: 13, display: "flex", alignItems: "center", gap: 4 }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg> Retour à la liste
+        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 18 }}>
           {p.photo ? (
-            <img src={p.photo} alt={p.nom} style={{ width: 64, height: 64, borderRadius: "50%", objectFit: "cover", border: `2px solid ${GOLD}` }} />
+            <img src={p.photo} alt={p.nom} style={{ width: 68, height: 68, borderRadius: "50%", objectFit: "cover", border: `3px solid ${GOLD}`, boxShadow: "0 6px 16px rgba(214,165,76,0.3)" }} />
           ) : (
-            <AvatarInitiales nom={p.nom} taille={64} />
+            <div style={{ borderRadius: "50%", border: `3px solid ${GOLD}`, boxShadow: "0 6px 16px rgba(214,165,76,0.3)", flexShrink: 0 }}><AvatarInitiales nom={p.nom} taille={62} /></div>
           )}
-          <div>
-            <p style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>{p.nom}</p>
-            <p style={{ fontSize: 12, color: GOLD_LIGHT, margin: 0 }}>{libelleRoles(p)}</p>
+          <div style={{ minWidth: 0 }}>
+            <p className="titre-moisson" style={{ fontSize: 21, fontWeight: 600, margin: "0 0 6px", letterSpacing: "-0.01em" }}>{p.nom}</p>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+              {p.roles.map((r, i) => (
+                <span key={i} style={{
+                  fontSize: 10.5, fontWeight: 700, borderRadius: 999, padding: "3px 9px",
+                  color: r.type === "membre" ? "var(--text-secondary-2)" : GOLD_LIGHT,
+                  backgroundColor: r.type === "membre" ? TEAL_900 : "rgba(214,165,76,0.14)",
+                }}>
+                  {r.type === "membre" ? "Membre" : r.type === "gem" ? `Resp. GEM${r.gem ? ` (${r.gem.nom})` : ""}` : r.type === "departement_resp" ? `Resp. Dépt${r.deptNom ? ` (${r.deptNom})` : ""}` : `Patriarche/Matriarche${r.tribuNom ? ` (${r.tribuNom})` : ""}`}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
 
-        <div style={{ ...cardStyle, marginBottom: 16 }}>
-          <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--text-secondary)", fontSize: 13 }}>Téléphone</span><span style={{ fontSize: 13, fontWeight: 600 }}>{p.telephone || "—"}</span></div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--text-secondary)", fontSize: 13 }}>Quartier</span><span style={{ fontSize: 13, fontWeight: 600 }}>{p.quartier || "—"}</span></div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>🎂 Anniversaire</span>
+        <div style={{ ...cardStyle, marginBottom: 16, boxShadow: "0 14px 30px -20px rgba(0,0,0,0.6)" }}>
+          <div className="liste-cascade" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ color: "var(--text-secondary)", fontSize: 13, display: "flex", alignItems: "center", gap: 7 }}><IconeTelephone size={12} color="var(--text-secondary)" /> Téléphone</span><span style={{ fontSize: 13, fontWeight: 600 }}>{p.telephone || "—"}</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ color: "var(--text-secondary)", fontSize: 13, display: "flex", alignItems: "center", gap: 7 }}><IconeMaison size={12} color="var(--text-secondary)" /> Quartier</span><span style={{ fontSize: 13, fontWeight: 600 }}>{p.quartier || "—"}</span></div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <span style={{ color: "var(--text-secondary)", fontSize: 13, display: "flex", alignItems: "center", gap: 7 }}><IconeGateau size={12} color="var(--text-secondary)" /> Anniversaire</span>
               <span style={{ fontSize: 13, fontWeight: 600 }}>{p.dateNaissance ? new Date(p.dateNaissance + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long" }) : "—"}</span>
             </div>
 
             {p.roles.map((r, i) => (
-              <div key={i} style={{ display: "flex", justifyContent: "space-between" }}>
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>
                   {r.type === "membre" ? "GEM" : r.type === "gem" ? "Responsable de" : r.type === "departement_resp" ? "Département" : "Tribu"}
                 </span>
-                <span style={{ fontSize: 13, fontWeight: 600 }}>
+                <span style={{ fontSize: 13, fontWeight: 600, textAlign: "right" }}>
                   {r.type === "membre" ? (r.gem?.nom || "—") + (nomTribuOuDept(r.gem) ? ` (${nomTribuOuDept(r.gem)})` : "") :
                     r.type === "gem" ? (r.gem?.nom || "—") + (r.gem && nomTribuOuDept(r.gem) ? ` (${nomTribuOuDept(r.gem)})` : "") :
                     r.type === "departement_resp" ? (r.deptNom || "—") : (r.tribuNom || "—")}
@@ -8506,34 +8522,34 @@ function PageMembres({ compte, membres, gems, tribus, departements, gemsAutorise
             ))}
 
             {estMembre && (
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <span style={{ color: "var(--text-secondary)", fontSize: 13 }}>Absences (dimanches pointés)</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: (absencesRecentes[p.membreId]?.absences || 0) >= 2 ? RED_LIGHT : "var(--green-success)" }}>{absencesRecentes[p.membreId]?.absences || 0} / {absencesRecentes[p.membreId]?.total || 0}</span>
+                <span className="titre-moisson" style={{ fontSize: 15, fontWeight: 600, color: (absencesRecentes[p.membreId]?.absences || 0) >= 2 ? RED_LIGHT : "var(--green-success)" }}>{absencesRecentes[p.membreId]?.absences || 0} / {absencesRecentes[p.membreId]?.total || 0}</span>
               </div>
             )}
             {estMembre && regularite && regularite.tauxRegularite !== null && (
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <span style={{ color: "var(--text-secondary)", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 5 }}><IconeGraphique size={13} /> Taux de régularité au culte</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: regularite.tauxRegularite >= 70 ? "var(--green-success)" : regularite.tauxRegularite >= 40 ? GOLD_LIGHT : RED_LIGHT }}>{regularite.tauxRegularite}%</span>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ color: "var(--text-secondary)", fontSize: 13, display: "inline-flex", alignItems: "center", gap: 6 }}><IconeGraphique size={12} color="var(--text-secondary)" /> Régularité au culte</span>
+                <span className="titre-moisson" style={{ fontSize: 16, fontWeight: 600, color: regularite.tauxRegularite >= 70 ? "var(--green-success)" : regularite.tauxRegularite >= 40 ? GOLD_LIGHT : RED_LIGHT }}>{regularite.tauxRegularite}%</span>
               </div>
             )}
             {moyenne !== null && (
-              <div style={{ display: "flex", justifyContent: "space-between" }}><span style={{ color: "var(--text-secondary)", fontSize: 13 }}>🌡️ Santé spirituelle</span><span style={{ fontSize: 13, fontWeight: 700, color: couleurScore(moyenne) }}>{moyenne}/10</span></div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}><span style={{ color: "var(--text-secondary)", fontSize: 13, display: "flex", alignItems: "center", gap: 7 }}><IconeThermometre size={12} color="var(--text-secondary)" /> Santé spirituelle</span><span className="titre-moisson" style={{ fontSize: 16, fontWeight: 600, color: couleurScore(moyenne) }}>{moyenne}/10</span></div>
             )}
           </div>
         </div>
 
         {p.telephone && (
           <div style={{ display: "flex", gap: 10, marginBottom: estPasteur && roleAGerer ? 10 : 0 }}>
-            <a href={`tel:${p.telephone}`} style={{ flex: 1, textAlign: "center", padding: "12px 0", borderRadius: 10, backgroundColor: GOLD_LIGHT, color: TEAL_950, fontWeight: 700, textDecoration: "none", fontSize: 14 }}><IconeTelephone size={15} /> Appeler</a>
-            <a href={`https://wa.me/${numeroWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, textAlign: "center", padding: "12px 0", borderRadius: 10, backgroundColor: "#25D366", color: "#fff", fontWeight: 700, textDecoration: "none", fontSize: 14 }}><IconeMessage size={15} /> WhatsApp</a>
+            <a href={`tel:${p.telephone}`} style={{ flex: 1, textAlign: "center", padding: "13px 0", borderRadius: 12, backgroundImage: "linear-gradient(135deg, var(--gold-light), var(--gold))", color: TEAL_950, fontWeight: 700, textDecoration: "none", fontSize: 14, boxShadow: "0 6px 16px rgba(214,165,76,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><IconeTelephone size={15} /> Appeler</a>
+            <a href={`https://wa.me/${numeroWhatsApp}`} target="_blank" rel="noopener noreferrer" style={{ flex: 1, textAlign: "center", padding: "13px 0", borderRadius: 12, backgroundColor: "#25D366", color: "#fff", fontWeight: 700, textDecoration: "none", fontSize: 14, boxShadow: "0 6px 16px rgba(37,211,102,0.3)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}><IconeMessage size={15} /> WhatsApp</a>
           </div>
         )}
 
         {estPasteur && roleAGerer && (
           <div style={{ display: "flex", gap: 10 }}>
-            <button className="btn-app" onClick={() => setEditionResponsableOuverte(true)} style={{ flex: 1, padding: "12px 0", borderRadius: 10, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 13, cursor: "pointer" }}><IconeCrayon size={13} style={{verticalAlign:"-2px",marginRight:4}} /> Modifier ses infos</button>
-            <button className="btn-app" onClick={() => setConfirmerRetraitResponsable(true)} style={{ flex: 1, padding: "12px 0", borderRadius: 10, backgroundColor: RED_LIGHT, color: "#fff", border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer" }}><IconePoubelle size={13} style={{verticalAlign:"-2px",marginRight:4}} /> Retirer cette responsabilité</button>
+            <button className="btn-app" onClick={() => setEditionResponsableOuverte(true)} style={{ flex: 1, padding: "13px 0", borderRadius: 12, backgroundColor: TEAL_900, color: GOLD_LIGHT, border: `1px solid ${TEAL_600}`, fontWeight: 700, fontSize: 13, cursor: "pointer" }}><IconeCrayon size={13} style={{verticalAlign:"-2px",marginRight:4}} /> Modifier ses infos</button>
+            <button className="btn-app" onClick={() => setConfirmerRetraitResponsable(true)} style={{ flex: 1, padding: "13px 0", borderRadius: 12, backgroundColor: "transparent", color: RED_LIGHT, border: `1px solid ${RED_LIGHT}`, fontWeight: 700, fontSize: 13, cursor: "pointer" }}><IconePoubelle size={13} style={{verticalAlign:"-2px",marginRight:4}} /> Retirer cette responsabilité</button>
           </div>
         )}
 
@@ -9037,7 +9053,7 @@ function PageSanteResponsables({ tousLesComptes, gems, tribus, departements, res
   );
 }
 
-function PageAnalyse({ gems, membres, cardStyle }) {
+function PageAnalyse({ gems, membres, tribus, departements, responsablesParGem, cardStyle }) {
   const [chargement, setChargement] = useState(true);
   const [tauxParMois, setTauxParMois] = useState([]);
   const [santeParMoisList, setSanteParMoisList] = useState([]);
@@ -9143,7 +9159,9 @@ function PageAnalyse({ gems, membres, cardStyle }) {
           const tauxPrecedent = tauxPeriode(idsPrecedents, idsMembres);
           const tauxActuel = tauxPeriode(idsRecents, idsMembres);
           if (tauxPrecedent === null || tauxActuel === null) return null;
-          return { nom: g.nom, tauxPrecedent: Math.round(tauxPrecedent), tauxActuel: Math.round(tauxActuel), evolution: Math.round(tauxActuel - tauxPrecedent) };
+          const provenance = g.tribu_id ? `Tribu de ${tribus.find(t => t.id === g.tribu_id)?.nom || "?"}` : g.departement_id ? `Département ${departements.find(d => d.id === g.departement_id)?.nom || "?"}` : "";
+          const nomResponsable = g.responsable_nom || responsablesParGem?.[g.id] || null;
+          return { nom: g.nom, provenance, nomResponsable, tauxPrecedent: Math.round(tauxPrecedent), tauxActuel: Math.round(tauxActuel), evolution: Math.round(tauxActuel - tauxPrecedent) };
         }).filter(Boolean).sort((a, b) => a.evolution - b.evolution);
         setTendancesGems(tendances);
 
@@ -9271,7 +9289,10 @@ function PageAnalyse({ gems, membres, cardStyle }) {
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 28 }}>
                 {gemsEnBaisse.map((t, i) => (
                   <div key={i} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                    <p style={{ fontWeight: 700, margin: 0 }}>{t.nom}</p>
+                    <div>
+                      <p style={{ fontWeight: 700, margin: 0 }}>{t.nom}</p>
+                      <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: "2px 0 0" }}>{t.provenance}{t.provenance && t.nomResponsable ? " — " : ""}{t.nomResponsable ? <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><IconePersonne size={10} /> {t.nomResponsable}</span> : (!t.provenance ? "Aucun responsable désigné" : "")}</p>
+                    </div>
                     <span style={{ fontSize: 12, fontWeight: 700, color: RED_LIGHT }}>{t.tauxPrecedent}% → {t.tauxActuel}% ({t.evolution}%)</span>
                   </div>
                 ))}
@@ -9285,7 +9306,10 @@ function PageAnalyse({ gems, membres, cardStyle }) {
               <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 28 }}>
                 {gemsEnHausse.map((t, i) => (
                   <div key={i} style={{ ...cardStyle, display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
-                    <p style={{ fontWeight: 700, margin: 0 }}>{t.nom}</p>
+                    <div>
+                      <p style={{ fontWeight: 700, margin: 0 }}>{t.nom}</p>
+                      <p style={{ fontSize: 11, color: "var(--text-secondary)", margin: "2px 0 0" }}>{t.provenance}{t.provenance && t.nomResponsable ? " — " : ""}{t.nomResponsable ? <span style={{ display: "inline-flex", alignItems: "center", gap: 3 }}><IconePersonne size={10} /> {t.nomResponsable}</span> : (!t.provenance ? "Aucun responsable désigné" : "")}</p>
+                    </div>
                     <span style={{ fontSize: 12, fontWeight: 700, color: "var(--green-success)" }}>{t.tauxPrecedent}% → {t.tauxActuel}% (+{t.evolution}%)</span>
                   </div>
                 ))}
@@ -10579,12 +10603,15 @@ function MonEspace({ compte, assignationsActives, gems, membres, tribus, departe
 
   async function enregistrerResponsableGem(gemId) {
     if (!nomResponsableEnEdition.trim()) { toast("Le nom du responsable est obligatoire.", "erreur"); return; }
-    if (!numeroTelephoneValide(telResponsableEnEdition)) { toast("Le numéro du responsable ne semble pas valide.", "erreur"); return; }
+    const telNettoye = telResponsableEnEdition.trim();
+    const telAEnregistrer = (telNettoye && telNettoye !== "+225") ? telNettoye : null;
+    if (telAEnregistrer && !numeroTelephoneValide(telAEnregistrer)) { toast("Le numéro du responsable ne semble pas valide — laisse le champ vide si tu ne l'as pas.", "erreur"); return; }
     const { error } = await supabase.from("gems").update({
       responsable_nom: nomResponsableEnEdition.trim(),
-      responsable_telephone: telResponsableEnEdition.trim(),
+      responsable_telephone: telAEnregistrer,
     }).eq("id", gemId);
-    if (!error) { setGemResponsableEnEdition(null); onCreerGem(); }
+    if (!error) { toast("✓ Responsable enregistré.", "succes"); setGemResponsableEnEdition(null); onCreerGem(); }
+    else toast("Erreur : " + error.message, "erreur");
   }
 
   async function retirerResponsableGemProvisoire(gemId) {
@@ -11722,35 +11749,33 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
     <div>
       <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Rapports</h2>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
-        <button
- className="btn-app"
- onClick={() => setVue("hebdomadaire")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "hebdomadaire" ? GOLD : TEAL_900, color: vue === "hebdomadaire" ? TEAL_950 : "var(--text-secondary-2)" }}>
+      <div className="chips-row">
+        <button className="btn-app" onClick={() => setVue("hebdomadaire")} style={{ padding: "9px 16px", borderRadius: 999, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "hebdomadaire" ? GOLD : TEAL_900, color: vue === "hebdomadaire" ? TEAL_950 : "var(--text-secondary-2)", boxShadow: vue === "hebdomadaire" ? "0 4px 12px rgba(214,165,76,0.35)" : "none" }}>
           Vue hebdomadaire
         </button>
         <button
  className="btn-app"
- onClick={() => setVue("mensuelle")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "mensuelle" ? GOLD : TEAL_900, color: vue === "mensuelle" ? TEAL_950 : "var(--text-secondary-2)" }}>
+ onClick={() => setVue("mensuelle")} style={{ padding: "9px 16px", borderRadius: 999, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "mensuelle" ? GOLD : TEAL_900, color: vue === "mensuelle" ? TEAL_950 : "var(--text-secondary-2)", boxShadow: vue === "mensuelle" ? "0 4px 12px rgba(214,165,76,0.35)" : "none" }}>
           Vue mensuelle
         </button>
         <button
  className="btn-app"
- onClick={() => setVue("annuelle")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "annuelle" ? GOLD : TEAL_900, color: vue === "annuelle" ? TEAL_950 : "var(--text-secondary-2)" }}>
+ onClick={() => setVue("annuelle")} style={{ padding: "9px 16px", borderRadius: 999, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "annuelle" ? GOLD : TEAL_900, color: vue === "annuelle" ? TEAL_950 : "var(--text-secondary-2)", boxShadow: vue === "annuelle" ? "0 4px 12px rgba(214,165,76,0.35)" : "none" }}>
           Vue annuelle
         </button>
         <button
  className="btn-app"
- onClick={() => setVue("activites")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "activites" ? GOLD : TEAL_900, color: vue === "activites" ? TEAL_950 : "var(--text-secondary-2)", display: "inline-flex", alignItems: "center", gap: 6 }}>
+ onClick={() => setVue("activites")} style={{ padding: "9px 16px", borderRadius: 999, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "activites" ? GOLD : TEAL_900, color: vue === "activites" ? TEAL_950 : "var(--text-secondary-2)", display: "inline-flex", alignItems: "center", gap: 6, boxShadow: vue === "activites" ? "0 4px 12px rgba(214,165,76,0.35)" : "none" }}>
           <IconeClipboard size={14} /> Activités
         </button>
         <button
  className="btn-app"
- onClick={() => setVue("classement")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "classement" ? GOLD : TEAL_900, color: vue === "classement" ? TEAL_950 : "var(--text-secondary-2)", display: "inline-flex", alignItems: "center", gap: 6 }}>
+ onClick={() => setVue("classement")} style={{ padding: "9px 16px", borderRadius: 999, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "classement" ? GOLD : TEAL_900, color: vue === "classement" ? TEAL_950 : "var(--text-secondary-2)", display: "inline-flex", alignItems: "center", gap: 6, boxShadow: vue === "classement" ? "0 4px 12px rgba(214,165,76,0.35)" : "none" }}>
           <IconeTrophee size={14} /> Classement
         </button>
         <button
  className="btn-app"
- onClick={() => setVue("jauges")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "jauges" ? GOLD : TEAL_900, color: vue === "jauges" ? TEAL_950 : "var(--text-secondary-2)", display: "inline-flex", alignItems: "center", gap: 6 }}>
+ onClick={() => setVue("jauges")} style={{ padding: "9px 16px", borderRadius: 999, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: vue === "jauges" ? GOLD : TEAL_900, color: vue === "jauges" ? TEAL_950 : "var(--text-secondary-2)", display: "inline-flex", alignItems: "center", gap: 6, boxShadow: vue === "jauges" ? "0 4px 12px rgba(214,165,76,0.35)" : "none" }}>
           🎯 Taux par tribu/département
         </button>
       </div>
@@ -11815,12 +11840,12 @@ function PageRapports({ compte, gems, membres, tribus, departements, responsable
           <DetailTribuDeptClassement type={detailOuvert.type} item={detailOuvert.item} gems={gems} membres={membres} onBack={() => setDetailOuvert(null)} cardStyle={cardStyle} />
         ) : (
           <div>
-            <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+            <div className="chips-row">
               {[
                 ["hebdomadaire", "Hebdomadaire"], ["mensuelle", "Mensuelle"], ["annuelle", "Annuelle"],
                 ["top3gem", "🥇 Top 3 GEM"], ["top3tribu", "🥇 Top 3 Tribus"], ["top3departement", "🥇 Top 3 Départements"],
               ].map(([cle, label]) => (
-                <button key={cle} className="btn-app" onClick={() => setSousClassement(cle)} style={{ padding: "8px 14px", borderRadius: 8, fontWeight: 600, fontSize: 12, border: "none", cursor: "pointer", backgroundColor: sousClassement === cle ? GOLD : TEAL_900, color: sousClassement === cle ? TEAL_950 : "var(--text-secondary-2)" }}>
+                <button key={cle} className="btn-app" onClick={() => setSousClassement(cle)} style={{ padding: "8px 14px", borderRadius: 999, fontWeight: 600, fontSize: 12, border: "none", cursor: "pointer", backgroundColor: sousClassement === cle ? GOLD : TEAL_900, color: sousClassement === cle ? TEAL_950 : "var(--text-secondary-2)", boxShadow: sousClassement === cle ? "0 4px 12px rgba(214,165,76,0.35)" : "none" }}>
                   {label}
                 </button>
               ))}
@@ -12277,27 +12302,19 @@ function PageMessagerie({ compte, estPasteur, onActionnee, cardStyle }) {
     <div>
       <h2 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>Messagerie</h2>
 
-      <div style={{ display: "flex", gap: 8, marginBottom: 20 }}>
-        <button
- className="btn-app"
- onClick={() => setOnglet("diffusion")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "diffusion" ? GOLD : TEAL_900, color: onglet === "diffusion" ? TEAL_950 : "var(--text-secondary-2)" }}>
+      <div className="chips-row">
+        <button className="btn-app" onClick={() => setOnglet("diffusion")} style={{ padding: "8px 16px", borderRadius: 999, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "diffusion" ? GOLD : TEAL_900, color: onglet === "diffusion" ? TEAL_950 : "var(--text-secondary-2)", boxShadow: onglet === "diffusion" ? "0 4px 12px rgba(214,165,76,0.35)" : "none" }}>
           Messages du pasteur
         </button>
-        <button
- className="btn-app"
- onClick={() => setOnglet("direct")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "direct" ? GOLD : TEAL_900, color: onglet === "direct" ? TEAL_950 : "var(--text-secondary-2)" }}>
+        <button className="btn-app" onClick={() => setOnglet("direct")} style={{ padding: "8px 16px", borderRadius: 999, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "direct" ? GOLD : TEAL_900, color: onglet === "direct" ? TEAL_950 : "var(--text-secondary-2)", boxShadow: onglet === "direct" ? "0 4px 12px rgba(214,165,76,0.35)" : "none" }}>
           {estPasteur ? "Boîte de réception" : "Écrire au pasteur"}{estPasteur && nonLus > 0 ? ` (${nonLus})` : ""}
         </button>
         {estPasteur && (
-          <button
- className="btn-app"
- onClick={() => setOnglet("prive")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "prive" ? GOLD : TEAL_900, color: onglet === "prive" ? TEAL_950 : "var(--text-secondary-2)" }}>
+          <button className="btn-app" onClick={() => setOnglet("prive")} style={{ padding: "8px 16px", borderRadius: 999, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "prive" ? GOLD : TEAL_900, color: onglet === "prive" ? TEAL_950 : "var(--text-secondary-2)", boxShadow: onglet === "prive" ? "0 4px 12px rgba(214,165,76,0.35)" : "none" }}>
             <span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeCadenas size={13}/> Message privé</span>
           </button>
         )}
-        <button
- className="btn-app"
- onClick={() => setOnglet("rappels")} style={{ padding: "8px 16px", borderRadius: 8, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "rappels" ? GOLD : TEAL_900, color: onglet === "rappels" ? TEAL_950 : "var(--text-secondary-2)" }}>
+        <button className="btn-app" onClick={() => setOnglet("rappels")} style={{ padding: "8px 16px", borderRadius: 999, fontWeight: 600, fontSize: 13, border: "none", cursor: "pointer", backgroundColor: onglet === "rappels" ? GOLD : TEAL_900, color: onglet === "rappels" ? TEAL_950 : "var(--text-secondary-2)", boxShadow: onglet === "rappels" ? "0 4px 12px rgba(214,165,76,0.35)" : "none" }}>
           <span style={{display:"inline-flex",alignItems:"center",gap:6}}><IconeCloche size={14}/> Mes rappels{notificationsPerso.filter(n => !n.lu).length > 0 ? ` (${notificationsPerso.filter(n => !n.lu).length})` : ""}</span>
         </button>
       </div>
@@ -12588,30 +12605,30 @@ function PageCalendrier({ estPasteur, compte, onOuverture, cardStyle }) {
   function CarteEvenement({ e }) {
     const date = new Date(e.debut);
     return (
-      <div style={cardStyle}>
+      <div style={{ ...cardStyle, boxShadow: "0 14px 30px -20px rgba(0,0,0,0.6)" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
           <div>
-            <p style={{ fontWeight: 700 }}>{e.titre}</p>
-            <p style={{ fontSize: 12, color: GOLD_LIGHT, marginTop: 2 }}>
+            <p className="titre-moisson" style={{ fontWeight: 600, fontSize: 17, letterSpacing: "-0.01em" }}>{e.titre}</p>
+            <p style={{ fontSize: 12, color: GOLD_LIGHT, marginTop: 2, fontWeight: 600 }}>
               {date.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" })} à {date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}
             </p>
-            {e.lieu && <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>📍 {e.lieu}</p>}
+            {e.lieu && <p style={{ fontSize: 12, color: "var(--text-secondary)", marginTop: 2, display: "flex", alignItems: "center", gap: 5 }}><IconeMaison size={11} color="var(--text-secondary)" /> {e.lieu}</p>}
             {e.description && <p style={{ fontSize: 13, marginTop: 6 }}>{e.description}</p>}
             {e.image && (
-              <img src={e.image} alt={e.titre} style={{ maxWidth: "100%", maxHeight: 260, borderRadius: 8, marginTop: 8, border: `1px solid ${TEAL_700}` }} />
+              <img src={e.image} alt={e.titre} style={{ maxWidth: "100%", maxHeight: 260, borderRadius: 12, marginTop: 8, border: `1px solid ${TEAL_700}` }} />
             )}
           </div>
           <div style={{ display: "flex", gap: 8, flexShrink: 0 }}>
             <button
  className="btn-app"
- onClick={() => telechargerICS(e)} style={{ fontSize: 11, color: GOLD_LIGHT, background: "none", border: `1px solid ${TEAL_600}`, borderRadius: 6, padding: "4px 8px", cursor: "pointer" }}>Ajouter au calendrier</button>
+ onClick={() => telechargerICS(e)} style={{ fontSize: 11, color: GOLD_LIGHT, background: "none", border: `1px solid ${TEAL_600}`, borderRadius: 999, padding: "5px 10px", cursor: "pointer" }}>Ajouter au calendrier</button>
             <button
  className="btn-app"
- onClick={() => telechargerAfficheEvenement(e)} style={{ fontSize: 11, fontWeight: 700, color: TEAL_950, backgroundColor: GOLD_LIGHT, border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}>🖼️ Affiche</button>
+ onClick={() => telechargerAfficheEvenement(e)} style={{ fontSize: 11, fontWeight: 700, color: TEAL_950, backgroundImage: "linear-gradient(135deg, var(--gold-light), var(--gold))", border: "none", borderRadius: 999, padding: "5px 12px", cursor: "pointer", boxShadow: "0 3px 10px rgba(214,165,76,0.3)" }}>🖼️ Affiche</button>
             {estPasteur && (
               <button
  className="btn-app"
- onClick={() => supprimerEvenement(e.id)} style={{ fontSize: 11, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, border: "none", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}>Supprimer</button>
+ onClick={() => supprimerEvenement(e.id)} style={{ fontSize: 11, fontWeight: 700, color: "#fff", backgroundColor: RED_LIGHT, border: "none", borderRadius: 999, padding: "5px 12px", cursor: "pointer" }}>Supprimer</button>
             )}
           </div>
         </div>
